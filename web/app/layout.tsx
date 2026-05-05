@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://devsenses.dev'),
   title: {
     default: 'DevSenses',
     template: '%s — DevSenses'
