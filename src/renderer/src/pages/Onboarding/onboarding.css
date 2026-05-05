@@ -1,0 +1,349 @@
+/* ============================================
+   DEVSENSES ONBOARDING
+   Dark glass-morphism, per-step gradients.
+   ============================================ */
+
+/* ─── Root ──────────────────────────────────── */
+
+.onboarding-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Per-step dark gradient backgrounds — 8 steps total (0-7) */
+.onboarding-root[data-step="0"] { background: linear-gradient(170deg, #1a1225 0%, #1e1530 25%, #221838 45%, #1c1328 65%, #181020 85%, #140e1a 100%); }
+.onboarding-root[data-step="1"] { background: linear-gradient(170deg, #0e1e1a 0%, #122420 25%, #142824 45%, #10201c 65%, #0c1a16 85%, #081410 100%); }
+.onboarding-root[data-step="2"] { background: linear-gradient(170deg, #221c0e 0%, #261e10 25%, #2a2012 45%, #201a0c 65%, #1a1608 85%, #141006 100%); }
+.onboarding-root[data-step="3"] { background: linear-gradient(170deg, #1c1328 0%, #1e1530 25%, #221838 45%, #1a1225 65%, #161020 85%, #120e1a 100%); }
+.onboarding-root[data-step="4"] { background: linear-gradient(170deg, #122420 0%, #142824 25%, #162c28 45%, #10201c 65%, #0c1a16 85%, #081410 100%); }
+.onboarding-root[data-step="5"] { background: linear-gradient(170deg, #141228 0%, #18162e 25%, #1c1a34 45%, #151328 65%, #111022 85%, #0e0c1c 100%); }
+.onboarding-root[data-step="6"] { background: linear-gradient(170deg, #1a1225 0%, #1e1530 25%, #221838 45%, #1c1328 65%, #181020 85%, #140e1a 100%); }
+.onboarding-root[data-step="7"] { background: linear-gradient(170deg, #141228 0%, #18162e 25%, #1c1a34 45%, #151328 65%, #111022 85%, #0e0c1c 100%); }
+
+/* ─── Symbol Pattern ─────────────────────────── */
+.onboarding-pattern {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  overflow: hidden;
+}
+.onboarding-pattern svg { width: 100%; height: 100%; }
+
+/* ─── Titlebar ──────────────────────────────── */
+.onboarding-titlebar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40px;
+  -webkit-app-region: drag;
+  z-index: 10;
+}
+
+/* ─── Skip ──────────────────────────────────── */
+.onboarding-skip {
+  position: absolute;
+  top: 14px; right: 20px;
+  z-index: 20;
+  font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  background: transparent; border: none;
+  cursor: pointer;
+  padding: 6px 14px; border-radius: 10px;
+  transition: all 0.2s;
+  -webkit-app-region: no-drag;
+}
+.onboarding-skip:hover { color: rgba(255,255,255,0.6); }
+
+/* ─── Content ───────────────────────────────── */
+.onboarding-content {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 960px;
+  padding: 52px 40px 0;
+  overflow: hidden;
+}
+
+.onboarding-step-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.step-fade-in { animation: stepFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.step-fade-out { animation: stepFadeOut 0.3s cubic-bezier(0.4, 0, 1, 1) both; }
+
+@keyframes stepFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes stepFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.96); }
+}
+
+/* ─── Footer ────────────────────────────────── */
+.onboarding-footer {
+  position: relative; z-index: 10;
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 24px;
+  padding: 16px 40px 40px;
+}
+
+.onboarding-nav { display: flex; gap: 12px; align-items: center; }
+
+.onboarding-btn-next {
+  min-width: 140px; height: 38px;
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  font-size: 13.5px; font-weight: 520;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+.onboarding-btn-next:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.onboarding-btn-next:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.onboarding-btn-back {
+  color: rgba(255,255,255,0.35);
+  background: transparent;
+  border: none;
+  font-size: 13.5px; font-weight: 500;
+  cursor: pointer;
+  padding: 6px 14px; border-radius: 10px;
+  transition: color 0.2s;
+}
+.onboarding-btn-back:hover { color: rgba(255,255,255,0.6); }
+
+.onboarding-indicators { display: flex; gap: 8px; }
+
+.onboarding-dot {
+  width: 8px; height: 8px;
+  border-radius: 99px; border: none;
+  background: rgba(255,255,255,0.18);
+  cursor: pointer; padding: 0;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.onboarding-dot:hover { background: rgba(255,255,255,0.35); }
+.onboarding-dot-active { background: rgba(255,255,255,0.7); }
+
+/* ─── Step Typography ───────────────────────── */
+.step-title {
+  font-size: 36px; font-weight: 750;
+  letter-spacing: -0.03em; line-height: 1.15;
+  color: rgba(255,255,255,0.95);
+  margin: 0 0 12px;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.step-description {
+  font-size: 16px; font-weight: 400; line-height: 1.6;
+  color: rgba(255,255,255,0.45);
+  max-width: 440px; margin: 0;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeScaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Card / Glass surface ──────────────────── */
+.step-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px; padding: 22px;
+  text-align: left;
+  transition: all 0.3s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.step-card:hover {
+  background: rgba(255,255,255,0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.step-card-selected {
+  background: rgba(255,255,255,0.14) !important;
+  border-color: rgba(255,255,255,0.35) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 2px rgba(255,255,255,0.15) !important;
+}
+.step-card-title {
+  font-size: 15px; font-weight: 600;
+  color: rgba(255,255,255,0.9); margin: 0 0 4px;
+}
+.step-card-desc {
+  font-size: 13px; line-height: 1.5;
+  color: rgba(255,255,255,0.4); margin: 0;
+}
+
+/* ─── Glass Form Inputs ─────────────────────── */
+.glass-input {
+  width: 100%; height: 52px; padding: 0 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.1);
+  font-size: 16px; font-weight: 500;
+  color: rgba(255,255,255,0.9);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.glass-input::placeholder { color: rgba(255,255,255,0.3); font-weight: 400; }
+.glass-input:focus {
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+}
+
+/* ─── Feature List ──────────────────────────── */
+.feature-list { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; }
+.feature-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; border-radius: 14px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 14px; font-weight: 450; color: rgba(255,255,255,0.85);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  text-align: left;
+}
+.feature-item:nth-child(1) { animation-delay: 0.3s; }
+.feature-item:nth-child(2) { animation-delay: 0.38s; }
+.feature-item:nth-child(3) { animation-delay: 0.46s; }
+.feature-item:nth-child(4) { animation-delay: 0.54s; }
+.feature-icon {
+  width: 32px; height: 32px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background: rgba(139,92,246,0.18); color: rgba(167,139,250,1);
+}
+
+/* ─── Glass Container ───────────────────────── */
+.glass-container {
+  width: 100%; max-width: 520px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px; padding: 28px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  animation: fadeScaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+/* ─── Provider Pills ────────────────────────── */
+.provider-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+  animation: fadeScaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.provider-row:hover { background: rgba(255,255,255,0.12); transform: translateY(-1px); }
+.provider-row-selected {
+  background: rgba(255,255,255,0.14) !important;
+  border-color: rgba(255,255,255,0.35) !important;
+}
+.provider-row-disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+.provider-label { font-size: 14px; font-weight: 520; color: rgba(255,255,255,0.85); }
+.provider-badge {
+  font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 500;
+}
+.provider-badge-ok { background: rgba(34,197,94,0.15); color: #4ade80; }
+.provider-badge-missing { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); }
+.provider-badge-selected { background: rgba(255,255,255,0.18); color: rgba(255,255,255,0.9); }
+
+/* ─── Terminal mockup ───────────────────────── */
+.glass-terminal {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-family: 'SF Mono', Monaco, Menlo, monospace;
+  font-size: 12px; line-height: 1.7;
+  color: rgba(255,255,255,0.6);
+  min-height: 80px; text-align: left;
+}
+.glass-terminal .cmd { color: #4ade80; }
+.glass-terminal .output { color: rgba(255,255,255,0.35); }
+.glass-terminal .err { color: #f87171; }
+
+/* ─── Status icon row ───────────────────────── */
+.status-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 20px; border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.status-label { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.9); }
+.status-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* ─── Quiz ──────────────────────────────────── */
+.quiz-question { font-size: 20px; font-weight: 600; color: rgba(255,255,255,0.9); margin-bottom: 20px; text-align: left; }
+.quiz-option {
+  width: 100%; text-align: left; padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  font-size: 14px; font-weight: 450; color: rgba(255,255,255,0.75);
+  cursor: pointer; transition: all 0.2s;
+  animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.quiz-option:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
+.quiz-option-selected {
+  background: rgba(255,255,255,0.16) !important;
+  border-color: rgba(255,255,255,0.38) !important;
+  color: rgba(255,255,255,0.95) !important;
+}
+.quiz-progress {
+  font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.35);
+  text-align: right; margin-bottom: 10px;
+}
+
+/* ─── Summary rows ──────────────────────────── */
+.summary-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.summary-row:last-child { border-bottom: none; }
+.summary-label { font-size: 13px; color: rgba(255,255,255,0.4); width: 120px; flex-shrink: 0; }
+.summary-value { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85); flex: 1; }
+
+/* ─── Step Badge ────────────────────────────── */
+.step-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 99px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.45);
+  margin-top: 12px;
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
