@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server'
-import { Github, Twitter, MessageCircle, Mail } from 'lucide-react'
+import { ExternalLink, X, MessageCircle, Mail } from 'lucide-react'
 import { FadeIn } from '@/components/animations/fade-in'
 
 export async function Footer() {
@@ -25,14 +25,14 @@ export async function Footer() {
               aria-label={t('links.github')}
               className="hover:text-foreground transition-colors"
             >
-              <Github size={18} />
+              <ExternalLink size={18} />
             </a>
             <a
               href="#"
               aria-label={t('links.twitter')}
               className="hover:text-foreground transition-colors"
             >
-              <Twitter size={18} />
+              <X size={18} />
             </a>
             <a
               href="#"

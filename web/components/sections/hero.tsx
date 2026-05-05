@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server'
-import { ArrowRight, Github } from 'lucide-react'
+import { ArrowRight, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FadeIn } from '@/components/animations/fade-in'
 import { GradientBlob } from '@/components/animations/gradient-blob'
@@ -42,7 +42,7 @@ export async function Hero() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Github size={16} />
+              <ExternalLink size={16} />
               {t('cta_secondary')}
               <ArrowRight size={14} />
             </a>
