@@ -3,6 +3,7 @@ import { getMessages, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { ThemeProvider } from '@/components/theme-provider'
+import { LenisProvider } from '@/components/lenis-provider'
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }))
@@ -27,7 +28,7 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-        {children}
+        <LenisProvider>{children}</LenisProvider>
       </ThemeProvider>
     </NextIntlClientProvider>
   )
