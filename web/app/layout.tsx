@@ -4,13 +4,16 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'DevSenses',
-  description: 'Vire dev. Não operador.',
+  title: {
+    default: 'DevSenses',
+    template: '%s — DevSenses'
+  },
+  description: 'Vire dev. Não operador.'
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt" suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         {children}
       </body>
