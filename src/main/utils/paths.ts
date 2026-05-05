@@ -13,3 +13,9 @@ export function dataDir(): string {
 export function dbPath(): string {
   return join(dataDir(), 'devsenses.db')
 }
+
+export function runsDir(): string {
+  const dir = join(dataDir(), 'runs')
+  mkdirSync(dir, { recursive: true })
+  return dir
+}

@@ -188,12 +188,140 @@ export interface IpcContract {
     request: { path: string }
     response: void
   }
+
+  'tests:detectUrl': {
+    request: { path: string }
+    response: { suggested: string | null; scripts: Record<string, string> }
+  }
+  'tests:run': {
+    request: {
+      baseUrl: string
+      actions: Array<Record<string, unknown>>
+      prompt?: string
+      intensity?: 'sane' | 'chaos' | 'nuclear'
+      recordVideo?: boolean
+    }
+    response: {
+      id: string
+      ok: boolean
+      baseUrl: string
+      prompt: string | null
+      intensity: 'sane' | 'chaos' | 'nuclear'
+      actionsCount: number
+      startedAt: number
+      finishedAt: number
+      log: Array<{
+        index: number
+        action: string
+        ok: boolean
+        detail?: string
+        error?: string
+        ts: number
+      }>
+      screenshots: string[]
+      videoPath: string | null
+      error: string | null
+      folder: string
+    }
+  }
+  'tests:listRuns': {
+    request: void
+    response: Array<{
+      id: string
+      ok: boolean
+      baseUrl: string
+      prompt: string | null
+      intensity: string
+      actionsCount: number
+      startedAt: number
+      finishedAt: number
+      screenshotCount: number
+      hasVideo: boolean
+      folder: string
+      error: string | null
+    }>
+  }
+  'tests:loadRun': {
+    request: { id: string }
+    response: {
+      id: string
+      ok: boolean
+      baseUrl: string
+      prompt: string | null
+      intensity: string
+      actionsCount: number
+      startedAt: number
+      finishedAt: number
+      log: Array<{
+        index: number
+        action: string
+        ok: boolean
+        detail?: string
+        error?: string
+        ts: number
+      }>
+      screenshots: string[]
+      videoPath: string | null
+      error: string | null
+      folder: string
+    }
+  }
+  'tests:openFolder': {
+    request: { path: string }
+    response: string
+  }
+  'tests:deleteRun': {
+    request: { id: string }
+    response: void
+  }
+  'tests:readImage': {
+    request: { path: string }
+    response: string
+  }
+  'tests:agentRun': {
+    request: {
+      baseUrl: string
+      goal: string
+      intensity: 'sane' | 'chaos' | 'nuclear'
+      providerId: string
+      maxSteps?: number
+      runId?: string
+    }
+    response: {
+      id: string
+      ok: boolean
+      baseUrl: string
+      prompt: string | null
+      intensity: 'sane' | 'chaos' | 'nuclear'
+      actionsCount: number
+      startedAt: number
+      finishedAt: number
+      log: Array<{
+        index: number
+        action: string
+        ok: boolean
+        detail?: string
+        error?: string
+        ts: number
+      }>
+      screenshots: string[]
+      videoPath: string | null
+      error: string | null
+      folder: string
+    }
+  }
 }
 
 export interface IpcEvents {
   'providers:stream': { streamId: string; chunk: string; done: boolean; error: string | null }
   'workspace:changed': { path: string }
   'app:open-project': { path: string }
+  'tests:agentEvent':
+    | { runId: string; type: 'snapshot'; step: number; url: string; title: string; elementsCount: number }
+    | { runId: string; type: 'thinking'; step: number }
+    | { runId: string; type: 'action'; step: number; action: string; detail?: string; ok: boolean; error?: string }
+    | { runId: string; type: 'done'; reason: string }
+    | { runId: string; type: 'fail'; reason: string }
 }
 
 export type IpcChannel = keyof IpcContract

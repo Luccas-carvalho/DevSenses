@@ -4,6 +4,7 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import Settings from './pages/Settings'
 import Project from './pages/Project'
+import Tests from './pages/Tests'
 import { useSettings } from './hooks/useSettings'
 
 function FirstLaunchGate(): React.ReactNode {
@@ -30,5 +31,6 @@ export const router = createHashRouter([
   { path: '/onboarding/*', element: <Onboarding /> },
   { path: '/home', element: <Home /> },
   { path: '/settings', element: <Settings /> },
-  { path: '/project', element: <Project /> }
+  { path: '/project', element: <Project /> },
+  { path: '/tests', element: <Tests /> }
 ])
