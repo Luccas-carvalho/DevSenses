@@ -1,0 +1,50 @@
+{
+  "title": "Pay once. Use forever.",
+  "subtitle": "No subscription. No catch.",
+  "plans": [
+    {
+      "id": "free",
+      "name": "Free Beta",
+      "badge": "Now",
+      "price": "$0",
+      "period": "limited time",
+      "description": "Everything unlocked. While beta lasts.",
+      "features": [
+        "Unlimited Diff Reviewer",
+        "Seniority Quiz",
+        "5 AI CLIs supported",
+        "Updates during beta"
+      ],
+      "cta": "Join waitlist"
+    },
+    {
+      "id": "early",
+      "name": "Lifetime Early Bird",
+      "badge": "Limited",
+      "price": "$19",
+      "period": "once. forever.",
+      "description": "First 100 devs. Lifetime access.",
+      "features": [
+        "Everything in Free",
+        "Updates forever",
+        "Pro features access",
+        "Priority support"
+      ],
+      "cta": "Reserve seat",
+      "limit": "{used} / 100 seats left",
+      "highlight": true
+    },
+    {
+      "id": "standard",
+      "name": "Lifetime",
+      "price": "$59",
+      "period": "once. forever.",
+      "description": "After the 100 are gone.",
+      "features": [
+        "Everything in Early Bird",
+        "No seat limit"
+      ],
+      "cta": "Coming soon"
+    }
+  ]
+}

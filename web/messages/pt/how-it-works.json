@@ -1,0 +1,21 @@
+{
+  "title": "Em 60 segundos.",
+  "subtitle": "Sem onboarding chato.",
+  "steps": [
+    {
+      "number": "01",
+      "title": "Instala",
+      "description": "mac, win, linux. Um clique."
+    },
+    {
+      "number": "02",
+      "title": "Conecta sua CLI IA",
+      "description": "Já tem claude/codex/gemini? Detecta sozinho."
+    },
+    {
+      "number": "03",
+      "title": "Abre projeto",
+      "description": "Toda alteração vira lição. Automatico."
+    }
+  ]
+}
