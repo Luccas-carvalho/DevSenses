@@ -8,7 +8,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  FlaskConical
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -91,6 +92,13 @@ export default function Home() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <ThemeIconToggle />
+          <button
+            onClick={() => navigate('/tests')}
+            title="Testes IA"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <FlaskConical className="size-3.5" />
+          </button>
           <button
             onClick={() => navigate('/settings')}
             title="Configurações"

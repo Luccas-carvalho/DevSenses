@@ -3,6 +3,7 @@ import { registerProviderHandlers } from './providers'
 import { registerWorkspaceHandlers } from './workspace'
 import { registerConceptsHandlers } from './concepts'
 import { registerAnalysesHandlers } from './analyses'
+import { registerTestsHandlers } from './tests'
 
 export function registerIpcHandlers(): void {
   registerSettingsHandlers()
@@ -10,4 +11,5 @@ export function registerIpcHandlers(): void {
   registerWorkspaceHandlers()
   registerConceptsHandlers()
   registerAnalysesHandlers()
+  registerTestsHandlers()
 }

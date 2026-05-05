@@ -24,7 +24,8 @@ import {
   FolderPlus,
   History,
   X,
-  Trash2
+  Trash2,
+  FlaskConical
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -591,6 +592,14 @@ export default function Project() {
           >
             <Zap className="size-3" />
             Turbo
+          </button>
+
+          <button
+            onClick={() => navigate('/tests')}
+            title="Testes IA"
+            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <FlaskConical className="size-3.5" />
           </button>
 
           <button
