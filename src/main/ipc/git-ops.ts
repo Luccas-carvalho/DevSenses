@@ -90,6 +90,15 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:prPreview', async (_, p: IpcContract['git:prPreview']['request']) => {
     return ops.prPreview(p.path, p.base, p.head)
   })
+  ipcMain.handle('git:diffRange', async (_, p: IpcContract['git:diffRange']['request']) => {
+    return ops.diffRange(p.path, p.base, p.head, p.file)
+  })
+  ipcMain.handle('git:canMerge', async (_, p: IpcContract['git:canMerge']['request']) => {
+    return ops.canMerge(p.path, p.base, p.head)
+  })
+  ipcMain.handle('git:branchesDetailed', async (_, p: IpcContract['git:branchesDetailed']['request']) => {
+    return ops.branchesDetailed(p.path)
+  })
 
   ipcMain.handle('git:clone', async (_, p: IpcContract['git:clone']['request']) => {
     return cloneOps.cloneRepo(p.url, p.dest)

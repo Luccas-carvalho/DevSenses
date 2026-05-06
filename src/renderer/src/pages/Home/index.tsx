@@ -17,6 +17,7 @@ import { useTheme } from '@/components/ThemeProvider'
 import type { ThemeMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
 import CloneDialog from '@/components/git/dialogs/CloneDialog'
+import Logo from '@/components/Logo'
 
 interface Recent {
   path: string
@@ -153,14 +154,17 @@ export default function Home() {
         <div className="max-w-2xl mx-auto px-6 py-12">
 
           {/* Greeting */}
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight mb-2">
-              E aí,{' '}
-              <span className="text-primary">{name || 'dev'}</span>
-            </h1>
-            <p className="text-base text-muted-foreground">
-              Seleciona um projeto pra o DevSenses começar a analisar os diffs.
-            </p>
+          <div className="mb-10 flex items-center gap-4">
+            <Logo size={64} className="flex-shrink-0 rounded-2xl shadow-lg" />
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight mb-1">
+                E aí,{' '}
+                <span className="text-primary">{name || 'dev'}</span>
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Seleciona um projeto pra o DevSenses começar a analisar os diffs.
+              </p>
+            </div>
           </div>
 
           {/* Open / Clone */}

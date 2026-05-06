@@ -358,6 +358,37 @@ export async function stashOp(
   return { ok: true }
 }
 
+export async function branchesDetailed(
+  repoPath: string
+): Promise<{
+  name: string
+  isCurrent: boolean
+  lastCommitDate: string
+  lastCommitMessage: string
+  upstream: string | null
+}[]> {
+  const sep = '\x1f'
+  const r = await gitRun(repoPath, [
+    'for-each-ref',
+    `--format=%(refname:short)${sep}%(HEAD)${sep}%(committerdate:iso8601)${sep}%(contents:subject)${sep}%(upstream:short)`,
+    'refs/heads'
+  ])
+  if (!r.ok) return []
+  return r.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [name, head, date, message, upstream] = line.split(sep)
+      return {
+        name,
+        isCurrent: head.trim() === '*',
+        lastCommitDate: date,
+        lastCommitMessage: message ?? '',
+        upstream: upstream?.trim() || null
+      }
+    })
+}
+
 export async function prPreview(
   repoPath: string,
   base: string,
@@ -423,6 +454,36 @@ export async function prPreview(
   }
 
   return { commitCount: commits.length, additions, deletions, files, commits }
+}
+
+export async function diffRange(
+  repoPath: string,
+  base: string,
+  head: string,
+  file?: string
+): Promise<{ diff: string }> {
+  const args = ['diff', '--no-color', `${base}...${head}`]
+  if (file) args.push('--', file)
+  const r = await gitRun(repoPath, args)
+  return { diff: r.stdout }
+}
+
+export async function canMerge(
+  repoPath: string,
+  base: string,
+  head: string
+): Promise<{ canMerge: boolean; reason: string | null }> {
+  const r = await gitRun(repoPath, ['merge-tree', '--write-tree', base, head])
+  if (!r.ok) {
+    if (/conflict/i.test(r.stderr) || /conflict/i.test(r.stdout)) {
+      return { canMerge: false, reason: 'Há conflitos entre as branches.' }
+    }
+    return { canMerge: false, reason: r.stderr || r.stdout || 'Falha ao verificar merge.' }
+  }
+  if (/<<<<<<< |\+<<<<<<< /m.test(r.stdout)) {
+    return { canMerge: false, reason: 'Há conflitos entre as branches.' }
+  }
+  return { canMerge: true, reason: null }
 }
 
 export async function getRemoteUrl(

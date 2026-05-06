@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, RefreshCw, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RepoStatus } from '@shared/git'
@@ -15,12 +16,25 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
   const [busy, setBusy] = useState<Action | null>(null)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (rect) {
+      const w = 176
+      setPos({
+        left: Math.max(8, rect.right - w),
+        top: rect.bottom + 4,
+        width: w
+      })
+    }
     const handler = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (containerRef.current?.contains(t) || popupRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -55,7 +69,7 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
   const primaryAction: Action = behind > 0 ? 'pull' : ahead > 0 ? 'push' : 'fetch'
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={containerRef} className="relative">
       <div className="inline-flex h-7 rounded-md border border-border/60 bg-card/60 overflow-hidden">
         <button
           type="button"
@@ -103,8 +117,12 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
         </div>
       )}
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 rounded-md border border-border bg-popover shadow-2xl z-[200] overflow-hidden">
+      {open && pos && createPortal(
+        <div
+          ref={popupRef}
+          className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden"
+          style={{ left: pos.left, top: pos.top, width: pos.width }}
+        >
           {(['push', 'pull', 'fetch'] as const).map((a) => (
             <button
               key={a}
@@ -125,7 +143,8 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
               )}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

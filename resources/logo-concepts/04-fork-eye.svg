@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="bg4" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0%" stop-color="#2a1f55"/>
+      <stop offset="100%" stop-color="#0a0617"/>
+    </radialGradient>
+    <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#bd93f9"/>
+      <stop offset="100%" stop-color="#6e3ad9"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg4)"/>
+  <!-- branch fork lines -->
+  <path d="M152 380 L152 256 Q152 200 208 200 L304 200" fill="none" stroke="url(#ringG)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M152 256 Q152 312 208 312 L304 312" fill="none" stroke="url(#ringG)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- nodes -->
+  <circle cx="152" cy="380" r="22" fill="#1a1530" stroke="#bd93f9" stroke-width="8"/>
+  <circle cx="304" cy="200" r="22" fill="#50fa7b" stroke="#0a0617" stroke-width="6"/>
+  <circle cx="304" cy="312" r="22" fill="#ff5555" stroke="#0a0617" stroke-width="6"/>
+  <!-- eye/sense over commit graph -->
+  <circle cx="380" cy="256" r="56" fill="none" stroke="#fff" stroke-width="6" opacity="0.9"/>
+  <circle cx="380" cy="256" r="20" fill="#bd93f9"/>
+  <circle cx="388" cy="246" r="6" fill="#fff" opacity="0.5"/>
+</svg>

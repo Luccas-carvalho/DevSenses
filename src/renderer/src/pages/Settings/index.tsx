@@ -7,6 +7,7 @@ import AI from './AI'
 import Appearance from './Appearance'
 import Workspace from './Workspace'
 import Glossary from './Glossary'
+import Logo from '@/components/Logo'
 
 const TABS = [
   { id: 'profile', label: 'Perfil', icon: User, component: Profile },
@@ -33,6 +34,10 @@ export default function Settings() {
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         <aside className="w-56 flex flex-col flex-shrink-0 bg-black/[0.08] dark:bg-black/[0.20]">
+          <div className="px-3 pt-2 pb-3 flex items-center gap-2">
+            <Logo size={24} className="flex-shrink-0 rounded-md" />
+            <span className="text-sm font-semibold text-foreground">DevSenses</span>
+          </div>
           <div className="p-3 border-b border-border/40">
             <button
               onClick={() => {

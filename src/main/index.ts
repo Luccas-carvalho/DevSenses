@@ -10,6 +10,8 @@ import { installAppMenu } from './app-menu'
 
 ensureFullPath()
 
+app.setName('DevSenses')
+
 function openProjectInRenderer(path: string): void {
   const wins = BrowserWindow.getAllWindows()
   const target = wins[0] ?? null
@@ -96,6 +98,14 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.luccas.devsenses')
+
+  if (process.platform === 'darwin' && app.dock) {
+    try {
+      app.dock.setIcon(icon)
+    } catch (e) {
+      console.error('[dock] setIcon failed', e)
+    }
+  }
 
   const db = getDb()
   const ran = runEmbeddedMigrations(db)

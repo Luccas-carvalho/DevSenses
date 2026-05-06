@@ -1,46 +1,126 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { GitBranch, Plus, Search, Check, ChevronDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { BranchDetailed } from '@shared/git'
 
 interface Props {
   path: string
-  branches: string[]
   current: string
-  baseBranch?: string
   onSwitch: (branch: string) => Promise<void>
   onCreateRequest: () => void
+  refreshKey?: number
+}
+
+const RECENT_KEY_PREFIX = 'ds-recent-branches:'
+
+function loadRecent(repoPath: string): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY_PREFIX + repoPath)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((s) => typeof s === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function pushRecent(repoPath: string, branch: string): void {
+  const cur = loadRecent(repoPath)
+  const next = [branch, ...cur.filter((b) => b !== branch)].slice(0, 10)
+  localStorage.setItem(RECENT_KEY_PREFIX + repoPath, JSON.stringify(next))
+}
+
+function relativeTime(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const diffMs = Date.now() - d.getTime()
+  const diffMin = Math.round(diffMs / 60_000)
+  if (diffMin < 60) return diffMin <= 1 ? 'agora' : `${diffMin}m`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `${diffH}h`
+  const diffD = Math.round(diffH / 24)
+  if (diffD < 30) return `${diffD}d`
+  const diffM = Math.round(diffD / 30)
+  if (diffM < 12) return `${diffM}mo`
+  return `${Math.round(diffM / 12)}y`
 }
 
 export default function BranchSwitcher({
-  branches,
+  path,
   current,
-  baseBranch,
   onSwitch,
-  onCreateRequest
+  onCreateRequest,
+  refreshKey
 }: Props): React.ReactElement {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const [busy, setBusy] = useState(false)
+  const [details, setDetails] = useState<BranchDetailed[]>([])
+  const [loading, setLoading] = useState(false)
+  const [recent, setRecent] = useState<string[]>(() => loadRecent(path))
+  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setRecent(loadRecent(path))
+  }, [path, refreshKey])
+
+  useEffect(() => {
     if (!open) return
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const w = 320
+      const maxLeft = window.innerWidth - w - 8
+      setPos({
+        left: Math.max(8, Math.min(rect.left, maxLeft)),
+        top: rect.bottom + 4,
+        width: w
+      })
+    }
+    setLoading(true)
     setTimeout(() => inputRef.current?.focus(), 50)
+    window.api
+      .invoke('git:branchesDetailed', { path })
+      .then((r) => setDetails(r))
+      .catch(() => setDetails([]))
+      .finally(() => setLoading(false))
     const handler = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (
+        buttonRef.current?.contains(t) ||
+        popupRef.current?.contains(t)
+      ) {
+        return
+      }
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [open])
+  }, [open, path, refreshKey])
 
   const grouped = useMemo(() => {
     const q = filter.toLowerCase()
-    const filtered = q ? branches.filter((b) => b.toLowerCase().includes(q)) : branches
-    const def = baseBranch && filtered.includes(baseBranch) ? baseBranch : null
-    const others = filtered.filter((b) => b !== def)
-    return { def, others }
-  }, [branches, filter, baseBranch])
+    const filteredDetails = q
+      ? details.filter((d) => d.name.toLowerCase().includes(q))
+      : details
+    const defaultCandidates = ['main', 'master', 'develop', 'dev']
+    const def = filteredDetails.find((d) => defaultCandidates.includes(d.name)) ?? null
+    const recentBranches = recent
+      .map((name) => filteredDetails.find((d) => d.name === name))
+      .filter((d): d is BranchDetailed => !!d && d.name !== def?.name)
+      .slice(0, 5)
+    const recentSet = new Set(recentBranches.map((b) => b.name))
+    const others = filteredDetails.filter(
+      (d) => d.name !== def?.name && !recentSet.has(d.name)
+    )
+    others.sort((a, b) => (b.lastCommitDate || '').localeCompare(a.lastCommitDate || ''))
+    return { def, recentBranches, others }
+  }, [details, filter, recent])
 
   async function pick(branch: string): Promise<void> {
     if (branch === current) {
@@ -50,6 +130,8 @@ export default function BranchSwitcher({
     setBusy(true)
     try {
       await onSwitch(branch)
+      pushRecent(path, branch)
+      setRecent(loadRecent(path))
     } finally {
       setBusy(false)
       setOpen(false)
@@ -60,18 +142,23 @@ export default function BranchSwitcher({
   return (
     <div ref={ref} className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
       >
         {busy ? <Loader2 className="size-3 animate-spin" /> : <GitBranch className="size-3" />}
-        <span className="font-medium max-w-[180px] truncate">{current}</span>
+        <span className="font-medium font-mono max-w-[140px] truncate">{current}</span>
         <ChevronDown className="size-3 text-muted-foreground" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-72 rounded-md border border-border bg-popover shadow-2xl z-[200] overflow-hidden">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/40">
+      {open && pos && createPortal(
+        <div
+          ref={popupRef}
+          className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden flex flex-col"
+          style={{ left: pos.left, top: pos.top, width: pos.width, maxHeight: 480 }}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/40 flex-shrink-0">
             <Search className="size-3 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -81,33 +168,39 @@ export default function BranchSwitcher({
               className="flex-1 bg-transparent text-[11px] focus:outline-none"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto py-1">
-            {grouped.def && (
+          <div className="flex-1 overflow-y-auto py-1 min-h-0">
+            {loading ? (
+              <div className="flex items-center gap-2 p-3 text-[11px] text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                carregando…
+              </div>
+            ) : (
               <>
-                <div className="px-2.5 py-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">
-                  Default
-                </div>
-                <BranchItem
-                  branch={grouped.def}
-                  current={current}
-                  onPick={() => pick(grouped.def!)}
-                />
+                {grouped.def && (
+                  <Section label="Branch padrão">
+                    <BranchRow b={grouped.def} current={current} onPick={() => pick(grouped.def!.name)} />
+                  </Section>
+                )}
+                {grouped.recentBranches.length > 0 && (
+                  <Section label="Recentes">
+                    {grouped.recentBranches.map((b) => (
+                      <BranchRow key={b.name} b={b} current={current} onPick={() => pick(b.name)} />
+                    ))}
+                  </Section>
+                )}
+                {grouped.others.length > 0 && (
+                  <Section label="Outras branches">
+                    {grouped.others.map((b) => (
+                      <BranchRow key={b.name} b={b} current={current} onPick={() => pick(b.name)} />
+                    ))}
+                  </Section>
+                )}
+                {!grouped.def && grouped.recentBranches.length === 0 && grouped.others.length === 0 && (
+                  <p className="px-3 py-3 text-[11px] text-muted-foreground italic">
+                    Nenhuma branch.
+                  </p>
+                )}
               </>
-            )}
-            {grouped.others.length > 0 && (
-              <>
-                <div className="px-2.5 py-1 text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-1">
-                  Branches
-                </div>
-                {grouped.others.map((b) => (
-                  <BranchItem key={b} branch={b} current={current} onPick={() => pick(b)} />
-                ))}
-              </>
-            )}
-            {grouped.others.length === 0 && !grouped.def && (
-              <p className="px-3 py-2 text-[11px] text-muted-foreground italic">
-                Nenhuma branch.
-              </p>
             )}
           </div>
           <button
@@ -116,34 +209,52 @@ export default function BranchSwitcher({
               setOpen(false)
               onCreateRequest()
             }}
-            className="w-full flex items-center gap-1.5 px-2.5 py-2 border-t border-border/40 text-[11px] text-primary hover:bg-primary/10"
+            className="w-full flex items-center gap-1.5 px-2.5 py-2 border-t border-border/40 text-[11px] text-primary hover:bg-primary/10 flex-shrink-0"
           >
             <Plus className="size-3" />
             Nova branch
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
 }
 
-function BranchItem({
-  branch,
+function Section({
+  label,
+  children
+}: {
+  label: string
+  children: React.ReactNode
+}): React.ReactElement {
+  return (
+    <div>
+      <div className="px-2.5 py-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">
+        {label}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function BranchRow({
+  b,
   current,
   onPick
 }: {
-  branch: string
+  b: BranchDetailed
   current: string
   onPick: () => void
 }): React.ReactElement {
-  const isCurrent = branch === current
+  const isCurrent = b.name === current
   return (
     <button
       type="button"
       onClick={onPick}
       className={cn(
         'w-full flex items-center gap-2 px-2.5 py-1.5 text-[11px] text-left',
-        isCurrent ? 'bg-primary/10 text-foreground' : 'hover:bg-accent/60 text-foreground/85'
+        isCurrent ? 'bg-primary/10' : 'hover:bg-accent/60'
       )}
     >
       {isCurrent ? (
@@ -151,7 +262,10 @@ function BranchItem({
       ) : (
         <span className="size-3 flex-shrink-0" />
       )}
-      <span className="font-mono truncate flex-1">{branch}</span>
+      <span className="font-mono truncate flex-1 text-foreground/90">{b.name}</span>
+      <span className="text-[9px] text-muted-foreground/60 tabular-nums">
+        {relativeTime(b.lastCommitDate)}
+      </span>
     </button>
   )
 }

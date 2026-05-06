@@ -62,3 +62,11 @@ export interface DetectedTerminal {
   id: 'terminal' | 'iterm' | 'warp' | 'ghostty'
   label: string
 }
+
+export interface BranchDetailed {
+  name: string
+  isCurrent: boolean
+  lastCommitDate: string
+  lastCommitMessage: string
+  upstream: string | null
+}

@@ -7,7 +7,8 @@ import type {
   RepoStatus,
   StashEntry,
   DetectedEditor,
-  DetectedTerminal
+  DetectedTerminal,
+  BranchDetailed
 } from './git'
 
 export interface IpcContract {
@@ -95,6 +96,10 @@ export interface IpcContract {
   'workspace:getBranches': {
     request: { path: string }
     response: string[]
+  }
+  'git:branchesDetailed': {
+    request: { path: string }
+    response: BranchDetailed[]
   }
   'workspace:checkoutBranch': {
     request: { path: string; branch: string }
@@ -210,6 +215,14 @@ export interface IpcContract {
       files: DiffFile[]
       commits: CommitInfo[]
     }
+  }
+  'git:diffRange': {
+    request: { path: string; base: string; head: string; file?: string }
+    response: { diff: string }
+  }
+  'git:canMerge': {
+    request: { path: string; base: string; head: string }
+    response: { canMerge: boolean; reason: string | null }
   }
   'git:clone': {
     request: { url: string; dest: string }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   GitBranch,
@@ -17,10 +18,9 @@ import {
   LogOut,
   Settings as SettingsIcon,
   GitCommit,
-  Layers,
-  Pencil,
   ChevronDown,
   Folder,
+  FolderOpen,
   FolderPlus,
   History,
   X,
@@ -28,7 +28,9 @@ import {
   FlaskConical,
   Terminal,
   ExternalLink,
-  MoreHorizontal
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -42,7 +44,6 @@ import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
-import CommitPanel from '@/components/git/CommitPanel'
 import SyncButton from '@/components/git/SyncButton'
 import DiffSearchBar from '@/components/git/DiffSearchBar'
 import NewBranchDialog from '@/components/git/dialogs/NewBranchDialog'
@@ -51,6 +52,12 @@ import MergeIntoDialog from '@/components/git/dialogs/MergeIntoDialog'
 import RenameBranchDialog from '@/components/git/dialogs/RenameBranchDialog'
 import DeleteBranchDialog from '@/components/git/dialogs/DeleteBranchDialog'
 import OpenPullRequestDialog from '@/components/git/dialogs/OpenPullRequestDialog'
+import CloneDialog from '@/components/git/dialogs/CloneDialog'
+import CommitDialog from '@/components/git/dialogs/CommitDialog'
+import DiffModeDropdown from '@/components/git/DiffModeDropdown'
+import BranchSwitcher from '@/components/git/BranchSwitcher'
+import HistoryTab from '@/components/git/HistoryTab'
+import ConflictResolver from '@/components/git/ConflictResolver'
 import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -346,9 +353,16 @@ export default function Project() {
   const [discardBusy, setDiscardBusy] = useState(false)
   const [discardError, setDiscardError] = useState('')
   const [prDialogOpen, setPrDialogOpen] = useState(false)
+  const [sidebarTab, setSidebarTab] = useState<'changes' | 'history'>('changes')
+  const [viewingCommitHash, setViewingCommitHash] = useState<string | null>(null)
+  const [cloneOpen, setCloneOpen] = useState(false)
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
+  const [repoMenuPos, setRepoMenuPos] = useState<{ left: number; top: number; width: number } | null>(null)
+  const repoMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const repoMenuPopupRef = useRef<HTMLDivElement>(null)
   const [remoteWebUrl, setRemoteWebUrl] = useState<string | null>(null)
-  const repoMenuRef = useRef<HTMLDivElement>(null)
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
@@ -526,6 +540,28 @@ export default function Project() {
     fetchProject(true)
   }, [path, fetchProject])
 
+  useEffect(() => {
+    if (!path || !viewingCommitHash) return
+    let cancelled = false
+    setDiffLoading(true)
+    window.api
+      .invoke('git:diffForCommit', { path, hash: viewingCommitHash })
+      .then((r) => {
+        if (cancelled) return
+        setFullDiff(r.diff)
+        setDiff(r.diff)
+        setFiles(r.files)
+        setSelectedFile(null)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setDiffLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [path, viewingCommitHash])
+
   const fetchStatus = useCallback(async (): Promise<void> => {
     if (!path) return
     try {
@@ -547,10 +583,22 @@ export default function Project() {
 
   useEffect(() => {
     if (!repoMenuOpen) return
+    const rect = repoMenuButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const w = 224
+      setRepoMenuPos({
+        left: Math.max(8, rect.right - w),
+        top: rect.bottom + 4,
+        width: w
+      })
+    }
     const handler = (e: MouseEvent): void => {
-      if (repoMenuRef.current && !repoMenuRef.current.contains(e.target as Node)) {
-        setRepoMenuOpen(false)
-      }
+      const t = e.target as Node
+      if (
+        repoMenuButtonRef.current?.contains(t) ||
+        repoMenuPopupRef.current?.contains(t)
+      ) return
+      setRepoMenuOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -802,7 +850,24 @@ export default function Project() {
           className="flex items-center gap-1.5 px-3"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <DiffModeToggle mode={diffMode} onChange={changeDiffMode} />
+          <DiffModeDropdown mode={diffMode} onChange={changeDiffMode} />
+
+          {repoStatus &&
+            repoStatus.files.some((f) => f.staged !== null && f.staged !== 'untracked') && (
+              <button
+                onClick={() => setCommitDialogOpen(true)}
+                title="Commit"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90"
+              >
+                <GitCommit className="size-3" />
+                Commit
+                <span className="text-[10px] bg-white/20 rounded px-1 leading-tight">
+                  {
+                    repoStatus.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length
+                  }
+                </span>
+              </button>
+            )}
 
           <SyncButton
             path={path}
@@ -813,16 +878,21 @@ export default function Project() {
             }}
           />
 
-          <div ref={repoMenuRef} className="relative">
+          <div className="relative">
             <button
+              ref={repoMenuButtonRef}
               onClick={() => setRepoMenuOpen((o) => !o)}
               title="Ações do repositório"
               className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <MoreHorizontal className="size-3.5" />
             </button>
-            {repoMenuOpen && (
-              <div className="fixed right-3 top-12 w-56 rounded-md border border-border bg-popover shadow-2xl z-[200] overflow-hidden backdrop-blur-md">
+            {repoMenuOpen && repoMenuPos && createPortal(
+              <div
+                ref={repoMenuPopupRef}
+                className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden"
+                style={{ left: repoMenuPos.left, top: repoMenuPos.top, width: repoMenuPos.width }}
+              >
                 <RepoMenuItem
                   icon={ExternalLink}
                   label="Abrir no editor"
@@ -890,7 +960,8 @@ export default function Project() {
                     setDiscardOpen(true)
                   }}
                 />
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 
@@ -949,74 +1020,90 @@ export default function Project() {
         </div>
       </header>
 
-      {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[12px] text-amber-700 dark:text-amber-300">
-          <AlertTriangle className="size-4" />
-          <span className="flex-1">
-            {repoStatus.isMerging ? 'Merge em andamento' : 'Rebase em andamento'}
-            {repoStatus.files.some((f) => f.staged === 'conflicted' || f.unstaged === 'conflicted') &&
-              ` · ${repoStatus.files.filter((f) => f.staged === 'conflicted' || f.unstaged === 'conflicted').length} conflito(s)`}
-          </span>
-          <button
-            type="button"
-            onClick={async () => {
-              const r = repoStatus.isMerging
-                ? await window.api.invoke('git:continueMerge', { path })
-                : { ok: false, error: 'Use o terminal pra continuar rebase' }
-              if (!r.ok) window.alert(r.error ?? 'Falha')
-              else {
-                fetchProject()
-                fetchStatus()
-              }
-            }}
-            className="px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-[11px]"
-          >
-            Continuar
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              const r = repoStatus.isMerging
-                ? await window.api.invoke('git:abortMerge', { path })
-                : await window.api.invoke('git:abortRebase', { path })
-              if (!r.ok) window.alert(r.error ?? 'Falha')
-              else {
-                fetchProject()
-                fetchStatus()
-              }
-            }}
-            className="px-2 py-0.5 rounded-md bg-destructive/20 hover:bg-destructive/30 text-destructive text-[11px]"
-          >
-            Abortar
-          </button>
-        </div>
-      )}
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* SIDEBAR — floating, padding around, rounded corners */}
+        {sidebarCollapsed ? (
+          <div className="pl-2 pr-1 py-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              title="Expandir sidebar"
+              className="w-8 h-8 rounded-md border border-border/40 bg-card/60 hover:bg-accent/60 flex items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <PanelLeftOpen className="size-4" />
+            </button>
+          </div>
+        ) : (
         <div className="pl-2 pr-1 py-2 flex-shrink-0">
         <aside className="w-[252px] h-full flex flex-col overflow-hidden bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm">
           {/* Sidebar header */}
-          <div className="px-2 pt-2 pb-3 border-b border-border/30">
-            <ProjectSwitcher
-              currentName={repoName}
-              currentPath={path}
-              onSwitch={(p) =>
-                navigate(`/project?path=${encodeURIComponent(p)}`)
-              }
-            />
+          <div className="px-3 pt-2 pb-3 border-b border-border/30">
+            <div className="flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <ProjectSwitcher
+                  currentName={repoName}
+                  currentPath={path}
+                  onSwitch={(p) =>
+                    navigate(`/project?path=${encodeURIComponent(p)}`)
+                  }
+                  onCloneRequest={() => setCloneOpen(true)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(true)}
+                title="Colapsar sidebar"
+                className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+              >
+                <PanelLeftClose className="size-4" />
+              </button>
+            </div>
             {branch && (
-              <div className="px-2 mt-1.5">
-                <BranchDropdown
+              <div className="mt-1.5">
+                <BranchSwitcher
+                  path={path}
                   current={branch}
-                  branches={branches}
-                  busy={checkingOut}
-                  onChange={switchBranch}
+                  onSwitch={async (b) => {
+                    await switchBranch(b)
+                  }}
+                  onCreateRequest={() => setNewBranchOpen(true)}
                 />
               </div>
             )}
+            <div className="mt-2 px-3 pb-2">
+              <div className="inline-flex w-full rounded-md border border-border/40 bg-muted/30 p-0.5 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab('changes')
+                    setViewingCommitHash(null)
+                  }}
+                  className={cn(
+                    'flex-1 h-6 text-[10px] rounded-sm transition-colors',
+                    sidebarTab === 'changes'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Changes{files.length > 0 ? ` (${files.length})` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarTab('history')}
+                  className={cn(
+                    'flex-1 h-6 text-[10px] rounded-sm transition-colors',
+                    sidebarTab === 'history'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  History
+                </button>
+              </div>
+            </div>
             {!diffLoading && (
-              <div className="mt-2.5 flex items-center justify-between gap-2 px-2">
+              <div className="mt-2.5 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground/60">
                   {files.length === 0
                     ? 'sem alterações'
@@ -1038,7 +1125,17 @@ export default function Project() {
             )}
           </div>
 
-          {/* File list */}
+          {sidebarTab === 'history' ? (
+            <HistoryTab
+              path={path}
+              refreshKey={historyVersion}
+              selectedHash={viewingCommitHash}
+              onSelect={(h) => {
+                setViewingCommitHash(h)
+                if (!h) fetchProject()
+              }}
+            />
+          ) : (
           <div className="flex-1 overflow-y-auto">
             {diffLoading ? (
               <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
@@ -1132,22 +1229,12 @@ export default function Project() {
               </>
             )}
           </div>
-
-          {repoStatus && (repoStatus.files.some((f) => f.staged !== null && f.staged !== 'untracked') || files.length > 0) && (
-            <CommitPanel
-              path={path}
-              status={repoStatus}
-              stagedCount={repoStatus.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length}
-              onCommitted={() => {
-                fetchProject()
-                fetchStatus()
-              }}
-            />
           )}
 
           <ProfileMenu />
         </aside>
         </div>
+        )}
 
         <PanelGroup
           direction="horizontal"
@@ -1168,6 +1255,17 @@ export default function Project() {
             )}
           </div>
           <div className="flex-1 overflow-auto min-h-0 relative">
+            {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) ? (
+              <ConflictResolver
+                path={path}
+                status={repoStatus}
+                onChanged={() => {
+                  fetchProject()
+                  fetchStatus()
+                }}
+              />
+            ) : (
+            <>
             {searchOpen && (
               <DiffSearchBar
                 query={searchQuery}
@@ -1215,13 +1313,15 @@ export default function Project() {
                 <p className="text-xs text-muted-foreground">Sem alterações.</p>
               </div>
             )}
+            </>
+            )}
           </div>
         </section>
         </Panel>
 
         <PanelResizeHandle className="w-1 bg-border/30 hover:bg-primary/60 active:bg-primary transition-colors" />
 
-        <Panel defaultSize={40} minSize={20}>
+        <Panel defaultSize={40} minSize={20} collapsible collapsedSize={0} id="analysis-panel">
         {/* ANALYSIS */}
         <section className="h-full flex flex-col overflow-hidden min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
@@ -1381,6 +1481,26 @@ export default function Project() {
         onClose={() => setPrDialogOpen(false)}
       />
 
+      <CloneDialog
+        open={cloneOpen}
+        onClose={() => setCloneOpen(false)}
+        onCloned={(p) => navigate(`/project?path=${encodeURIComponent(p)}`)}
+      />
+
+      <CommitDialog
+        path={path}
+        branch={branch}
+        stagedCount={
+          repoStatus?.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length ?? 0
+        }
+        open={commitDialogOpen}
+        onClose={() => setCommitDialogOpen(false)}
+        onCommitted={() => {
+          fetchProject()
+          fetchStatus()
+        }}
+      />
+
       <ConfirmDialog
         open={discardOpen}
         title="Descartar todas as mudanças?"
@@ -1439,41 +1559,6 @@ function RepoMenuItem({
   )
 }
 
-const DIFF_MODE_OPTIONS: { value: DiffMode; label: string; icon: typeof Layers; tip: string }[] = [
-  { value: 'all', label: 'Tudo', icon: Layers, tip: 'Commits recentes + não commitado' },
-  { value: 'uncommitted', label: 'Pendente', icon: Pencil, tip: 'Apenas alterações não commitadas' },
-  { value: 'committed', label: 'Commits', icon: GitCommit, tip: 'Apenas commits recentes' }
-]
-
-function DiffModeToggle({
-  mode,
-  onChange
-}: {
-  mode: DiffMode
-  onChange: (mode: DiffMode) => void
-}) {
-  return (
-    <div className="inline-flex items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5">
-      {DIFF_MODE_OPTIONS.map(({ value, label, icon: Icon, tip }) => (
-        <button
-          key={value}
-          onClick={() => onChange(value)}
-          title={tip}
-          className={cn(
-            'flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium transition-colors',
-            mode === value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Icon className="size-3" />
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 interface RecentEntry {
   path: string
   name: string
@@ -1483,18 +1568,24 @@ interface RecentEntry {
 function ProjectSwitcher({
   currentName,
   currentPath,
-  onSwitch
+  onSwitch,
+  onCloneRequest
 }: {
   currentName: string
   currentPath: string
   onSwitch: (path: string) => void
+  onCloneRequest: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [recents, setRecents] = useState<RecentEntry[]>([])
+  const [filter, setFilter] = useState('')
   const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
+    setFilter('')
+    setTimeout(() => inputRef.current?.focus(), 50)
     window.api
       .invoke('workspace:recent', undefined)
       .then((rows) => setRecents(rows ?? []))
@@ -1517,6 +1608,12 @@ function ProjectSwitcher({
   }
 
   const others = recents.filter((r) => r.path !== currentPath)
+  const q = filter.toLowerCase()
+  const filtered = q
+    ? others.filter(
+        (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)
+      )
+    : others
 
   return (
     <div ref={ref} className="relative">
@@ -1528,8 +1625,8 @@ function ProjectSwitcher({
           open ? 'bg-primary/10' : 'hover:bg-accent/60'
         )}
       >
-        <div className="w-7 h-7 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
-          <FileCode className="size-3.5 text-primary" />
+        <div className="size-7 rounded-md bg-primary/10 border border-primary/25 flex items-center justify-center flex-shrink-0">
+          <FolderOpen className="size-3.5 text-primary" />
         </div>
         <div className="flex-1 min-w-0 text-left">
           <div className="font-semibold text-sm truncate">{currentName}</div>
@@ -1542,13 +1639,22 @@ function ProjectSwitcher({
         />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
-          {others.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-[200] rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/40">
+            <input
+              ref={inputRef}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filtrar repositórios…"
+              className="flex-1 bg-transparent text-[11px] focus:outline-none"
+            />
+          </div>
+          {filtered.length > 0 ? (
             <div className="max-h-64 overflow-y-auto">
               <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 border-b border-border/30">
-                Recentes
+                Recentes ({filtered.length})
               </div>
-              {others.map((r) => (
+              {filtered.map((r) => (
                 <button
                   key={r.path}
                   type="button"
@@ -1568,102 +1674,32 @@ function ProjectSwitcher({
                 </button>
               ))}
             </div>
+          ) : (
+            <p className="px-3 py-3 text-[11px] text-muted-foreground italic">
+              {q ? 'Nada com esse filtro.' : 'Sem outros projetos abertos.'}
+            </p>
           )}
-          <button
-            type="button"
-            onClick={pickFolder}
-            className={cn(
-              'w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left',
-              others.length > 0 && 'border-t border-border/40'
-            )}
-          >
-            <FolderPlus className="size-3.5 text-muted-foreground" />
-            Abrir outro projeto
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function BranchDropdown({
-  current,
-  branches,
-  busy,
-  onChange
-}: {
-  current: string
-  branches: string[]
-  busy: boolean
-  onChange: (b: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function onClick(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
-  const hasOthers = branches.length > 1
-
-  return (
-    <div ref={ref} className="relative mt-0.5">
-      <button
-        type="button"
-        onClick={() => hasOthers && !busy && setOpen((o) => !o)}
-        disabled={!hasOthers || busy}
-        className={cn(
-          'flex items-center gap-1 text-[11px] text-muted-foreground transition-colors max-w-full',
-          hasOthers && !busy && 'hover:text-foreground cursor-pointer',
-          (!hasOthers || busy) && 'cursor-default'
-        )}
-      >
-        {busy ? (
-          <Loader2 className="size-2.5 flex-shrink-0 animate-spin" />
-        ) : (
-          <GitBranch className="size-2.5 flex-shrink-0" />
-        )}
-        <span className="font-mono truncate">{current}</span>
-        {hasOthers && !busy && (
-          <ChevronDown
-            className={cn(
-              'size-2.5 flex-shrink-0 text-muted-foreground/50 transition-transform',
-              open && 'rotate-180'
-            )}
-          />
-        )}
-      </button>
-      {open && hasOthers && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-[220px] rounded-md border border-border bg-popover shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 border-b border-border/30">
-            Branches ({branches.length})
-          </div>
-          {branches.map((b) => (
+          <div className="border-t border-border/40">
             <button
-              key={b}
+              type="button"
+              onClick={pickFolder}
+              className="w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left"
+            >
+              <FolderPlus className="size-3.5 text-muted-foreground" />
+              Abrir outro projeto
+            </button>
+            <button
               type="button"
               onClick={() => {
                 setOpen(false)
-                onChange(b)
+                onCloneRequest()
               }}
-              className={cn(
-                'w-full px-3 py-2 text-xs text-left font-mono hover:bg-accent transition-colors flex items-center gap-2',
-                b === current && 'bg-primary/10 text-primary'
-              )}
+              className="w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left border-t border-border/30"
             >
-              {b === current ? (
-                <span className="text-primary text-[10px]">●</span>
-              ) : (
-                <span className="text-muted-foreground/30 text-[10px]">○</span>
-              )}
-              <span className="truncate">{b}</span>
+              <FolderPlus className="size-3.5 text-muted-foreground" />
+              Clonar repositório…
             </button>
-          ))}
+          </div>
         </div>
       )}
     </div>
