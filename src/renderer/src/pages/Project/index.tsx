@@ -25,7 +25,10 @@ import {
   History,
   X,
   Trash2,
-  FlaskConical
+  FlaskConical,
+  Terminal,
+  ExternalLink,
+  MoreHorizontal
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -39,6 +42,16 @@ import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
+import CommitPanel from '@/components/git/CommitPanel'
+import SyncButton from '@/components/git/SyncButton'
+import DiffSearchBar from '@/components/git/DiffSearchBar'
+import NewBranchDialog from '@/components/git/dialogs/NewBranchDialog'
+import ConfirmDialog from '@/components/git/dialogs/ConfirmDialog'
+import MergeIntoDialog from '@/components/git/dialogs/MergeIntoDialog'
+import RenameBranchDialog from '@/components/git/dialogs/RenameBranchDialog'
+import DeleteBranchDialog from '@/components/git/dialogs/DeleteBranchDialog'
+import OpenPullRequestDialog from '@/components/git/dialogs/OpenPullRequestDialog'
+import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
   ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
@@ -320,6 +333,22 @@ export default function Project() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchIndex, setSearchIndex] = useState(0)
+  const [diffMatches, setDiffMatches] = useState<Array<{ lineIdx: number }>>([])
+  const [newBranchOpen, setNewBranchOpen] = useState(false)
+  const [mergeOpen, setMergeOpen] = useState<{ strategy: 'merge' | 'squash' | 'rebase' } | null>(null)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [discardBusy, setDiscardBusy] = useState(false)
+  const [discardError, setDiscardError] = useState('')
+  const [prDialogOpen, setPrDialogOpen] = useState(false)
+  const [repoMenuOpen, setRepoMenuOpen] = useState(false)
+  const [remoteWebUrl, setRemoteWebUrl] = useState<string | null>(null)
+  const repoMenuRef = useRef<HTMLDivElement>(null)
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
@@ -497,12 +526,176 @@ export default function Project() {
     fetchProject(true)
   }, [path, fetchProject])
 
+  const fetchStatus = useCallback(async (): Promise<void> => {
+    if (!path) return
+    try {
+      const s = await window.api.invoke('git:status', { path })
+      setRepoStatus(s)
+    } catch (e) {
+      console.error('[git:status] failed', e)
+    }
+  }, [path])
+
+  useEffect(() => {
+    if (!path) return
+    fetchStatus()
+    window.api
+      .invoke('git:remoteUrl', { path })
+      .then((r) => setRemoteWebUrl(r.webUrl))
+      .catch(() => setRemoteWebUrl(null))
+  }, [path, fetchStatus])
+
+  useEffect(() => {
+    if (!repoMenuOpen) return
+    const handler = (e: MouseEvent): void => {
+      if (repoMenuRef.current && !repoMenuRef.current.contains(e.target as Node)) {
+        setRepoMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [repoMenuOpen])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSearchOpen(true)
+        setSearchIndex(0)
+      } else if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [searchOpen])
+
+  useEffect(() => {
+    if (!path) {
+      window.api.invoke('menu:setState', {
+        hasProject: false,
+        branchName: null,
+        onBranch: false,
+        onDetachedHead: false,
+        branchIsUnborn: false,
+        onNonDefaultBranch: false,
+        hasPublishedBranch: false,
+        hasRemote: false,
+        isHostedOnGitHub: false,
+        hasChangedFiles: false,
+        hasStaged: false,
+        hasMultipleBranches: false,
+        hasConflicts: false,
+        rebaseInProgress: false,
+        isMerging: false,
+        networkInProgress: false,
+        branchHasStash: false,
+        hasContributionTargetDefaultBranch: false,
+        onContributionTargetDefaultBranch: false,
+        isAhead: false,
+        isBehind: false
+      })
+      return
+    }
+    const defaultCandidates = ['main', 'master', 'develop', 'dev']
+    const defaultBranch = branches.find((b) => defaultCandidates.includes(b)) ?? null
+    const isOnDefault = defaultBranch !== null && branch === defaultBranch
+    const onDetachedHead = branch === 'HEAD' || branch === ''
+    const branchIsUnborn = !branch
+    const onBranch = !!branch && !onDetachedHead && !branchIsUnborn
+    const hasChanges = (repoStatus?.files.length ?? 0) > 0
+    const hasStaged = (repoStatus?.files ?? []).some(
+      (f) => f.staged !== null && f.staged !== 'untracked'
+    )
+    const hasConflicts = (repoStatus?.files ?? []).some(
+      (f) => f.staged === 'conflicted' || f.unstaged === 'conflicted'
+    )
+    const isGithubHost =
+      !!remoteWebUrl &&
+      (remoteWebUrl.includes('github.com') || remoteWebUrl.includes('github.'))
+    window.api.invoke('menu:setState', {
+      hasProject: true,
+      branchName: branch || null,
+      onBranch,
+      onDetachedHead,
+      branchIsUnborn,
+      onNonDefaultBranch: onBranch && !isOnDefault,
+      hasPublishedBranch: !!repoStatus?.upstream,
+      hasRemote: !!remoteWebUrl,
+      isHostedOnGitHub: isGithubHost,
+      hasChangedFiles: hasChanges,
+      hasStaged,
+      hasMultipleBranches: branches.length > 1,
+      hasConflicts,
+      rebaseInProgress: !!repoStatus?.isRebasing,
+      isMerging: !!repoStatus?.isMerging,
+      networkInProgress: false,
+      branchHasStash: false,
+      hasContributionTargetDefaultBranch: defaultBranch !== null && !isOnDefault,
+      onContributionTargetDefaultBranch: isOnDefault,
+      isAhead: (repoStatus?.ahead ?? 0) > 0,
+      isBehind: (repoStatus?.behind ?? 0) > 0
+    })
+  }, [path, branch, branches, repoStatus, remoteWebUrl])
+
+  useEffect(() => {
+    return window.api.on('menu:action', (event) => {
+      const a = event.action
+      if (a === 'open-settings') navigate('/settings')
+      else if (a === 'go-home') navigate('/home')
+      else if (a === 'open-local') {
+        window.api.invoke('workspace:pickFolder', undefined).then((r) => {
+          if (r) navigate(`/project?path=${encodeURIComponent(r.path)}`)
+        })
+      }
+      else if (a === 'find-in-diff') {
+        setSearchOpen(true)
+        setSearchIndex(0)
+      }
+      else if (a === 'git-push') window.api.invoke('git:push', { path }).then(() => { fetchProject(); fetchStatus() })
+      else if (a === 'git-pull') window.api.invoke('git:pull', { path }).then(() => { fetchProject(); fetchStatus() })
+      else if (a === 'git-fetch') window.api.invoke('git:fetch', { path, prune: true }).then(() => fetchStatus())
+      else if (a === 'open-in-editor') window.api.invoke('repository:openInEditor', { path })
+      else if (a === 'open-in-terminal') window.api.invoke('repository:openInTerminal', { path })
+      else if (a === 'open-in-finder') window.api.invoke('repository:openInFinder', { path })
+      else if (a === 'view-on-github' && remoteWebUrl) window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+      else if (a === 'create-issue' && remoteWebUrl)
+        window.api.invoke('repository:openUrl', { url: `${remoteWebUrl}/issues/new` })
+      else if (a === 'new-branch') setNewBranchOpen(true)
+      else if (a === 'rename-branch') setRenameOpen(true)
+      else if (a === 'delete-branch') setDeleteOpen(true)
+      else if (a === 'merge-into-current') setMergeOpen({ strategy: 'merge' })
+      else if (a === 'squash-into-current') setMergeOpen({ strategy: 'squash' })
+      else if (a === 'rebase-current') setMergeOpen({ strategy: 'rebase' })
+      else if (a === 'update-from-default') setMergeOpen({ strategy: 'merge' })
+      else if (a === 'compare-to-branch') setMergeOpen({ strategy: 'merge' })
+      else if (a === 'compare-on-github' && remoteWebUrl && repoStatus?.branch)
+        window.api.invoke('repository:openUrl', {
+          url: `${remoteWebUrl}/compare/${repoStatus.branch}`
+        })
+      else if (a === 'view-branch-on-github' && remoteWebUrl && repoStatus?.branch)
+        window.api.invoke('repository:openUrl', {
+          url: `${remoteWebUrl}/tree/${repoStatus.branch}`
+        })
+      else if (a === 'preview-pr') setPrDialogOpen(true)
+      else if (a === 'create-pr') setPrDialogOpen(true)
+      else if (a === 'discard-all') setDiscardOpen(true)
+      else if (a === 'stash-all') {
+        window.api.invoke('git:stash', { path, message: '', includeUntracked: false }).then(() => {
+          fetchProject()
+          fetchStatus()
+        })
+      }
+    })
+  }, [navigate, path, fetchProject, fetchStatus, remoteWebUrl, repoStatus])
+
   // File watcher: re-fetch on save (NÃO dispara análise — botão manual)
   useEffect(() => {
     if (!path) return
     window.api.invoke('workspace:watch', { path })
     const off = window.api.on('workspace:changed', () => {
       fetchProject()
+      fetchStatus()
     })
     return () => {
       off()
@@ -611,6 +804,96 @@ export default function Project() {
         >
           <DiffModeToggle mode={diffMode} onChange={changeDiffMode} />
 
+          <SyncButton
+            path={path}
+            status={repoStatus}
+            onChanged={() => {
+              fetchProject()
+              fetchStatus()
+            }}
+          />
+
+          <div ref={repoMenuRef} className="relative">
+            <button
+              onClick={() => setRepoMenuOpen((o) => !o)}
+              title="Ações do repositório"
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <MoreHorizontal className="size-3.5" />
+            </button>
+            {repoMenuOpen && (
+              <div className="fixed right-3 top-12 w-56 rounded-md border border-border bg-popover shadow-2xl z-[200] overflow-hidden backdrop-blur-md">
+                <RepoMenuItem
+                  icon={ExternalLink}
+                  label="Abrir no editor"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInEditor', { path })
+                  }}
+                />
+                <RepoMenuItem
+                  icon={Terminal}
+                  label="Abrir no terminal"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInTerminal', { path })
+                  }}
+                />
+                <RepoMenuItem
+                  icon={Folder}
+                  label="Mostrar no Finder"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInFinder', { path })
+                  }}
+                />
+                {remoteWebUrl && (
+                  <>
+                    <div className="border-t border-border/30 my-0.5" />
+                    <RepoMenuItem
+                      icon={ExternalLink}
+                      label="Ver no GitHub"
+                      onClick={() => {
+                        setRepoMenuOpen(false)
+                        window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+                      }}
+                    />
+                    {branch && repoStatus?.branch && (
+                      <RepoMenuItem
+                        icon={ExternalLink}
+                        label="Criar Pull Request"
+                        onClick={() => {
+                          setRepoMenuOpen(false)
+                          window.api.invoke('repository:openUrl', {
+                            url: `${remoteWebUrl}/pull/new/${repoStatus.branch}`
+                          })
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+                <div className="border-t border-border/30 my-0.5" />
+                <RepoMenuItem
+                  icon={GitBranch}
+                  label="Nova branch"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    setNewBranchOpen(true)
+                  }}
+                />
+                <RepoMenuItem
+                  icon={Trash2}
+                  label="Descartar tudo"
+                  variant="destructive"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    setDiscardOpen(true)
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
           <button
             onClick={startAnalysis}
             disabled={!canAnalyze}
@@ -665,6 +948,49 @@ export default function Project() {
           </button>
         </div>
       </header>
+
+      {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[12px] text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="size-4" />
+          <span className="flex-1">
+            {repoStatus.isMerging ? 'Merge em andamento' : 'Rebase em andamento'}
+            {repoStatus.files.some((f) => f.staged === 'conflicted' || f.unstaged === 'conflicted') &&
+              ` · ${repoStatus.files.filter((f) => f.staged === 'conflicted' || f.unstaged === 'conflicted').length} conflito(s)`}
+          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              const r = repoStatus.isMerging
+                ? await window.api.invoke('git:continueMerge', { path })
+                : { ok: false, error: 'Use o terminal pra continuar rebase' }
+              if (!r.ok) window.alert(r.error ?? 'Falha')
+              else {
+                fetchProject()
+                fetchStatus()
+              }
+            }}
+            className="px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-[11px]"
+          >
+            Continuar
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const r = repoStatus.isMerging
+                ? await window.api.invoke('git:abortMerge', { path })
+                : await window.api.invoke('git:abortRebase', { path })
+              if (!r.ok) window.alert(r.error ?? 'Falha')
+              else {
+                fetchProject()
+                fetchStatus()
+              }
+            }}
+            className="px-2 py-0.5 rounded-md bg-destructive/20 hover:bg-destructive/30 text-destructive text-[11px]"
+          >
+            Abortar
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* SIDEBAR — floating, padding around, rounded corners */}
@@ -742,7 +1068,10 @@ export default function Project() {
                     <button
                       key={f.path}
                       onClick={() => selectFile(f.path)}
-                      title={f.path}
+                      onDoubleClick={() =>
+                        window.api.invoke('repository:openInEditor', { path, file: f.path })
+                      }
+                      title={`${f.path} · duplo-clique pra abrir no editor`}
                       className={cn(
                         'w-full text-left px-3 py-2 flex items-start gap-2 text-xs transition-colors border-b border-border/20 last:border-0',
                         selectedFile === f.path ? 'bg-primary/10' : 'hover:bg-accent/50'
@@ -804,6 +1133,18 @@ export default function Project() {
             )}
           </div>
 
+          {repoStatus && (repoStatus.files.some((f) => f.staged !== null && f.staged !== 'untracked') || files.length > 0) && (
+            <CommitPanel
+              path={path}
+              status={repoStatus}
+              stagedCount={repoStatus.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length}
+              onCommitted={() => {
+                fetchProject()
+                fetchStatus()
+              }}
+            />
+          )}
+
           <ProfileMenu />
         </aside>
         </div>
@@ -827,6 +1168,27 @@ export default function Project() {
             )}
           </div>
           <div className="flex-1 overflow-auto min-h-0 relative">
+            {searchOpen && (
+              <DiffSearchBar
+                query={searchQuery}
+                onQueryChange={(q) => {
+                  setSearchQuery(q)
+                  setSearchIndex(0)
+                }}
+                matchCount={diffMatches.length}
+                currentIndex={searchIndex}
+                onPrev={() =>
+                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i - 1 + diffMatches.length) % diffMatches.length))
+                }
+                onNext={() =>
+                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i + 1) % diffMatches.length))
+                }
+                onClose={() => {
+                  setSearchOpen(false)
+                  setSearchQuery('')
+                }}
+              />
+            )}
             {diffLoading ? (
               <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> carregando diff...
@@ -837,6 +1199,9 @@ export default function Project() {
                   diff={diff}
                   hideFileHeaders={selectedFile !== null}
                   comments={lineComments}
+                  searchQuery={searchOpen ? searchQuery : ''}
+                  searchCurrentIndex={searchIndex}
+                  onSearchMatchesChange={setDiffMatches}
                 />
                 {diffSwitching && (
                   <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
@@ -955,7 +1320,122 @@ export default function Project() {
           </button>
         </div>
       )}
+
+      <NewBranchDialog
+        path={path}
+        branches={branches}
+        currentBranch={branch}
+        open={newBranchOpen}
+        onClose={() => setNewBranchOpen(false)}
+        onCreated={() => {
+          fetchProject()
+          fetchStatus()
+        }}
+      />
+
+      <MergeIntoDialog
+        path={path}
+        branches={branches}
+        currentBranch={branch}
+        open={!!mergeOpen}
+        defaultStrategy={mergeOpen?.strategy ?? 'merge'}
+        onClose={() => setMergeOpen(null)}
+        onDone={() => {
+          fetchProject()
+          fetchStatus()
+        }}
+      />
+
+      <RenameBranchDialog
+        path={path}
+        oldName={branch}
+        open={renameOpen}
+        onClose={() => setRenameOpen(false)}
+        onDone={() => {
+          fetchProject()
+          fetchStatus()
+        }}
+      />
+
+      <DeleteBranchDialog
+        path={path}
+        branches={branches}
+        currentBranch={branch}
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDone={() => {
+          fetchProject()
+          fetchStatus()
+        }}
+      />
+
+      <OpenPullRequestDialog
+        path={path}
+        branches={branches}
+        defaultBranch={
+          branches.find((b) => ['main', 'master', 'develop', 'dev'].includes(b)) ?? null
+        }
+        currentBranch={branch}
+        webUrl={remoteWebUrl}
+        open={prDialogOpen}
+        onClose={() => setPrDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={discardOpen}
+        title="Descartar todas as mudanças?"
+        message="Vai resetar working dir e index pro último commit. Mudanças perdidas. Confirma?"
+        confirmLabel="Descartar tudo"
+        variant="destructive"
+        busy={discardBusy}
+        error={discardError}
+        onCancel={() => {
+          setDiscardOpen(false)
+          setDiscardError('')
+        }}
+        onConfirm={async () => {
+          setDiscardBusy(true)
+          setDiscardError('')
+          const r = await window.api.invoke('git:discardAll', { path, includeUntracked: false })
+          setDiscardBusy(false)
+          if (!r.ok) {
+            setDiscardError(r.error ?? 'Falha')
+            return
+          }
+          setDiscardOpen(false)
+          fetchProject()
+          fetchStatus()
+        }}
+      />
     </div>
+  )
+}
+
+function RepoMenuItem({
+  icon: Icon,
+  label,
+  onClick,
+  variant = 'default'
+}: {
+  icon: typeof GitBranch
+  label: string
+  onClick: () => void
+  variant?: 'default' | 'destructive'
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-left transition-colors',
+        variant === 'destructive'
+          ? 'text-destructive hover:bg-destructive/10'
+          : 'text-foreground/85 hover:bg-accent/60'
+      )}
+    >
+      <Icon className="size-3 flex-shrink-0" />
+      {label}
+    </button>
   )
 }
 
@@ -1514,11 +1994,17 @@ function AnalysisSkeleton() {
 const DiffViewer = React.memo(function DiffViewer({
   diff,
   hideFileHeaders = false,
-  comments = []
+  comments = [],
+  searchQuery = '',
+  searchCurrentIndex = 0,
+  onSearchMatchesChange
 }: {
   diff: string
   hideFileHeaders?: boolean
   comments?: LineComment[]
+  searchQuery?: string
+  searchCurrentIndex?: number
+  onSearchMatchesChange?: (matches: Array<{ lineIdx: number }>) => void
 }) {
   const sections = useMemo(() => parseDiff(diff), [diff])
   const commentMap = useMemo(() => {
@@ -1530,6 +2016,34 @@ const DiffViewer = React.memo(function DiffViewer({
   }, [comments])
   const { variant: codeVariant } = useCodeTheme()
   const prismTheme = codeVariant.prism
+
+  const matches = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 2) return []
+    const q = searchQuery.toLowerCase()
+    const out: Array<{ lineIdx: number }> = []
+    sections.forEach((s, i) => {
+      if (s.kind === 'line' && s.content.toLowerCase().includes(q)) {
+        out.push({ lineIdx: i })
+      }
+    })
+    return out
+  }, [sections, searchQuery])
+
+  useEffect(() => {
+    onSearchMatchesChange?.(matches)
+  }, [matches, onSearchMatchesChange])
+
+  const currentMatchLineIdx =
+    matches.length > 0 ? matches[searchCurrentIndex % matches.length]?.lineIdx ?? -1 : -1
+
+  const matchRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  useEffect(() => {
+    if (currentMatchLineIdx >= 0) {
+      const el = matchRefs.current.get(currentMatchLineIdx)
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [currentMatchLineIdx])
+
   return (
     <div className="text-xs font-mono leading-5 select-text">
       {sections.map((s, i) => {
@@ -1578,14 +2092,23 @@ const DiffViewer = React.memo(function DiffViewer({
         const comment =
           isAdd && s.newNum != null ? commentMap.get(`${fileBase}:${s.newNum}`) : undefined
 
+        const isMatch = searchQuery && searchQuery.length >= 2 && s.content.toLowerCase().includes(searchQuery.toLowerCase())
+        const isCurrentMatch = i === currentMatchLineIdx
+
         return (
           <React.Fragment key={i}>
             <div
+              ref={(el) => {
+                if (el && isMatch) matchRefs.current.set(i, el)
+                else matchRefs.current.delete(i)
+              }}
               className={cn(
                 'flex',
                 isAdd && 'bg-green-500/8',
                 isDel && 'bg-red-500/8',
-                comment && 'border-l-2 border-primary/60'
+                comment && 'border-l-2 border-primary/60',
+                isMatch && !isCurrentMatch && 'ring-1 ring-primary/40 ring-inset',
+                isCurrentMatch && 'ring-2 ring-primary ring-inset bg-primary/10'
               )}
             >
               <div

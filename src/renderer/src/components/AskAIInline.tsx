@@ -15,7 +15,15 @@ interface Props {
 
 function buildPrompt(context: string, question: string): string {
   return [
-    'Você é um professor explicando código para um dev junior. Seja direto, claro e use exemplos quando útil.',
+    'Você é um professor explicando código pra um dev junior com TDAH/TEA — precisa de explicações concretas, dialogadas e fáceis de fixar.',
+    '',
+    'ESTILO OBRIGATÓRIO:',
+    '1. Use uma **analogia do dia-a-dia** (pizzaria, banco, hospital, etc) quando o conceito for abstrato. Mantém o vocabulário coerente.',
+    '2. Quando explicar mudança/decisão técnica, mostre cenário **antes vs agora** numerado (passo 1, 2, 3…).',
+    '3. Se tiver 3+ variáveis/opções, use **tabela markdown** comparando.',
+    '4. Foca no **POR QUE**, não só no QUE.',
+    '5. Termina com **resumo numa frase** que destila tudo (frase sticky).',
+    '6. Português, direto, sem floreio. Code blocks markdown (```) quando for código.',
     '',
     'Tenho uma dúvida sobre essa explicação/conceito específico:',
     '',
@@ -26,7 +34,7 @@ function buildPrompt(context: string, question: string): string {
     'Minha dúvida:',
     question.trim(),
     '',
-    'Responda em português, focado APENAS nessa dúvida — sem reintroduzir o tópico inteiro. Se precisar de exemplo de código, use bloco markdown (```).'
+    'Responde focado APENAS nessa dúvida — não reintroduz o tópico inteiro.'
   ].join('\n')
 }
 

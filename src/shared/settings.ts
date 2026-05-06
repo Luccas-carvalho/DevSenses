@@ -24,6 +24,10 @@ export interface SettingsValueMap {
   last_workspace: string | null
   professor_turbo: boolean
   diff_mode: DiffMode
+  editor_default: string
+  terminal_default: string
+  update_strategy: 'merge' | 'rebase'
+  auto_fetch: boolean
 }
 
 export type SettingsKey = keyof SettingsValueMap
@@ -41,5 +45,9 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   code_theme: 'default',
   last_workspace: null,
   professor_turbo: false,
-  diff_mode: 'all'
+  diff_mode: 'all',
+  editor_default: '',
+  terminal_default: '',
+  update_strategy: 'merge',
+  auto_fetch: true
 }

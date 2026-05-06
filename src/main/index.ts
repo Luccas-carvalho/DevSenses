@@ -6,6 +6,7 @@ import { ensureFullPath } from './utils/path-fix'
 import { getDb, closeDb } from './db/connection'
 import { runEmbeddedMigrations } from './db/migrations'
 import { registerIpcHandlers } from './ipc'
+import { installAppMenu } from './app-menu'
 
 ensureFullPath()
 
@@ -103,6 +104,7 @@ app.whenReady().then(() => {
   }
 
   registerIpcHandlers()
+  installAppMenu()
   refreshDockMenu()
 
   app.on('browser-window-created', (_, window) => {

@@ -1,6 +1,14 @@
 import type { ProviderId, ProviderStatus } from './providers'
 import type { SettingsKey, SettingsValueMap } from './settings'
-import type { CommitInfo, DiffFile } from './git'
+import type {
+  CommitInfo,
+  CommitInfoExtended,
+  DiffFile,
+  RepoStatus,
+  StashEntry,
+  DetectedEditor,
+  DetectedTerminal
+} from './git'
 
 export interface IpcContract {
   'settings:get': {
@@ -91,6 +99,189 @@ export interface IpcContract {
   'workspace:checkoutBranch': {
     request: { path: string; branch: string }
     response: { ok: boolean; error?: string }
+  }
+
+  'git:status': {
+    request: { path: string }
+    response: RepoStatus
+  }
+  'git:stageFiles': {
+    request: { path: string; files: string[] }
+    response: { ok: boolean; error?: string }
+  }
+  'git:unstageFiles': {
+    request: { path: string; files: string[] }
+    response: { ok: boolean; error?: string }
+  }
+  'git:commit': {
+    request: { path: string; summary: string; description?: string; amend?: boolean }
+    response: { ok: boolean; hash?: string; error?: string }
+  }
+  'git:push': {
+    request: { path: string; force?: boolean; setUpstream?: boolean }
+    response: { ok: boolean; output?: string; error?: string }
+  }
+  'git:pull': {
+    request: { path: string; rebase?: boolean }
+    response: { ok: boolean; output?: string; error?: string }
+  }
+  'git:fetch': {
+    request: { path: string; prune?: boolean }
+    response: { ok: boolean; output?: string; error?: string }
+  }
+  'git:aheadBehind': {
+    request: { path: string }
+    response: { ahead: number; behind: number; upstream: string | null }
+  }
+  'git:createBranch': {
+    request: { path: string; name: string; baseRef?: string; checkout?: boolean }
+    response: { ok: boolean; error?: string }
+  }
+  'git:deleteBranch': {
+    request: { path: string; name: string; force?: boolean; remote?: boolean }
+    response: { ok: boolean; error?: string }
+  }
+  'git:renameBranch': {
+    request: { path: string; oldName: string; newName: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:mergeBranch': {
+    request: { path: string; from: string; strategy?: 'merge' | 'squash' | 'rebase' }
+    response: { ok: boolean; output?: string; error?: string }
+  }
+  'git:abortMerge': {
+    request: { path: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:abortRebase': {
+    request: { path: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:continueMerge': {
+    request: { path: string; message?: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:discardAll': {
+    request: { path: string; includeUntracked?: boolean }
+    response: { ok: boolean; error?: string }
+  }
+  'git:discardFile': {
+    request: { path: string; file: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:stash': {
+    request: { path: string; message?: string; includeUntracked?: boolean }
+    response: { ok: boolean; error?: string }
+  }
+  'git:stashList': {
+    request: { path: string }
+    response: StashEntry[]
+  }
+  'git:stashPop': {
+    request: { path: string; index: number }
+    response: { ok: boolean; error?: string }
+  }
+  'git:stashApply': {
+    request: { path: string; index: number }
+    response: { ok: boolean; error?: string }
+  }
+  'git:stashDrop': {
+    request: { path: string; index: number }
+    response: { ok: boolean; error?: string }
+  }
+  'git:logExtended': {
+    request: { path: string; limit?: number; skip?: number; branch?: string }
+    response: CommitInfoExtended[]
+  }
+  'git:diffForCommit': {
+    request: { path: string; hash: string }
+    response: { diff: string; files: DiffFile[] }
+  }
+  'git:remoteUrl': {
+    request: { path: string; remote?: string }
+    response: { url: string | null; webUrl: string | null; owner: string | null; repo: string | null; host: string | null }
+  }
+  'git:prPreview': {
+    request: { path: string; base: string; head: string }
+    response: {
+      commitCount: number
+      additions: number
+      deletions: number
+      files: DiffFile[]
+      commits: CommitInfo[]
+    }
+  }
+  'git:clone': {
+    request: { url: string; dest: string }
+    response: { ok: boolean; path?: string; error?: string }
+  }
+  'git:init': {
+    request: { dest: string; initialBranch?: string }
+    response: { ok: boolean; path?: string; error?: string }
+  }
+  'git:configGet': {
+    request: { path: string; key: string; scope?: 'local' | 'global' }
+    response: { value: string | null }
+  }
+  'git:configSet': {
+    request: { path: string; key: string; value: string; scope?: 'local' | 'global' }
+    response: { ok: boolean; error?: string }
+  }
+
+  'editors:detect': {
+    request: void
+    response: DetectedEditor[]
+  }
+  'terminals:detect': {
+    request: void
+    response: DetectedTerminal[]
+  }
+  'repository:openInEditor': {
+    request: { path: string; file?: string; line?: number; editorId?: string }
+    response: { ok: boolean; error?: string }
+  }
+  'repository:openInTerminal': {
+    request: { path: string; terminalId?: string }
+    response: { ok: boolean; error?: string }
+  }
+  'repository:openInFinder': {
+    request: { path: string; file?: string }
+    response: { ok: boolean; error?: string }
+  }
+  'repository:openUrl': {
+    request: { url: string }
+    response: { ok: boolean; error?: string }
+  }
+  'repository:pickFolder': {
+    request: { title?: string; mustBeEmpty?: boolean }
+    response: { path: string } | null
+  }
+
+  'menu:setState': {
+    request: {
+      hasProject: boolean
+      branchName: string | null
+      onBranch: boolean
+      onDetachedHead: boolean
+      branchIsUnborn: boolean
+      onNonDefaultBranch: boolean
+      hasPublishedBranch: boolean
+      hasRemote: boolean
+      isHostedOnGitHub: boolean
+      hasChangedFiles: boolean
+      hasStaged: boolean
+      hasMultipleBranches: boolean
+      hasConflicts: boolean
+      rebaseInProgress: boolean
+      isMerging: boolean
+      networkInProgress: boolean
+      branchHasStash: boolean
+      hasContributionTargetDefaultBranch: boolean
+      onContributionTargetDefaultBranch: boolean
+      isAhead: boolean
+      isBehind: boolean
+    }
+    response: void
   }
 
   'concepts:upsert': {
@@ -324,6 +515,7 @@ export interface IpcEvents {
   'providers:stream': { streamId: string; chunk: string; done: boolean; error: string | null }
   'workspace:changed': { path: string }
   'app:open-project': { path: string }
+  'menu:action': { action: string }
   'tests:agentEvent':
     | { runId: string; type: 'snapshot'; step: number; url: string; title: string; elementsCount: number }
     | { runId: string; type: 'thinking'; step: number }
