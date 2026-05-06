@@ -1,5 +1,14 @@
 export type ThemeMode = 'dark' | 'light' | 'auto'
 export type DiffMode = 'all' | 'uncommitted' | 'committed'
+export type CodeThemeId =
+  | 'default'
+  | 'dracula'
+  | 'monokai'
+  | 'github'
+  | 'oneDark'
+  | 'tokyoNight'
+  | 'nord'
+  | 'solarized'
 
 export interface SettingsValueMap {
   onboarding_completed: boolean
@@ -11,6 +20,7 @@ export interface SettingsValueMap {
   provider_model: string
   provider_tested: Record<string, boolean>
   theme: ThemeMode
+  code_theme: CodeThemeId
   last_workspace: string | null
   professor_turbo: boolean
   diff_mode: DiffMode
@@ -28,6 +38,7 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   provider_model: 'claude-sonnet-4-6',
   provider_tested: {},
   theme: 'auto',
+  code_theme: 'default',
   last_workspace: null,
   professor_turbo: false,
   diff_mode: 'all'

@@ -36,7 +36,9 @@ import type { ThemeMode, DiffMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
-import { Highlight, themes as prismThemes, type PrismTheme } from 'prism-react-renderer'
+import { Highlight, type PrismTheme } from 'prism-react-renderer'
+import AskAIInline from '@/components/AskAIInline'
+import { useCodeTheme } from '@/hooks/useCodeTheme'
 
 const EXT_TO_LANG: Record<string, string> = {
   ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
@@ -52,27 +54,6 @@ function detectLanguage(file: string): string {
   const ext = file.split('.').pop()?.toLowerCase() ?? ''
   if (file.toLowerCase().includes('dockerfile')) return 'docker'
   return EXT_TO_LANG[ext] ?? 'tsx'
-}
-
-function useResolvedTheme(): 'light' | 'dark' {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
-    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark'
-      ? 'dark'
-      : 'light'
-  )
-  useEffect(() => {
-    const update = (): void => {
-      setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
-    }
-    update()
-    const obs = new MutationObserver(update)
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    })
-    return () => obs.disconnect()
-  }, [])
-  return theme
 }
 
 function HighlightedCode({
@@ -1547,8 +1528,8 @@ const DiffViewer = React.memo(function DiffViewer({
     }
     return map
   }, [comments])
-  const resolvedTheme = useResolvedTheme()
-  const prismTheme = resolvedTheme === 'dark' ? prismThemes.vsDark : prismThemes.vsLight
+  const { variant: codeVariant } = useCodeTheme()
+  const prismTheme = codeVariant.prism
   return (
     <div className="text-xs font-mono leading-5 select-text">
       {sections.map((s, i) => {
@@ -1659,22 +1640,28 @@ function InlineBalloon({ comment }: { comment: LineComment }) {
   const [open, setOpen] = useState(true)
   return (
     <div className="pl-12 pr-4 py-2 bg-primary/[0.04] border-l-2 border-primary/60 font-sans">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 w-full text-left group"
-      >
-        <Sparkles className="size-3 text-primary flex-shrink-0" />
-        <span className="text-[12px] font-medium text-foreground flex-1 truncate">
-          {comment.title || `Linha ${comment.line}`}
-        </span>
-        <ChevronDown
-          className={cn(
-            'size-3 text-muted-foreground/60 transition-transform flex-shrink-0',
-            !open && '-rotate-90'
-          )}
+      <div className="flex items-center gap-2 w-full">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left group"
+        >
+          <Sparkles className="size-3 text-primary flex-shrink-0" />
+          <span className="text-[12px] font-medium text-foreground flex-1 truncate">
+            {comment.title || `Linha ${comment.line}`}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-3 text-muted-foreground/60 transition-transform flex-shrink-0',
+              !open && '-rotate-90'
+            )}
+          />
+        </button>
+        <AskAIInline
+          context={buildCommentContext(comment)}
+          contextLabel={comment.title || `L${comment.line}`}
         />
-      </button>
+      </div>
       {open && (
         <div className="mt-2 ml-5 space-y-2 text-[12px] leading-relaxed">
           {comment.why && (
@@ -1688,9 +1675,9 @@ function InlineBalloon({ comment }: { comment: LineComment }) {
               <div className="font-semibold text-foreground/70 mb-1">Conceitos:</div>
               <ul className="space-y-0.5 ml-1">
                 {comment.concepts.map((c, idx) => (
-                  <li key={idx} className="flex gap-1.5 text-foreground/80">
+                  <li key={idx} className="flex gap-1.5 text-foreground/80 items-start">
                     <span className="text-primary/60 mt-0.5">•</span>
-                    <span>
+                    <span className="flex-1">
                       {c.code && (
                         <code className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80 mr-1">
                           {c.code}
@@ -1698,6 +1685,10 @@ function InlineBalloon({ comment }: { comment: LineComment }) {
                       )}
                       {renderInline(c.text)}
                     </span>
+                    <AskAIInline
+                      context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
+                      contextLabel={c.code ?? c.text.slice(0, 40)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -1826,6 +1817,11 @@ function AnalysisTabs({
                         ? `linha ${c.refs[0]}`
                         : `${c.refs.length} ocorrências`}
                     </span>
+                    <AskAIInline
+                      context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
+                      contextLabel={c.code ?? c.text.slice(0, 40)}
+                      className="ml-auto"
+                    />
                   </div>
                   <span className="text-xs text-foreground/80 leading-relaxed">
                     {renderInline(c.text)}
@@ -2046,34 +2042,58 @@ function HistoryDrawer({
   )
 }
 
+function buildCommentContext(c: LineComment): string {
+  const parts: string[] = []
+  parts.push(`Arquivo: ${c.file} · Linha ${c.line}`)
+  if (c.title) parts.push(`Título: ${c.title}`)
+  if (c.before) parts.push(`Antes:\n\`\`\`\n${c.before}\n\`\`\``)
+  if (c.after) parts.push(`Depois:\n\`\`\`\n${c.after}\n\`\`\``)
+  if (c.why) parts.push(`Por que: ${c.why}`)
+  if (c.concepts && c.concepts.length > 0) {
+    parts.push(
+      'Conceitos:\n' +
+        c.concepts.map((cc) => `- ${cc.code ? '`' + cc.code + '`: ' : ''}${cc.text}`).join('\n')
+    )
+  }
+  return parts.join('\n\n')
+}
+
 function CollapsibleComment({ comment }: { comment: LineComment }) {
   const [open, setOpen] = useState(false)
   return (
     <li className="rounded-lg border border-border/40 bg-card/40 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
+      <div
         className={cn(
-          'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors',
+          'w-full flex items-center gap-2 px-3 py-2 transition-colors',
           open ? 'bg-primary/8' : 'hover:bg-accent/40'
         )}
       >
-        <span className="text-[11px] font-mono text-muted-foreground/70 flex-shrink-0">
-          L{comment.line}
-        </span>
-        <span className="text-[10px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[120px]">
-          {comment.file}
-        </span>
-        <span className="text-[12px] font-medium text-foreground flex-1 truncate">
-          {comment.title || 'sem título'}
-        </span>
-        <ChevronDown
-          className={cn(
-            'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
-            !open && '-rotate-90'
-          )}
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        >
+          <span className="text-[11px] font-mono text-muted-foreground/70 flex-shrink-0">
+            L{comment.line}
+          </span>
+          <span className="text-[10px] text-muted-foreground/60 flex-shrink-0 truncate max-w-[120px]">
+            {comment.file}
+          </span>
+          <span className="text-[12px] font-medium text-foreground flex-1 truncate">
+            {comment.title || 'sem título'}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
+              !open && '-rotate-90'
+            )}
+          />
+        </button>
+        <AskAIInline
+          context={buildCommentContext(comment)}
+          contextLabel={comment.title || `L${comment.line}`}
         />
-      </button>
+      </div>
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-2.5 text-[12px]">
           {comment.before && (
@@ -2107,9 +2127,9 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="font-semibold text-foreground/70 mb-1">Conceitos:</div>
               <ul className="space-y-0.5 ml-1">
                 {comment.concepts.map((c, idx) => (
-                  <li key={idx} className="flex gap-1.5 text-foreground/80 leading-relaxed">
+                  <li key={idx} className="flex gap-1.5 text-foreground/80 leading-relaxed items-start">
                     <span className="text-primary/60 mt-0.5">•</span>
-                    <span>
+                    <span className="flex-1">
                       {c.code && (
                         <code className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80 mr-1">
                           {c.code}
@@ -2117,6 +2137,10 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
                       )}
                       {renderInline(c.text)}
                     </span>
+                    <AskAIInline
+                      context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
+                      contextLabel={c.code ?? c.text.slice(0, 40)}
+                    />
                   </li>
                 ))}
               </ul>
