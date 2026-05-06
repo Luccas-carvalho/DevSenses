@@ -35,6 +35,67 @@ import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
+import { Highlight, themes as prismThemes, type PrismTheme } from 'prism-react-renderer'
+
+const EXT_TO_LANG: Record<string, string> = {
+  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
+  json: 'json', md: 'markdown', mdx: 'markdown', css: 'css', scss: 'scss', less: 'css',
+  html: 'markup', htm: 'markup', xml: 'markup', svg: 'markup', vue: 'markup',
+  py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java', kt: 'kotlin',
+  php: 'php', cs: 'csharp', cpp: 'cpp', c: 'c', h: 'c', hpp: 'cpp', swift: 'swift',
+  yml: 'yaml', yaml: 'yaml', toml: 'toml', sh: 'bash', bash: 'bash', zsh: 'bash',
+  sql: 'sql', graphql: 'graphql', gql: 'graphql', dockerfile: 'docker'
+}
+
+function detectLanguage(file: string): string {
+  const ext = file.split('.').pop()?.toLowerCase() ?? ''
+  if (file.toLowerCase().includes('dockerfile')) return 'docker'
+  return EXT_TO_LANG[ext] ?? 'tsx'
+}
+
+function useResolvedTheme(): 'light' | 'dark' {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark'
+      ? 'dark'
+      : 'light'
+  )
+  useEffect(() => {
+    const update = (): void => {
+      setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')
+    }
+    update()
+    const obs = new MutationObserver(update)
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+    return () => obs.disconnect()
+  }, [])
+  return theme
+}
+
+function HighlightedCode({
+  code,
+  language,
+  prismTheme
+}: {
+  code: string
+  language: string
+  prismTheme: PrismTheme
+}): React.ReactElement {
+  return (
+    <Highlight code={code} language={language} theme={prismTheme}>
+      {({ tokens, getTokenProps }) => (
+        <>
+          {tokens[0]?.map((token, i) => (
+            <span key={i} {...getTokenProps({ token })} />
+          ))}
+        </>
+      )}
+    </Highlight>
+  )
+}
 
 type AnalysisState = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
@@ -250,6 +311,7 @@ export default function Project() {
 
   const { value: seniority, loading: seniorityLoading } = useSettings('seniority')
   const { value: providerDefault, loading: providerLoading } = useSettings('provider_default')
+  const { value: providerModel } = useSettings('provider_model')
   const { value: professorTurboSaved } = useSettings('professor_turbo')
   const { value: diffModeSaved } = useSettings('diff_mode')
 
@@ -285,6 +347,7 @@ export default function Project() {
   const [historyVersion, setHistoryVersion] = useState(0)
   useEffect(() => {
     if (analysisState !== 'done') return
+    if (viewingAnalysisId !== null) return // viewing past analysis — never re-save
     if (persistedAnalysisRef.current === analysisText) return
     persistedAnalysisRef.current = analysisText
 
@@ -356,7 +419,8 @@ export default function Project() {
     repoName,
     providerDefault,
     seniority,
-    professorTurbo
+    professorTurbo,
+    viewingAnalysisId
   ])
 
   const streamIdRef = useRef<string | null>(null)
@@ -595,7 +659,7 @@ export default function Project() {
           </button>
 
           <button
-            onClick={() => navigate('/tests')}
+            onClick={() => navigate('/tests', { state: { projectPath: path } })}
             title="Testes IA"
             className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
@@ -818,6 +882,21 @@ export default function Project() {
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Análise IA
             </span>
+            {providerDefault && (
+              <span
+                className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/70 bg-muted/50 border border-border/40 rounded-md px-1.5 py-0.5"
+                title={`${providerDefault} · ${providerModel || ''}`}
+              >
+                <span className="w-1 h-1 rounded-full bg-primary/70" />
+                {(() => {
+                  const id = providerDefault as string
+                  const list = PROVIDER_MODELS[id]
+                  const modelLabel = list?.find((m) => m.id === providerModel)?.label ?? providerModel
+                  const providerLabel = PROVIDER_LABELS[id] ?? id
+                  return modelLabel ? `${providerLabel} · ${modelLabel}` : providerLabel
+                })()}
+              </span>
+            )}
             {analysisState === 'streaming' && (
               <div className="flex items-center gap-1.5 text-xs text-primary">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -858,6 +937,8 @@ export default function Project() {
         version={historyVersion}
         viewingId={viewingAnalysisId}
         onView={(record) => {
+          // Mark as already-persisted so save effect skips even if it fires
+          persistedAnalysisRef.current = record.analysis
           setViewingAnalysisId(record.id)
           setHistoryOpen(false)
           setAnalysisText(record.analysis)
@@ -867,6 +948,7 @@ export default function Project() {
           setAnalysisState('done')
         }}
         onExitView={() => {
+          persistedAnalysisRef.current = ''
           setViewingAnalysisId(null)
           fetchProject()
           setAnalysisText('')
@@ -1284,13 +1366,120 @@ function EmptyAnalysis({
 }
 
 const ANALYSIS_MESSAGES = [
-  'Lendo o diff...',
-  'Conectando os pontos...',
-  'Pensando em senioridade...',
-  'Procurando bugs sutis...',
-  'Aplicando boas práticas...',
-  'Quase lá!'
+  'Tokenizando diff...',
+  'Construindo grafo de dependências...',
+  'Inferindo intenção das mudanças...',
+  'Cruzando contexto com senioridade...',
+  'Detectando code smells e race conditions...',
+  'Avaliando trade-offs arquiteturais...',
+  'Compondo análise final...'
 ]
+
+const L1 = [
+  { x: 30, y: 24 },
+  { x: 30, y: 60 },
+  { x: 30, y: 100 },
+  { x: 30, y: 140 }
+]
+const L2 = [
+  { x: 160, y: 14 },
+  { x: 160, y: 50 },
+  { x: 160, y: 86 },
+  { x: 160, y: 122 },
+  { x: 160, y: 158 }
+]
+const L3 = [
+  { x: 290, y: 40 },
+  { x: 290, y: 86 },
+  { x: 290, y: 132 }
+]
+
+const EDGES_12: { x1: number; y1: number; x2: number; y2: number; key: string }[] = []
+L1.forEach((a, i) =>
+  L2.forEach((b, j) => EDGES_12.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, key: `12-${i}-${j}` }))
+)
+const EDGES_23: { x1: number; y1: number; x2: number; y2: number; key: string }[] = []
+L2.forEach((a, i) =>
+  L3.forEach((b, j) => EDGES_23.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, key: `23-${i}-${j}` }))
+)
+
+function NeuralNet() {
+  return (
+    <svg
+      viewBox="0 0 320 172"
+      className="w-full max-w-[340px] h-auto"
+      aria-hidden
+    >
+      <defs>
+        <filter id="ds-nn-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id="ds-nn-edge" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0" />
+          <stop offset="50%" stopColor="var(--color-primary)" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* base edges (dim) */}
+      {[...EDGES_12, ...EDGES_23].map((e) => (
+        <line
+          key={`b-${e.key}`}
+          x1={e.x1}
+          y1={e.y1}
+          x2={e.x2}
+          y2={e.y2}
+          stroke="currentColor"
+          strokeOpacity="0.10"
+          strokeWidth="0.6"
+        />
+      ))}
+
+      {/* traveling pulse edges (subset) */}
+      {[...EDGES_12, ...EDGES_23]
+        .filter((_, i) => i % 4 === 0)
+        .map((e, i) => (
+          <line
+            key={`p-${e.key}`}
+            x1={e.x1}
+            y1={e.y1}
+            x2={e.x2}
+            y2={e.y2}
+            stroke="url(#ds-nn-edge)"
+            strokeWidth="1.2"
+            strokeDasharray="14 56"
+            className="ds-nn-trace"
+            style={{ animationDelay: `${(i * 0.18) % 2.4}s` }}
+          />
+        ))}
+
+      {/* nodes */}
+      {[...L1, ...L2, ...L3].map((n, i) => (
+        <g key={`n-${i}`} filter="url(#ds-nn-glow)">
+          <circle
+            cx={n.x}
+            cy={n.y}
+            r="4"
+            className="fill-primary ds-nn-pulse"
+            style={{ animationDelay: `${(i * 0.12) % 1.8}s` }}
+          />
+          <circle cx={n.x} cy={n.y} r="2" fill="white" opacity="0.85" />
+        </g>
+      ))}
+
+      {/* layer labels */}
+      <g className="text-[7px] fill-current opacity-30 font-mono">
+        <text x="14" y="172">input</text>
+        <text x="143" y="172">hidden</text>
+        <text x="270" y="172">output</text>
+      </g>
+    </svg>
+  )
+}
 
 function AnalysisSkeleton() {
   const [idx, setIdx] = useState(0)
@@ -1303,60 +1492,38 @@ function AnalysisSkeleton() {
   }, [])
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 select-none">
-      {/* glow + orb central com sparkle girando */}
-      <div className="relative w-28 h-28 mb-7">
-        {/* halo difuso pulsante */}
-        <div
-          className="absolute inset-[-12px] rounded-full bg-primary/25 blur-2xl animate-pulse"
-          style={{ animationDuration: '2.4s' }}
-        />
-        {/* anel gradiente */}
-        <div
-          className="absolute inset-2 rounded-full bg-gradient-to-br from-primary via-primary/70 to-primary/30 animate-pulse shadow-lg shadow-primary/30"
-          style={{ animationDuration: '1.8s' }}
-        />
-        {/* sparkle central girando */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Sparkles
-            className="size-9 text-primary-foreground drop-shadow-lg animate-spin"
-            style={{ animationDuration: '3.2s' }}
-          />
-        </div>
-        {/* partículas em órbita */}
-        <div className="absolute top-1/2 left-1/2 -mt-1 -ml-1 w-2 h-2 rounded-full bg-primary shadow-md shadow-primary/50 ds-orbit" />
-        <div className="absolute top-1/2 left-1/2 -mt-0.5 -ml-0.5 w-1.5 h-1.5 rounded-full bg-primary/70 ds-orbit-rev" />
+    <div className="flex flex-col items-center justify-center py-8 select-none text-primary">
+      <NeuralNet />
+
+      {/* status with rotating message */}
+      <div className="mt-5 flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+        </span>
+        <span
+          key={idx}
+          className="ds-fade-up text-[12px] font-mono tracking-tight text-foreground/85"
+        >
+          {ANALYSIS_MESSAGES[idx]}
+        </span>
       </div>
 
-      {/* mensagem rotativa com fade */}
-      <div
-        key={idx}
-        className="ds-fade-up text-sm font-medium text-foreground mb-3 text-center"
-      >
-        {ANALYSIS_MESSAGES[idx]}
+      {/* token stream */}
+      <div className="mt-5 w-full max-w-[340px] overflow-hidden rounded-md border border-border/30 bg-muted/20 px-2 py-1.5 font-mono text-[10px] text-primary/70 ds-token-stream">
+        <span className="ds-token-row">
+          0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
+          0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
+        </span>
       </div>
 
-      {/* dots em sequência */}
-      <div className="flex gap-1.5 mb-6">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce"
-            style={{ animationDelay: `${i * 150}ms` }}
-          />
-        ))}
-      </div>
-
-      {/* shimmer bars dando ideia de conteúdo chegando */}
-      <div className="w-full max-w-[280px] space-y-2.5">
-        <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+      {/* progress bars */}
+      <div className="mt-4 w-full max-w-[340px] space-y-2">
+        <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
           <div className="h-full w-full ds-shimmer" />
         </div>
-        <div className="h-2 rounded-full bg-muted/40 overflow-hidden w-5/6">
-          <div className="h-full w-full ds-shimmer" style={{ animationDelay: '0.2s' }} />
-        </div>
-        <div className="h-2 rounded-full bg-muted/40 overflow-hidden w-3/4">
-          <div className="h-full w-full ds-shimmer" style={{ animationDelay: '0.4s' }} />
+        <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden w-5/6">
+          <div className="h-full w-full ds-shimmer" style={{ animationDelay: '0.25s' }} />
         </div>
       </div>
     </div>
@@ -1380,6 +1547,8 @@ const DiffViewer = React.memo(function DiffViewer({
     }
     return map
   }, [comments])
+  const resolvedTheme = useResolvedTheme()
+  const prismTheme = resolvedTheme === 'dark' ? prismThemes.vsDark : prismThemes.vsLight
   return (
     <div className="text-xs font-mono leading-5 select-text">
       {sections.map((s, i) => {
@@ -1461,10 +1630,18 @@ const DiffViewer = React.memo(function DiffViewer({
               <div
                 className={cn(
                   'flex-1 min-w-0 pr-4 leading-5 whitespace-pre-wrap break-all',
-                  isAdd ? 'text-green-300' : isDel ? 'text-red-300/80' : 'text-foreground/75'
+                  isDel && 'opacity-70'
                 )}
               >
-                {s.content || '\u00A0'}
+                {s.content ? (
+                  <HighlightedCode
+                    code={s.content}
+                    language={detectLanguage(s.file)}
+                    prismTheme={prismTheme}
+                  />
+                ) : (
+                  '\u00A0'
+                )}
               </div>
               {comment && (
                 <Sparkles className="size-3 text-primary mr-3 mt-1 flex-shrink-0 animate-pulse" />

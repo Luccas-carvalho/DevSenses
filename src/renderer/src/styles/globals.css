@@ -3,26 +3,26 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  /* Light — true neutral gray (hsl chroma=0%) */
-  --color-background: hsl(0 0% 98.5%);
-  --color-foreground: hsl(0 0% 13%);
+  /* Light — neutral gray, AA contrast, opacity-tolerant */
+  --color-background: hsl(0 0% 96%);            /* grayer base so white cards distinguish */
+  --color-foreground: hsl(0 0% 11%);
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(0 0% 13%);
+  --color-card-foreground: hsl(0 0% 11%);
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(0 0% 13%);
-  --color-primary: hsl(258 65% 55%);
-  --color-primary-foreground: hsl(0 0% 99%);
-  --color-secondary: hsl(0 0% 96%);
-  --color-secondary-foreground: hsl(0 0% 15%);
-  --color-muted: hsl(0 0% 96%);
-  --color-muted-foreground: hsl(0 0% 45%);
-  --color-accent: hsl(0 0% 93%);
-  --color-accent-foreground: hsl(0 0% 15%);
-  --color-destructive: hsl(0 75% 55%);
-  --color-destructive-foreground: hsl(0 0% 99%);
-  --color-border: hsl(0 0% 90%);
-  --color-input: hsl(0 0% 90%);
-  --color-ring: hsl(258 65% 55%);
+  --color-popover-foreground: hsl(0 0% 11%);
+  --color-primary: hsl(258 58% 48%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(0 0% 92%);
+  --color-secondary-foreground: hsl(0 0% 14%);
+  --color-muted: hsl(0 0% 92%);
+  --color-muted-foreground: hsl(0 0% 35%);      /* readable at 70% opacity too */
+  --color-accent: hsl(0 0% 88%);
+  --color-accent-foreground: hsl(0 0% 14%);
+  --color-destructive: hsl(0 72% 46%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(0 0% 82%);                /* strong enough to survive /30 opacity */
+  --color-input: hsl(0 0% 82%);
+  --color-ring: hsl(258 58% 48%);
   --radius: 0.625rem;
 }
 
@@ -77,6 +77,42 @@
   );
   background-size: 200% 100%;
   animation: ds-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes ds-nn-trace {
+  0%   { stroke-dashoffset: 70; }
+  100% { stroke-dashoffset: 0;  }
+}
+.ds-nn-trace {
+  stroke-dashoffset: 70;
+  animation: ds-nn-trace 2.4s linear infinite;
+}
+
+@keyframes ds-nn-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent));
+  }
+  50% {
+    transform: scale(1.45);
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 90%, transparent));
+  }
+}
+.ds-nn-pulse {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: ds-nn-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes ds-token-stream {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ds-token-stream { position: relative; }
+.ds-token-row {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ds-token-stream 14s linear infinite;
 }
 
 html, body, #root {

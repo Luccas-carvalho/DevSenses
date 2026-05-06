@@ -296,6 +296,7 @@ export interface AgentRunOptions {
   providerId: ProviderId
   maxSteps?: number
   onEvent?: (event: AgentEvent) => void
+  signal?: AbortSignal
 }
 
 export type AgentEvent =
@@ -304,6 +305,7 @@ export type AgentEvent =
   | { type: 'action'; step: number; action: string; detail?: string; ok: boolean; error?: string }
   | { type: 'done'; reason: string }
   | { type: 'fail'; reason: string }
+  | { type: 'frame'; data: string }
 
 interface ElementSummary {
   id: number
@@ -584,16 +586,61 @@ export async function runAgent(opts: AgentRunOptions): Promise<RunResult> {
 
   let browser: Browser | null = null
   let ctx: BrowserContext | null = null
+  let videoPath: string | null = null
+  let cancelled = false
+  let framePollTimer: NodeJS.Timeout | null = null
 
   const decisionLog: { action: string; detail?: string; ok: boolean; error?: string }[] = []
 
+  const onAbort = (): void => {
+    cancelled = true
+  }
+  if (opts.signal) {
+    if (opts.signal.aborted) cancelled = true
+    else opts.signal.addEventListener('abort', onAbort, { once: true })
+  }
+
   try {
     browser = await chromium.launch({ headless: true })
-    ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+    ctx = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      recordVideo: { dir: folder, size: { width: 1280, height: 800 } }
+    })
     const page = await ctx.newPage()
 
+    // Live preview — poll page screenshots at ~10fps and stream as jpeg frames
+    let frameBusy = false
+    framePollTimer = setInterval(() => {
+      if (frameBusy) return
+      if (page.isClosed()) return
+      frameBusy = true
+      page
+        .screenshot({ type: 'jpeg', quality: 50, fullPage: false, timeout: 1500 })
+        .then((buf) => {
+          opts.onEvent?.({
+            type: 'frame',
+            data: `data:image/jpeg;base64,${buf.toString('base64')}`
+          })
+        })
+        .catch(() => {
+          // ignore — page may be navigating
+        })
+        .finally(() => {
+          frameBusy = false
+        })
+    }, 100)
+
     // Initial navigation
-    await page.goto(opts.baseUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 })
+    try {
+      await page.goto(opts.baseUrl, { waitUntil: 'domcontentloaded', timeout: 20_000 })
+    } catch (e) {
+      // strip ANSI codes from playwright error
+      const raw = (e as Error).message.replace(/\u001b\[\d+m|\[\d+m/g, '').trim()
+      const friendly = /Timeout|ERR_CONNECTION_REFUSED|ECONNREFUSED|net::/i.test(raw)
+        ? `Não conectou em ${opts.baseUrl}. Dev server tá rodando? Roda \`npm run dev\` no projeto e tenta de novo.`
+        : raw
+      throw new Error(friendly)
+    }
     log.push({
       index: 0,
       action: 'goto',
@@ -611,6 +658,12 @@ export async function runAgent(opts: AgentRunOptions): Promise<RunResult> {
     })
 
     for (let step = 1; step <= maxSteps; step++) {
+      if (cancelled) {
+        ok = false
+        error = 'cancelado pelo usuário'
+        opts.onEvent?.({ type: 'fail', reason: error })
+        break
+      }
       // small wait to let any post-action animations settle
       await page.waitForTimeout(300)
 
@@ -740,6 +793,18 @@ export async function runAgent(opts: AgentRunOptions): Promise<RunResult> {
     ok = false
     error = (e as Error).message
   } finally {
+    if (framePollTimer) {
+      clearInterval(framePollTimer)
+      framePollTimer = null
+    }
+    // capture video reference before closing context (needed for saveAs)
+    let videoSource: ReturnType<Page['video']> | undefined
+    try {
+      const pages = ctx?.pages() ?? []
+      videoSource = pages[0]?.video() ?? undefined
+    } catch {
+      // ignore
+    }
     if (ctx) {
       try {
         await ctx.close()
@@ -754,6 +819,16 @@ export async function runAgent(opts: AgentRunOptions): Promise<RunResult> {
         // ignore
       }
     }
+    if (videoSource) {
+      try {
+        const target = join(folder, 'video.webm')
+        await videoSource.saveAs(target)
+        videoPath = target
+      } catch {
+        // ignore — video may be unavailable
+      }
+    }
+    if (opts.signal) opts.signal.removeEventListener('abort', onAbort)
   }
 
   const result: RunResult = {
@@ -767,7 +842,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<RunResult> {
     finishedAt: Date.now(),
     log,
     screenshots,
-    videoPath: null,
+    videoPath,
     error,
     folder
   }

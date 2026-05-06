@@ -32,8 +32,10 @@ export function WaitlistForm({ ctaLabel, size = 'lg' }: { ctaLabel: string; size
     <div className="relative">
       <form onSubmit={onSubmit} className="flex flex-col sm:flex-row gap-2 w-full max-w-md">
         <Input type="email" required placeholder={locale === 'pt' ? 'seu@email.com' : 'your@email.com'}
-          value={email} onChange={(e) => setEmail(e.target.value)} disabled={state.kind === 'loading'} className="flex-1" />
-        <Button type="submit" size={size} disabled={state.kind === 'loading'}>
+          value={email} onChange={(e) => setEmail(e.target.value)} disabled={state.kind === 'loading'}
+          className="flex-1 focus-visible:ring-primary/60 focus-visible:border-primary/50" />
+        <Button type="submit" size={size} disabled={state.kind === 'loading'}
+          className="shadow-[0_0_24px_-6px_hsl(var(--primary)/0.6)] hover:shadow-[0_0_32px_-4px_hsl(var(--primary)/0.7)] transition-shadow">
           {state.kind === 'loading' ? <Loader2 className="animate-spin" size={18} /> : ctaLabel}
         </Button>
       </form>

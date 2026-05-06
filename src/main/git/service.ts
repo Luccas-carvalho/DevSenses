@@ -107,12 +107,36 @@ export async function checkoutBranch(
   }
 }
 
+async function getCommitTimestamp(repoPath: string, hash: string): Promise<number> {
+  if (!hash) return 0
+  const out = await git(repoPath, ['show', '-s', '--format=%ct', hash])
+  const n = parseInt(out.trim(), 10)
+  return Number.isFinite(n) ? n : 0
+}
+
 export async function getBaseBranch(repoPath: string, currentBranch: string): Promise<string> {
   const branches = await getLocalBranches(repoPath)
-  for (const candidate of ['main', 'master', 'develop', 'dev']) {
-    if (candidate !== currentBranch && branches.includes(candidate)) return candidate
+  const candidates = ['main', 'master', 'develop', 'dev'].filter(
+    (c) => c !== currentBranch && branches.includes(c)
+  )
+  if (candidates.length === 0) return ''
+  if (candidates.length === 1) return candidates[0]
+  // Pick the candidate whose merge-base with HEAD is the most recent —
+  // that's the closest fork point and the branch the user most likely
+  // branched off from. Avoids picking an older base (e.g. main) when
+  // user branched off a newer one (e.g. dev) and pulling in unrelated commits.
+  let best = candidates[0]
+  let bestTs = -1
+  for (const c of candidates) {
+    const mb = await getMergeBase(repoPath, c, 'HEAD')
+    if (!mb) continue
+    const ts = await getCommitTimestamp(repoPath, mb)
+    if (ts > bestTs) {
+      bestTs = ts
+      best = c
+    }
   }
-  return ''
+  return best
 }
 
 async function isLikelyText(repoPath: string, filePath: string): Promise<boolean> {

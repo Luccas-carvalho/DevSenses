@@ -35,6 +35,14 @@ export const PROVIDER_MODELS: Record<string, ModelOption[]> = {
   ]
 }
 
+export const PROVIDER_LABELS: Record<string, string> = {
+  claude: 'Claude',
+  codex: 'Codex',
+  gemini: 'Gemini',
+  aider: 'Aider',
+  ollama: 'Ollama'
+}
+
 export const DEFAULT_MODEL: Record<string, string> = {
   claude: 'claude-sonnet-4-6',
   codex: 'o4-mini',

@@ -84,6 +84,8 @@ async function readRunMeta(folder: string): Promise<RunSummary | null> {
   }
 }
 
+let activeAgentController: AbortController | null = null
+
 export function registerTestsHandlers(): void {
   ipcMain.handle('tests:detectUrl', (_, payload: IpcContract['tests:detectUrl']['request']) => {
     return detectUrlFromWorkspace(payload.path)
@@ -93,21 +95,34 @@ export function registerTestsHandlers(): void {
     'tests:agentRun',
     async (event, payload: IpcContract['tests:agentRun']['request']) => {
       const win = BrowserWindow.fromWebContents(event.sender)
-      const result = await runAgent({
-        baseUrl: payload.baseUrl,
-        goal: payload.goal,
-        intensity: payload.intensity,
-        providerId: payload.providerId as ProviderId,
-        maxSteps: payload.maxSteps,
-        onEvent: (ev) => {
-          if (win && !win.isDestroyed()) {
-            win.webContents.send('tests:agentEvent', { runId: payload.runId ?? '', ...ev })
+      // abort any prior run
+      if (activeAgentController) activeAgentController.abort()
+      const controller = new AbortController()
+      activeAgentController = controller
+      try {
+        const result = await runAgent({
+          baseUrl: payload.baseUrl,
+          goal: payload.goal,
+          intensity: payload.intensity,
+          providerId: payload.providerId as ProviderId,
+          maxSteps: payload.maxSteps,
+          signal: controller.signal,
+          onEvent: (ev) => {
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('tests:agentEvent', { runId: payload.runId ?? '', ...ev })
+            }
           }
-        }
-      })
-      return result
+        })
+        return result
+      } finally {
+        if (activeAgentController === controller) activeAgentController = null
+      }
     }
   )
+
+  ipcMain.handle('tests:cancelAgent', () => {
+    if (activeAgentController) activeAgentController.abort()
+  })
 
   ipcMain.handle('tests:run', async (_, payload: IpcContract['tests:run']['request']) => {
     const result = await runTest({
@@ -208,6 +223,13 @@ export function registerTestsHandlers(): void {
     const data = await readFile(payload.path)
     const ext = basename(payload.path).split('.').pop()?.toLowerCase() ?? 'png'
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
+    return `data:${mime};base64,${data.toString('base64')}`
+  })
+
+  ipcMain.handle('tests:readVideo', async (_, payload: IpcContract['tests:readVideo']['request']) => {
+    const data = await readFile(payload.path)
+    const ext = basename(payload.path).split('.').pop()?.toLowerCase() ?? 'webm'
+    const mime = ext === 'mp4' ? 'video/mp4' : 'video/webm'
     return `data:${mime};base64,${data.toString('base64')}`
   })
 }

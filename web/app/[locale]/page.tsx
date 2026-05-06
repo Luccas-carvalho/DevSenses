@@ -1,6 +1,7 @@
 import { setRequestLocale } from 'next-intl/server'
 import { Header } from '@/components/layout/header'
 import { Hero } from '@/components/sections/hero'
+import { Marquee } from '@/components/animations/marquee'
 import { Pain } from '@/components/sections/pain'
 import { Solution } from '@/components/sections/solution'
 import { Features } from '@/components/sections/features'
@@ -18,6 +19,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <Header />
       <main>
         <Hero />
+        <Marquee items={['useState', 'useEffect', 'git diff', 'TanStack Query', 'Server Components', 'TypeScript', 'Zod', 'Suspense', 'Edge Runtime', 'Tailwind', 'GraphQL', 'Drizzle', 'tRPC', 'WASM']} />
         <Pain />
         <Solution />
         <Features />

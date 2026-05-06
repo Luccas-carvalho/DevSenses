@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "description": "DevSenses — IDE com IA educacional",
   "main": "./out/main/index.js",
-  "workspaces": ["web"],
+  "workspaces": [
+    "web"
+  ],
   "author": "Luccas Carvalho",
   "homepage": "https://github.com/Luccas-carvalho/DevSenses",
   "scripts": {
@@ -34,6 +36,7 @@
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "playwright": "^1.59.1",
+    "prism-react-renderer": "^2.4.1",
     "radix-ui": "^1.4.3",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^7.14.2",

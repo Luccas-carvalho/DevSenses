@@ -278,6 +278,14 @@ export interface IpcContract {
     request: { path: string }
     response: string
   }
+  'tests:readVideo': {
+    request: { path: string }
+    response: string
+  }
+  'tests:cancelAgent': {
+    request: void
+    response: void
+  }
   'tests:agentRun': {
     request: {
       baseUrl: string
@@ -322,6 +330,7 @@ export interface IpcEvents {
     | { runId: string; type: 'action'; step: number; action: string; detail?: string; ok: boolean; error?: string }
     | { runId: string; type: 'done'; reason: string }
     | { runId: string; type: 'fail'; reason: string }
+    | { runId: string; type: 'frame'; data: string }
 }
 
 export type IpcChannel = keyof IpcContract

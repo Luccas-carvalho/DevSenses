@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { ThemeProvider } from '@/components/theme-provider'
 import { LenisProvider } from '@/components/lenis-provider'
+import { NoiseOverlay } from '@/components/animations/noise-overlay'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 
@@ -42,6 +43,7 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <NoiseOverlay />
         <LenisProvider>{children}</LenisProvider>
       </ThemeProvider>
     </NextIntlClientProvider>

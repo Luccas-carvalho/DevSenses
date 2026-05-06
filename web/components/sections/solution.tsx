@@ -1,18 +1,27 @@
 import { getTranslations } from 'next-intl/server'
 import { FadeIn } from '@/components/animations/fade-in'
+import { SectionLabel } from '@/components/section-label'
 import { AnimatedDiffDemo } from '@/components/animated-diff-demo'
+
 export async function Solution() {
   const t = await getTranslations('solution')
   const explanation = t.raw('demo_explanation') as string[]
+  const diff = t.raw('demo_diff') as string
   return (
-    <section id="features" className="relative px-6 py-28 border-t border-border">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-14">
-          <FadeIn><h2 className="text-4xl md:text-5xl font-bold tracking-tight text-balance">{t('title')}</h2></FadeIn>
-          <FadeIn delay={0.1}><p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">{t('sub')}</p></FadeIn>
+    <section className="relative px-6 py-28 border-t border-border overflow-hidden">
+      <div className="absolute inset-0 bg-grid opacity-[0.15] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] pointer-events-none" />
+      <div className="relative max-w-5xl mx-auto">
+        <div className="text-center mb-14 flex flex-col items-center">
+          <FadeIn><SectionLabel number="02" className="mb-5">solução</SectionLabel></FadeIn>
+          <FadeIn delay={0.1}>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.03em] text-balance bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-1">{t('title')}</h2>
+          </FadeIn>
+          <FadeIn delay={0.2}>
+            <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">{t('sub')}</p>
+          </FadeIn>
         </div>
-        <FadeIn delay={0.2}>
-          <AnimatedDiffDemo diff={t('demo_diff')} explanation={explanation} label={t('demo_label')} />
+        <FadeIn delay={0.3}>
+          <AnimatedDiffDemo diff={diff} explanation={explanation} label={t('demo_label')} />
         </FadeIn>
       </div>
     </section>
