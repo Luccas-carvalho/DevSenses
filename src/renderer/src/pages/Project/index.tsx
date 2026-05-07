@@ -776,6 +776,32 @@ export default function Project() {
     }
   }, [path, fetchProject])
 
+  // Refetch on window/app focus — pega commits feitos via terminal/IDE externa
+  useEffect(() => {
+    if (!path) return
+    const lastRefreshRef = { current: Date.now() }
+    function refresh(): void {
+      const now = Date.now()
+      if (now - lastRefreshRef.current < 1500) return
+      lastRefreshRef.current = now
+      clearCacheFor(path)
+      fetchProject()
+      fetchStatus()
+    }
+    function onFocus(): void {
+      refresh()
+    }
+    function onVisibility(): void {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [path, fetchProject, fetchStatus])
+
   // Listen to dock menu / recent doc open requests
   useEffect(() => {
     return window.api.on('app:open-project', (event) => {
@@ -1337,22 +1363,27 @@ export default function Project() {
           </div>
           )}
 
-          {sidebarTab === 'changes' && repoStatus && branch && (
-            <CommitArea
-              path={path}
-              branch={branch}
-              stagedCount={
-                repoStatus.files.filter(
-                  (f) => f.staged !== null && f.staged !== 'untracked'
-                ).length
-              }
-              onCommitted={() => {
-                track('commit_inline_committed')
-                fetchProject()
-                fetchStatus()
-              }}
-            />
-          )}
+          {sidebarTab === 'changes' && branch && (() => {
+            const allChanges = (repoStatus?.files ?? []).filter(
+              (f) => f.staged !== null || f.unstaged !== null
+            )
+            const toStage = allChanges
+              .filter((f) => f.unstaged !== null)
+              .map((f) => f.path)
+            return (
+              <CommitArea
+                path={path}
+                branch={branch}
+                pendingCount={allChanges.length}
+                filesToStage={toStage}
+                onCommitted={() => {
+                  track('commit_inline_committed')
+                  fetchProject()
+                  fetchStatus()
+                }}
+              />
+            )
+          })()}
 
           <ProfileMenu />
         </aside>

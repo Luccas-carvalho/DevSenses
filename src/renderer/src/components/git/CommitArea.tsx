@@ -8,14 +8,16 @@ const SUMMARY_MAX = 72
 interface Props {
   path: string
   branch: string
-  stagedCount: number
+  pendingCount: number
+  filesToStage: string[]
   onCommitted: () => void
 }
 
 export default function CommitArea({
   path,
   branch,
-  stagedCount,
+  pendingCount,
+  filesToStage,
   onCommitted
 }: Props): React.ReactElement {
   const [summary, setSummary] = useState('')
@@ -35,9 +37,20 @@ export default function CommitArea({
   }, [path, branch])
 
   async function commit(): Promise<void> {
-    if (!summary.trim() || busy || stagedCount === 0) return
+    if (!summary.trim() || busy || pendingCount === 0) return
     setBusy(true)
     setError('')
+    if (filesToStage.length > 0) {
+      const stageR = await window.api.invoke('git:stageFiles', {
+        path,
+        files: filesToStage
+      })
+      if (!stageR.ok) {
+        setBusy(false)
+        setError(stageR.error ?? 'Falha ao stage arquivos')
+        return
+      }
+    }
     const r = await window.api.invoke('git:commit', {
       path,
       summary: summary.trim(),
@@ -54,8 +67,7 @@ export default function CommitArea({
   }
 
   const remaining = SUMMARY_MAX - summary.length
-  const canCommit = !busy && stagedCount > 0 && summary.trim().length > 0
-  const branchShort = branch.length > 24 ? `${branch.slice(0, 22)}…` : branch
+  const canCommit = !busy && pendingCount > 0 && summary.trim().length > 0
 
   return (
     <div className="border-t border-border/40 bg-card/40 p-2.5 flex flex-col gap-1.5">
@@ -78,7 +90,7 @@ export default function CommitArea({
             }
           }}
           placeholder="Summary (obrigatório)"
-          disabled={busy || stagedCount === 0}
+          disabled={busy}
           className="flex-1 rounded-md border border-border/60 bg-background/80 px-2.5 h-7 text-[12px] focus:outline-none focus:border-primary/60 disabled:opacity-50"
         />
       </div>
@@ -93,7 +105,7 @@ export default function CommitArea({
         }}
         placeholder="Descrição (opcional)"
         rows={3}
-        disabled={busy || stagedCount === 0}
+        disabled={busy}
         className="w-full resize-none rounded-md border border-border/60 bg-background/80 px-2.5 py-1.5 text-[11px] leading-snug focus:outline-none focus:border-primary/60 disabled:opacity-50"
       />
       <div className="flex items-center justify-between text-[9px] text-muted-foreground/60 px-0.5">
@@ -120,20 +132,21 @@ export default function CommitArea({
         type="button"
         onClick={commit}
         disabled={!canCommit}
+        title={`Commit ${pendingCount} arquivo${pendingCount !== 1 ? 's' : ''} em ${branch}`}
         className={cn(
-          'h-9 w-full rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors',
+          'h-9 w-full rounded-md text-[12px] font-semibold inline-flex items-center gap-1.5 px-3 transition-colors min-w-0 overflow-hidden',
           canCommit
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'
             : 'bg-muted text-muted-foreground/60 cursor-not-allowed'
         )}
       >
-        {busy && <Loader2 className="size-3 animate-spin" />}
-        {stagedCount === 0
-          ? 'Nada pra commitar'
-          : `Commit ${stagedCount} arquivo${stagedCount !== 1 ? 's' : ''} em `}
-        {stagedCount > 0 && (
-          <span className="font-mono font-bold">{branchShort}</span>
-        )}
+        {busy && <Loader2 className="size-3 animate-spin flex-shrink-0" />}
+        <span className="flex-shrink-0 whitespace-nowrap">
+          Commit {pendingCount} arquivo{pendingCount !== 1 ? 's' : ''} em
+        </span>
+        <span className="font-mono font-bold flex-1 min-w-0 truncate text-left">
+          {branch}
+        </span>
       </button>
     </div>
   )
