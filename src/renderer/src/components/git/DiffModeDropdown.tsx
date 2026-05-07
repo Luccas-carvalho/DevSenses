@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Layers, Pencil, GitCommit, ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 import type { DiffMode } from '@shared/settings'
 
 const OPTIONS: { value: DiffMode; label: string; icon: typeof Layers; tip: string }[] = [
@@ -46,17 +47,18 @@ export default function DiffModeDropdown({ mode, onChange }: Props): React.React
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title={current.tip}
-        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
-      >
-        <Icon className="size-3" />
-        <span className="font-medium">{current.label}</span>
-        <ChevronDown className="size-3 text-muted-foreground" />
-      </button>
+      <Tooltip label={`Modo de diff · ${current.tip}`}>
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
+        >
+          <Icon className="size-3" />
+          <span className="font-medium">{current.label}</span>
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </button>
+      </Tooltip>
 
       {open &&
         pos &&

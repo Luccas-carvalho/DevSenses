@@ -269,6 +269,32 @@ export interface IpcContract {
     request: { title?: string; mustBeEmpty?: boolean }
     response: { path: string } | null
   }
+  'repository:fileBlob': {
+    request: { path: string; file: string; ref?: string }
+    response: {
+      exists: boolean
+      base64: string | null
+      size: number
+      mime: string | null
+    }
+  }
+
+  'telemetry:track': {
+    request: { event: string; payload?: Record<string, unknown> }
+    response: void
+  }
+  'telemetry:summary': {
+    request: void
+    response: {
+      total: number
+      enabled: boolean
+      byEvent: Array<{ event: string; count: number; lastSeen: number }>
+    }
+  }
+  'telemetry:clear': {
+    request: void
+    response: void
+  }
 
   'menu:setState': {
     request: {

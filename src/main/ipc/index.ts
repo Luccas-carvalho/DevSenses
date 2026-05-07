@@ -6,6 +6,7 @@ import { registerAnalysesHandlers } from './analyses'
 import { registerTestsHandlers } from './tests'
 import { registerGitHandlers } from './git-ops'
 import { registerRepositoryHandlers } from './repository'
+import { registerTelemetryHandlers } from './telemetry'
 
 export function registerIpcHandlers(): void {
   registerSettingsHandlers()
@@ -16,4 +17,5 @@ export function registerIpcHandlers(): void {
   registerTestsHandlers()
   registerGitHandlers()
   registerRepositoryHandlers()
+  registerTelemetryHandlers()
 }

@@ -54,10 +54,16 @@ import DeleteBranchDialog from '@/components/git/dialogs/DeleteBranchDialog'
 import OpenPullRequestDialog from '@/components/git/dialogs/OpenPullRequestDialog'
 import CloneDialog from '@/components/git/dialogs/CloneDialog'
 import CommitDialog from '@/components/git/dialogs/CommitDialog'
+import CommitArea from '@/components/git/CommitArea'
+import { track } from '@/lib/telemetry'
 import DiffModeDropdown from '@/components/git/DiffModeDropdown'
 import BranchSwitcher from '@/components/git/BranchSwitcher'
 import HistoryTab from '@/components/git/HistoryTab'
 import ConflictResolver from '@/components/git/ConflictResolver'
+import MediaPreview, { getMediaKind } from '@/components/git/MediaPreview'
+import { prefetchBlob, trimCache, clearCacheFor } from '@/lib/mediaCache'
+import Tooltip from '@/components/ui/Tooltip'
+import Logo from '@/components/Logo'
 import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -454,9 +460,24 @@ export default function Project() {
   const fetchPendingRef = useRef(false)
   selectedFileRef.current = selectedFile
 
+  useEffect(() => {
+    if (!path || files.length === 0) return
+    const mediaFiles = files.filter((f) => getMediaKind(f.path)).slice(0, 30)
+    if (mediaFiles.length === 0) return
+    const handle = window.setTimeout(() => {
+      for (const f of mediaFiles) {
+        if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
+        if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
+      }
+      trimCache()
+    }, 50)
+    return () => window.clearTimeout(handle)
+  }, [files, path])
+
   const runAnalysis = useCallback(
     async (diffText: string) => {
       if (!providerDefault || !seniority || !diffText) return
+      track('ai_analyze_clicked', { provider: providerDefault, seniority, turbo: professorTurbo })
       if (streamIdRef.current) {
         await window.api.invoke('providers:abort', { streamId: streamIdRef.current })
       }
@@ -610,6 +631,9 @@ export default function Project() {
         e.preventDefault()
         setSearchOpen(true)
         setSearchIndex(0)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSidebarCollapsed((c) => !c)
       } else if (e.key === 'Escape' && searchOpen) {
         setSearchOpen(false)
       }
@@ -742,6 +766,7 @@ export default function Project() {
     if (!path) return
     window.api.invoke('workspace:watch', { path })
     const off = window.api.on('workspace:changed', () => {
+      clearCacheFor(path)
       fetchProject()
       fetchStatus()
     })
@@ -786,6 +811,16 @@ export default function Project() {
 
   async function selectFile(filePath: string): Promise<void> {
     setSelectedFile(filePath)
+    if (getMediaKind(filePath)) {
+      setDiff('')
+      setDiffSwitching(false)
+      const f = files.find((x) => x.path === filePath)
+      if (f) {
+        if (f.status !== 'added') prefetchBlob(path, filePath, 'HEAD')
+        if (f.status !== 'deleted') prefetchBlob(path, filePath, null)
+      }
+      return
+    }
     setDiffSwitching(true)
     try {
       const result = await window.api.invoke('workspace:getDiffForFile', {
@@ -852,22 +887,6 @@ export default function Project() {
         >
           <DiffModeDropdown mode={diffMode} onChange={changeDiffMode} />
 
-          {repoStatus &&
-            repoStatus.files.some((f) => f.staged !== null && f.staged !== 'untracked') && (
-              <button
-                onClick={() => setCommitDialogOpen(true)}
-                title="Commit"
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90"
-              >
-                <GitCommit className="size-3" />
-                Commit
-                <span className="text-[10px] bg-white/20 rounded px-1 leading-tight">
-                  {
-                    repoStatus.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length
-                  }
-                </span>
-              </button>
-            )}
 
           <SyncButton
             path={path}
@@ -879,14 +898,15 @@ export default function Project() {
           />
 
           <div className="relative">
-            <button
-              ref={repoMenuButtonRef}
-              onClick={() => setRepoMenuOpen((o) => !o)}
-              title="Ações do repositório"
-              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <MoreHorizontal className="size-3.5" />
-            </button>
+            <Tooltip label="Mais ações do repositório">
+              <button
+                ref={repoMenuButtonRef}
+                onClick={() => setRepoMenuOpen((o) => !o)}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            </Tooltip>
             {repoMenuOpen && repoMenuPos && createPortal(
               <div
                 ref={repoMenuPopupRef}
@@ -965,58 +985,78 @@ export default function Project() {
             )}
           </div>
 
-          <button
-            onClick={startAnalysis}
-            disabled={!canAnalyze}
-            className={cn(
-              'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium transition-all',
-              canAnalyze
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-                : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
-            )}
+          <Tooltip
+            label={
+              !canAnalyze
+                ? 'Sem alterações pra analisar'
+                : analysisState === 'done'
+                  ? 'Explicar de novo · IA revisa o diff'
+                  : 'Explicar diff · IA explica o que mudou'
+            }
           >
-            <Sparkles className="size-3" />
-            {analysisState === 'done' ? 'Reanalisar' : 'Analisar'}
-          </button>
+            <button
+              onClick={startAnalysis}
+              disabled={!canAnalyze}
+              className={cn(
+                'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium transition-all',
+                canAnalyze
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                  : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+              )}
+            >
+              <Sparkles className="size-3" />
+              {analysisState === 'done' ? 'Explicar de novo' : 'Explicar'}
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={toggleTurbo}
-            title={professorTurbo ? 'Modo Professor Turbo ativo' : 'Ativar modo Professor Turbo'}
-            className={cn(
-              'flex items-center gap-1.5 text-xs rounded-md px-2.5 h-7 border transition-all font-medium',
+          <Tooltip
+            label={
               professorTurbo
-                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400'
-                : 'bg-muted/50 border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
+                ? 'Professor Turbo ativo · explica conceitos a fundo'
+                : 'Ativar Professor Turbo · explicação detalhada'
+            }
           >
-            <Zap className="size-3" />
-            Turbo
-          </button>
+            <button
+              onClick={toggleTurbo}
+              className={cn(
+                'flex items-center gap-1.5 text-xs rounded-md px-2.5 h-7 border transition-all font-medium',
+                professorTurbo
+                  ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400'
+                  : 'bg-muted/50 border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Zap className="size-3" />
+              Turbo
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => navigate('/tests', { state: { projectPath: path } })}
-            title="Testes IA"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <FlaskConical className="size-3.5" />
-          </button>
+          <Tooltip label="Testes IA">
+            <button
+              onClick={() => navigate('/tests', { state: { projectPath: path } })}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <FlaskConical className="size-3.5" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setHistoryOpen(true)}
-            title="Histórico de análises"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <History className="size-3.5" />
-          </button>
+          <Tooltip label="Histórico de explicações">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <History className="size-3.5" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => fetchProject()}
-            title="Recarregar diff"
-            disabled={diffLoading}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-          >
-            <RefreshCw className={cn('size-3.5', diffLoading && 'animate-spin')} />
-          </button>
+          <Tooltip label="Recarregar diff">
+            <button
+              onClick={() => fetchProject()}
+              disabled={diffLoading}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={cn('size-3.5', diffLoading && 'animate-spin')} />
+            </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -1025,14 +1065,82 @@ export default function Project() {
         {/* SIDEBAR — floating, padding around, rounded corners */}
         {sidebarCollapsed ? (
           <div className="pl-2 pr-1 py-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(false)}
-              title="Expandir sidebar"
-              className="w-8 h-8 rounded-md border border-border/40 bg-card/60 hover:bg-accent/60 flex items-center justify-center text-muted-foreground hover:text-foreground"
-            >
-              <PanelLeftOpen className="size-4" />
-            </button>
+            <aside className="w-12 h-full flex flex-col items-center bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm py-2 gap-1">
+              <Tooltip label="Expandir sidebar" shortcut="⌘B" side="right">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <PanelLeftOpen className="size-4" />
+                </button>
+              </Tooltip>
+              <div className="w-6 h-px bg-border/40 my-1" />
+              <Tooltip label={`Repositório · ${repoName}`} side="right">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <FolderOpen className="size-4" />
+                </button>
+              </Tooltip>
+              {branch && (
+                <Tooltip label={`Branch · ${branch}`} side="right">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                  >
+                    <GitBranch className="size-4" />
+                  </button>
+                </Tooltip>
+              )}
+              <div className="w-6 h-px bg-border/40 my-1" />
+              <Tooltip
+                label={`Changes${files.length ? ` (${files.length} arquivo${files.length !== 1 ? 's' : ''})` : ' · sem alterações'}`}
+                side="right"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab('changes')
+                    setViewingCommitHash(null)
+                    setSidebarCollapsed(false)
+                  }}
+                  className={cn(
+                    'size-8 rounded-md flex items-center justify-center relative transition-colors',
+                    sidebarTab === 'changes'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <GitCommit className="size-4" />
+                  {files.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                      {files.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
+              <Tooltip label="Histórico de commits" side="right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab('history')
+                    setSidebarCollapsed(false)
+                  }}
+                  className={cn(
+                    'size-8 rounded-md flex items-center justify-center transition-colors',
+                    sidebarTab === 'history'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <History className="size-4" />
+                </button>
+              </Tooltip>
+            </aside>
           </div>
         ) : (
         <div className="pl-2 pr-1 py-2 flex-shrink-0">
@@ -1050,14 +1158,15 @@ export default function Project() {
                   onCloneRequest={() => setCloneOpen(true)}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed(true)}
-                title="Colapsar sidebar"
-                className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
-              >
-                <PanelLeftClose className="size-4" />
-              </button>
+              <Tooltip label="Colapsar sidebar" shortcut="⌘B">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <PanelLeftClose className="size-4" />
+                </button>
+              </Tooltip>
             </div>
             {branch && (
               <div className="mt-1.5">
@@ -1071,36 +1180,34 @@ export default function Project() {
                 />
               </div>
             )}
-            <div className="mt-2 px-3 pb-2">
-              <div className="inline-flex w-full rounded-md border border-border/40 bg-muted/30 p-0.5 gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSidebarTab('changes')
-                    setViewingCommitHash(null)
-                  }}
-                  className={cn(
-                    'flex-1 h-6 text-[10px] rounded-sm transition-colors',
-                    sidebarTab === 'changes'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Changes{files.length > 0 ? ` (${files.length})` : ''}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSidebarTab('history')}
-                  className={cn(
-                    'flex-1 h-6 text-[10px] rounded-sm transition-colors',
-                    sidebarTab === 'history'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  History
-                </button>
-              </div>
+            <div className="mt-1.5 flex w-full rounded-md border border-border/40 bg-muted/30 p-0.5 gap-0.5 h-7">
+              <button
+                type="button"
+                onClick={() => {
+                  setSidebarTab('changes')
+                  setViewingCommitHash(null)
+                }}
+                className={cn(
+                  'flex-1 text-[11px] rounded-sm transition-colors',
+                  sidebarTab === 'changes'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Changes{files.length > 0 ? ` (${files.length})` : ''}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab('history')}
+                className={cn(
+                  'flex-1 text-[11px] rounded-sm transition-colors',
+                  sidebarTab === 'history'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                History
+              </button>
             </div>
             {!diffLoading && (
               <div className="mt-2.5 flex items-center justify-between gap-2">
@@ -1150,33 +1257,40 @@ export default function Project() {
                 <button
                   onClick={showAllFiles}
                   className={cn(
-                    'w-full text-left px-3 py-2 flex items-center gap-2 text-xs transition-colors border-b border-border/30',
+                    'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
                     selectedFile === null
                       ? 'bg-primary/10 text-primary'
                       : 'hover:bg-accent/60 text-muted-foreground'
                   )}
                 >
                   <FileCode className="size-3 flex-shrink-0" />
-                  <span className="font-medium">Todos</span>
+                  <span className="font-medium">Todos os arquivos</span>
                 </button>
                 {files.map((f) => {
                   const { name, dir } = splitPath(f.path)
+                  const isSelected = selectedFile === f.path
                   return (
                     <button
                       key={f.path}
                       onClick={() => selectFile(f.path)}
+                      onMouseEnter={() => {
+                        if (getMediaKind(f.path)) {
+                          if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
+                          if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
+                        }
+                      }}
                       onDoubleClick={() =>
                         window.api.invoke('repository:openInEditor', { path, file: f.path })
                       }
                       title={`${f.path} · duplo-clique pra abrir no editor`}
                       className={cn(
-                        'w-full text-left px-3 py-2 flex items-start gap-2 text-xs transition-colors border-b border-border/20 last:border-0',
-                        selectedFile === f.path ? 'bg-primary/10' : 'hover:bg-accent/50'
+                        'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/15 last:border-0',
+                        isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
                       )}
                     >
                       <span
                         className={cn(
-                          'mt-0.5 w-3 text-[10px] font-bold flex-shrink-0',
+                          'w-3 text-[10px] font-bold flex-shrink-0 text-center',
                           f.status === 'added'
                             ? 'text-green-500'
                             : f.status === 'deleted'
@@ -1194,41 +1308,50 @@ export default function Project() {
                               ? 'R'
                               : 'M'}
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <div
+                      <span className="flex-1 min-w-0 truncate">
+                        {dir && (
+                          <span className="text-muted-foreground/50">{dir}</span>
+                        )}
+                        <span
                           className={cn(
-                            'truncate',
-                            selectedFile === f.path ? 'text-primary font-medium' : 'text-foreground/85'
+                            'font-medium',
+                            isSelected ? 'text-primary' : 'text-foreground/90'
                           )}
                         >
                           {name}
-                        </div>
-                        {dir && (
-                          <div className="text-[10px] text-muted-foreground/40 truncate font-mono">
-                            {dir}
-                          </div>
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] font-mono flex-shrink-0">
+                        {f.additions > 0 && (
+                          <span className="text-green-500">+{f.additions}</span>
                         )}
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {f.additions > 0 && (
-                            <span className="text-green-500 text-[10px] flex items-center gap-0.5">
-                              <Plus className="size-2" />
-                              {f.additions}
-                            </span>
-                          )}
-                          {f.deletions > 0 && (
-                            <span className="text-red-400 text-[10px] flex items-center gap-0.5">
-                              <Minus className="size-2" />
-                              {f.deletions}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                        {f.deletions > 0 && (
+                          <span className="text-red-400">−{f.deletions}</span>
+                        )}
+                      </span>
                     </button>
                   )
                 })}
               </>
             )}
           </div>
+          )}
+
+          {sidebarTab === 'changes' && repoStatus && branch && (
+            <CommitArea
+              path={path}
+              branch={branch}
+              stagedCount={
+                repoStatus.files.filter(
+                  (f) => f.staged !== null && f.staged !== 'untracked'
+                ).length
+              }
+              onCommitted={() => {
+                track('commit_inline_committed')
+                fetchProject()
+                fetchStatus()
+              }}
+            />
           )}
 
           <ProfileMenu />
@@ -1291,6 +1414,21 @@ export default function Project() {
               <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> carregando diff...
               </div>
+            ) : selectedFile && getMediaKind(selectedFile) ? (
+              <>
+                <MediaPreview
+                  path={path}
+                  file={selectedFile}
+                  status={files.find((f) => f.path === selectedFile)?.status ?? 'modified'}
+                  kind={getMediaKind(selectedFile)!}
+                />
+                {diffSwitching && (
+                  <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
+                    <Loader2 className="size-3 animate-spin" />
+                    carregando
+                  </div>
+                )}
+              </>
             ) : diff ? (
               <>
                 <DiffViewer
@@ -1326,7 +1464,7 @@ export default function Project() {
         <section className="h-full flex flex-col overflow-hidden min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Análise IA
+              Explicação IA
             </span>
             {providerDefault && (
               <span
@@ -1405,7 +1543,7 @@ export default function Project() {
       {viewingAnalysisId !== null && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs shadow-xl">
           <History className="size-3" />
-          Visualizando análise antiga
+          Visualizando explicação antiga
           <button
             type="button"
             onClick={() => {
@@ -1617,27 +1755,28 @@ function ProjectSwitcher({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'w-full flex items-center gap-2 p-2 rounded-lg transition-colors',
-          open ? 'bg-primary/10' : 'hover:bg-accent/60'
-        )}
-      >
-        <div className="size-7 rounded-md bg-primary/10 border border-primary/25 flex items-center justify-center flex-shrink-0">
-          <FolderOpen className="size-3.5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate">{currentName}</div>
-        </div>
-        <ChevronDown
+      <Tooltip label={`Trocar de repositório · ${currentPath}`}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
           className={cn(
-            'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
-            open && 'rotate-180'
+            'w-full flex items-center gap-2 p-2 rounded-lg transition-colors',
+            open ? 'bg-primary/10' : 'hover:bg-accent/60'
           )}
-        />
-      </button>
+        >
+          <Logo size={28} className="rounded-md flex-shrink-0 shadow-sm" />
+          <div className="flex-1 min-w-0 text-left flex items-center gap-1.5">
+            <FolderOpen className="size-3.5 text-muted-foreground/60 flex-shrink-0" />
+            <span className="font-semibold text-sm truncate">{currentName}</span>
+          </div>
+          <ChevronDown
+            className={cn(
+              'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
+              open && 'rotate-180'
+            )}
+          />
+        </button>
+      </Tooltip>
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1 z-[200] rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
           <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/40">
@@ -1834,10 +1973,10 @@ function EmptyAnalysis({
           <Sparkles className="size-5 text-muted-foreground/40" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Sem alterações pra analisar.
+          Sem alterações pra explicar.
         </p>
         <p className="text-[11px] text-muted-foreground/50 mt-1">
-          Edita um arquivo e clica em Analisar.
+          Edita um arquivo e clica em Explicar.
         </p>
       </div>
     )
@@ -1847,16 +1986,16 @@ function EmptyAnalysis({
       <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
         <Sparkles className="size-5 text-primary" />
       </div>
-      <p className="text-xs text-foreground/80 mb-1">Pronto pra analisar.</p>
+      <p className="text-xs text-foreground/80 mb-1">Pronto pra explicar.</p>
       <p className="text-[11px] text-muted-foreground/60 mb-4">
-        Clica em Analisar quando quiser revisar.
+        Clica em Explicar quando quiser entender o que mudou.
       </p>
       <button
         onClick={onAnalyze}
         className="flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       >
         <Sparkles className="size-3" />
-        Analisar agora
+        Explicar agora
       </button>
     </div>
   )
@@ -1869,7 +2008,7 @@ const ANALYSIS_MESSAGES = [
   'Cruzando contexto com senioridade...',
   'Detectando code smells e race conditions...',
   'Avaliando trade-offs arquiteturais...',
-  'Compondo análise final...'
+  'Compondo explicação final...'
 ]
 
 const L1 = [
@@ -2356,7 +2495,7 @@ function AnalysisTabs({
         {tab === 'concepts' && (
           concepts.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">
-              Nenhum conceito identificado nessa análise.
+              Nenhum conceito identificado nessa explicação.
             </p>
           ) : (
             <ul className="space-y-2.5">
@@ -2486,7 +2625,7 @@ function HistoryDrawer({
       >
         <header className="h-12 px-4 flex items-center gap-2 border-b border-border/40 flex-shrink-0">
           <History className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Histórico de análises</h2>
+          <h2 className="text-sm font-semibold">Histórico de explicações</h2>
           <button
             type="button"
             onClick={onClose}
@@ -2533,7 +2672,7 @@ function HistoryDrawer({
             <div className="text-center py-12 px-4">
               <Sparkles className="size-6 mx-auto mb-2 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">
-                Nenhuma análise salva{' '}
+                Nenhuma explicação salva{' '}
                 {filter === 'branch' ? 'nessa branch' : 'nesse projeto'} ainda.
               </p>
             </div>
@@ -2583,14 +2722,15 @@ function HistoryDrawer({
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => deleteItem(it.id, e)}
-                    title="Apagar"
-                    className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                  <Tooltip label="Apagar explicação">
+                    <button
+                      type="button"
+                      onClick={(e) => deleteItem(it.id, e)}
+                      className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </Tooltip>
                 </div>
               </button>
             ))

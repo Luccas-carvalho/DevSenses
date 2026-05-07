@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Search, X, ChevronUp, ChevronDown } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 
 interface Props {
   query: string
@@ -50,32 +51,35 @@ export default function DiffSearchBar({
       <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right">
         {matchCount === 0 ? '0/0' : `${currentIndex + 1}/${matchCount}`}
       </span>
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={matchCount === 0}
-        className="p-1 rounded hover:bg-accent/60 disabled:opacity-40"
-        title="Anterior (Shift+Enter)"
-      >
-        <ChevronUp className="size-3" />
-      </button>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={matchCount === 0}
-        className="p-1 rounded hover:bg-accent/60 disabled:opacity-40"
-        title="Próximo (Enter)"
-      >
-        <ChevronDown className="size-3" />
-      </button>
-      <button
-        type="button"
-        onClick={onClose}
-        className="p-1 rounded hover:bg-accent/60"
-        title="Fechar (Esc)"
-      >
-        <X className="size-3" />
-      </button>
+      <Tooltip label="Match anterior" shortcut="⇧⏎">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={matchCount === 0}
+          className="p-1 rounded hover:bg-accent/60 disabled:opacity-40"
+        >
+          <ChevronUp className="size-3" />
+        </button>
+      </Tooltip>
+      <Tooltip label="Próximo match" shortcut="⏎">
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={matchCount === 0}
+          className="p-1 rounded hover:bg-accent/60 disabled:opacity-40"
+        >
+          <ChevronDown className="size-3" />
+        </button>
+      </Tooltip>
+      <Tooltip label="Fechar busca" shortcut="Esc">
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded hover:bg-accent/60"
+        >
+          <X className="size-3" />
+        </button>
+      </Tooltip>
     </div>
   )
 }

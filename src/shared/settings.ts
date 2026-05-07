@@ -28,6 +28,7 @@ export interface SettingsValueMap {
   terminal_default: string
   update_strategy: 'merge' | 'rebase'
   auto_fetch: boolean
+  telemetry_enabled: boolean
 }
 
 export type SettingsKey = keyof SettingsValueMap
@@ -49,5 +50,6 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   editor_default: '',
   terminal_default: '',
   update_strategy: 'merge',
-  auto_fetch: true
+  auto_fetch: true,
+  telemetry_enabled: false
 }

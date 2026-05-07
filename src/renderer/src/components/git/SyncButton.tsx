@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, RefreshCw, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 import type { RepoStatus } from '@shared/git'
 
 interface Props {
@@ -71,44 +72,57 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
   return (
     <div ref={containerRef} className="relative">
       <div className="inline-flex h-7 rounded-md border border-border/60 bg-card/60 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => run(primaryAction)}
-          disabled={!!busy}
-          className="inline-flex items-center gap-1.5 px-2.5 text-[11px] font-medium text-foreground hover:bg-accent/60 disabled:opacity-60"
-          title={!hasUpstream ? 'Branch sem upstream — Push vai criar' : `Origin: ${status?.upstream}`}
+        <Tooltip
+          label={
+            !hasUpstream
+              ? 'Branch sem upstream — Push vai publicar'
+              : primaryAction === 'pull'
+                ? `Pull · ${behind} commit${behind !== 1 ? 's' : ''} pra puxar de ${status?.upstream}`
+                : primaryAction === 'push'
+                  ? `Push · ${ahead} commit${ahead !== 1 ? 's' : ''} pra enviar pra ${status?.upstream}`
+                  : `Fetch · buscar atualizações de ${status?.upstream}`
+          }
         >
-          {busy ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <RefreshCw className="size-3" />
-          )}
-          <span>{busy === 'push' ? 'Pushing' : busy === 'pull' ? 'Pulling' : busy === 'fetch' ? 'Fetching' : primaryLabel}</span>
-          {(ahead > 0 || behind > 0) && (
-            <span className="inline-flex items-center gap-1 ml-0.5 text-[10px] text-muted-foreground">
-              {behind > 0 && (
-                <span className="inline-flex items-center gap-0.5">
-                  <ArrowDown className="size-2.5" />
-                  {behind}
-                </span>
-              )}
-              {ahead > 0 && (
-                <span className="inline-flex items-center gap-0.5">
-                  <ArrowUp className="size-2.5" />
-                  {ahead}
-                </span>
-              )}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          disabled={!!busy}
-          className="inline-flex items-center px-1.5 border-l border-border/60 hover:bg-accent/60 disabled:opacity-60"
-        >
-          <ChevronDown className="size-3" />
-        </button>
+          <button
+            type="button"
+            onClick={() => run(primaryAction)}
+            disabled={!!busy}
+            className="inline-flex items-center gap-1.5 px-2.5 text-[11px] font-medium text-foreground hover:bg-accent/60 disabled:opacity-60"
+          >
+            {busy ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <RefreshCw className="size-3" />
+            )}
+            <span>{busy === 'push' ? 'Pushing' : busy === 'pull' ? 'Pulling' : busy === 'fetch' ? 'Fetching' : primaryLabel}</span>
+            {(ahead > 0 || behind > 0) && (
+              <span className="inline-flex items-center gap-1 ml-0.5 text-[10px] text-muted-foreground">
+                {behind > 0 && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <ArrowDown className="size-2.5" />
+                    {behind}
+                  </span>
+                )}
+                {ahead > 0 && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <ArrowUp className="size-2.5" />
+                    {ahead}
+                  </span>
+                )}
+              </span>
+            )}
+          </button>
+        </Tooltip>
+        <Tooltip label="Outras opções de sincronização">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            disabled={!!busy}
+            className="inline-flex items-center px-1.5 border-l border-border/60 hover:bg-accent/60 disabled:opacity-60"
+          >
+            <ChevronDown className="size-3" />
+          </button>
+        </Tooltip>
       </div>
 
       {error && (

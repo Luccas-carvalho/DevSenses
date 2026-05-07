@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SENIORITY_LABELS, type SeniorityLevel } from '@shared/seniority'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 
 const ORDER: SeniorityLevel[] = ['intern', 'junior', 'mid', 'senior']
 const MAX_AVATAR_BYTES = 1024 * 1024 // 1MB
@@ -62,14 +63,15 @@ export default function Profile() {
               initial
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-accent transition-colors"
-            title="Alterar foto"
-          >
-            <Camera className="size-3.5 text-muted-foreground" />
-          </button>
+          <Tooltip label="Alterar foto">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-accent transition-colors"
+            >
+              <Camera className="size-3.5 text-muted-foreground" />
+            </button>
+          </Tooltip>
         </div>
         <div className="flex-1">
           <p className="text-sm font-medium mb-1">{name || 'Sem nome'}</p>

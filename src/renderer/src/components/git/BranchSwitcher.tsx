@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { GitBranch, Plus, Search, Check, ChevronDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 import type { BranchDetailed } from '@shared/git'
 
 interface Props {
@@ -141,16 +142,18 @@ export default function BranchSwitcher({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
-      >
-        {busy ? <Loader2 className="size-3 animate-spin" /> : <GitBranch className="size-3" />}
-        <span className="font-medium font-mono max-w-[140px] truncate">{current}</span>
-        <ChevronDown className="size-3 text-muted-foreground" />
-      </button>
+      <Tooltip label={`Branch atual · ${current} · clica pra trocar`}>
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex w-full items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
+        >
+          {busy ? <Loader2 className="size-3 animate-spin flex-shrink-0" /> : <GitBranch className="size-3 flex-shrink-0" />}
+          <span className="font-medium font-mono flex-1 truncate text-left">{current}</span>
+          <ChevronDown className="size-3 text-muted-foreground flex-shrink-0" />
+        </button>
+      </Tooltip>
 
       {open && pos && createPortal(
         <div

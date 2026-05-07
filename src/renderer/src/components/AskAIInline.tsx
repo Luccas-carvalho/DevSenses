@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, Loader2, Send, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 import { useSettings } from '@/hooks/useSettings'
 import type { ProviderId } from '@shared/providers'
 
@@ -105,20 +106,23 @@ export default function AskAIInline({ context, contextLabel, className, iconClas
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen(true)
-        }}
-        title={contextLabel ? `Perguntar IA sobre: ${contextLabel}` : 'Perguntar IA sobre isso'}
-        className={cn(
-          'inline-flex items-center justify-center rounded-md p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0',
-          className
-        )}
+      <Tooltip
+        label={contextLabel ? `Perguntar IA sobre: ${contextLabel}` : 'Perguntar IA sobre isso'}
       >
-        <MessageCircle className={cn('size-3.5', iconClassName)} />
-      </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setOpen(true)
+          }}
+          className={cn(
+            'inline-flex items-center justify-center rounded-md p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0',
+            className
+          )}
+        >
+          <MessageCircle className={cn('size-3.5', iconClassName)} />
+        </button>
+      </Tooltip>
     )
   }
 
@@ -136,14 +140,15 @@ export default function AskAIInline({ context, contextLabel, className, iconClas
         <span className="text-[10px] uppercase tracking-wider text-primary/80 font-semibold">
           Perguntar IA · sobre esse trecho
         </span>
-        <button
-          type="button"
-          onClick={close}
-          className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded"
-          title="Fechar"
-        >
-          <X className="size-3.5" />
-        </button>
+        <Tooltip label="Fechar">
+          <button
+            type="button"
+            onClick={close}
+            className="text-muted-foreground/60 hover:text-foreground p-0.5 rounded"
+          >
+            <X className="size-3.5" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex items-end gap-2">

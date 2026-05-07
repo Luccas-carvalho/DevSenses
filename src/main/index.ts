@@ -7,6 +7,7 @@ import { getDb, closeDb } from './db/connection'
 import { runEmbeddedMigrations } from './db/migrations'
 import { registerIpcHandlers } from './ipc'
 import { installAppMenu } from './app-menu'
+import { installAutoUpdater } from './updater'
 
 ensureFullPath()
 
@@ -116,6 +117,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   installAppMenu()
   refreshDockMenu()
+  installAutoUpdater()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

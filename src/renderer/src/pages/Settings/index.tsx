@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Bot, Palette, Folder, BookOpen } from 'lucide-react'
+import { ArrowLeft, User, Bot, Palette, Folder, BookOpen, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Profile from './Profile'
 import AI from './AI'
 import Appearance from './Appearance'
 import Workspace from './Workspace'
 import Glossary from './Glossary'
+import Privacy from './Privacy'
 import Logo from '@/components/Logo'
 
 const TABS = [
@@ -14,7 +15,8 @@ const TABS = [
   { id: 'ai', label: 'IA', icon: Bot, component: AI },
   { id: 'appearance', label: 'Aparência', icon: Palette, component: Appearance },
   { id: 'workspace', label: 'Workspace', icon: Folder, component: Workspace },
-  { id: 'glossary', label: 'Glossário', icon: BookOpen, component: Glossary }
+  { id: 'glossary', label: 'Glossário', icon: BookOpen, component: Glossary },
+  { id: 'privacy', label: 'Privacidade', icon: Shield, component: Privacy }
 ] as const
 
 export default function Settings() {
@@ -29,7 +31,15 @@ export default function Settings() {
         className="h-10 flex items-stretch border-b border-border/40 bg-background/80 backdrop-blur-xl flex-shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="flex-1 pl-20" aria-hidden />
+        <div
+          className="flex-1 pl-20 flex items-center gap-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          aria-hidden
+        >
+          <Logo size={20} className="rounded-md flex-shrink-0" />
+          <span className="text-[12px] font-semibold">DevSenses</span>
+          <span className="text-[11px] text-muted-foreground">· Configurações</span>
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
