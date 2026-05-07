@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Undo2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSettings } from '@/hooks/useSettings'
+import AccountMenu from '@/components/AccountMenu'
 
 const SUMMARY_MAX = 72
 
@@ -24,17 +24,24 @@ export default function CommitArea({
   const [description, setDescription] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [lastCommitted, setLastCommitted] = useState<{
+    summary: string
+    at: number
+  } | null>(null)
+  const [undoBusy, setUndoBusy] = useState(false)
+  const [, setNowTick] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { value: avatar } = useSettings('user_avatar')
-  const { value: name } = useSettings('user_name')
-  const initial = (typeof name === 'string' && name.trim().length > 0
-    ? name.trim()[0]
-    : '?'
-  ).toUpperCase()
 
   useEffect(() => {
     setError('')
+    setLastCommitted(null)
   }, [path, branch])
+
+  useEffect(() => {
+    if (!lastCommitted) return
+    const t = window.setInterval(() => setNowTick((n) => n + 1), 30_000)
+    return () => window.clearInterval(t)
+  }, [lastCommitted])
 
   async function commit(): Promise<void> {
     if (!summary.trim() || busy || pendingCount === 0) return
@@ -61,24 +68,44 @@ export default function CommitArea({
       setError(r.error ?? 'Falha ao commitar')
       return
     }
+    const committedSummary = summary.trim()
     setSummary('')
     setDescription('')
+    setLastCommitted({ summary: committedSummary, at: Date.now() })
     onCommitted()
+  }
+
+  async function undo(): Promise<void> {
+    if (undoBusy) return
+    setUndoBusy(true)
+    setError('')
+    const r = await window.api.invoke('git:undoLastCommit', { path })
+    setUndoBusy(false)
+    if (!r.ok) {
+      setError(r.error ?? 'Falha ao desfazer commit')
+      return
+    }
+    setLastCommitted(null)
+    onCommitted()
+  }
+
+  function relativeTime(ts: number): string {
+    const diffSec = Math.floor((Date.now() - ts) / 1000)
+    if (diffSec < 5) return 'agora'
+    if (diffSec < 60) return `há ${diffSec}s`
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `há ${diffMin}m`
+    const diffH = Math.floor(diffMin / 60)
+    return `há ${diffH}h`
   }
 
   const remaining = SUMMARY_MAX - summary.length
   const canCommit = !busy && pendingCount > 0 && summary.trim().length > 0
 
   return (
-    <div className="border-t border-border/40 bg-card/40 p-2.5 flex flex-col gap-1.5">
+    <div className="m-2 mt-1 rounded-xl border border-border/60 bg-background/70 shadow-sm p-2.5 flex flex-col gap-1.5">
       <div className="flex items-start gap-2">
-        <div className="size-7 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-[11px] font-bold text-primary-foreground overflow-hidden flex-shrink-0">
-          {avatar ? (
-            <img src={avatar} alt="" className="w-full h-full object-cover" />
-          ) : (
-            initial
-          )}
-        </div>
+        <AccountMenu size={28} side="above" />
         <input
           ref={inputRef}
           value={summary}
@@ -91,7 +118,7 @@ export default function CommitArea({
           }}
           placeholder="Summary (obrigatório)"
           disabled={busy}
-          className="flex-1 rounded-md border border-border/60 bg-background/80 px-2.5 h-7 text-[12px] focus:outline-none focus:border-primary/60 disabled:opacity-50"
+          className="flex-1 rounded-md border border-border/70 bg-card px-2.5 h-7 text-[12px] focus:outline-none focus:border-primary/60 disabled:opacity-50"
         />
       </div>
       <textarea
@@ -106,7 +133,7 @@ export default function CommitArea({
         placeholder="Descrição (opcional)"
         rows={3}
         disabled={busy}
-        className="w-full resize-none rounded-md border border-border/60 bg-background/80 px-2.5 py-1.5 text-[11px] leading-snug focus:outline-none focus:border-primary/60 disabled:opacity-50"
+        className="w-full resize-none rounded-md border border-border/70 bg-card px-2.5 py-1.5 text-[11px] leading-snug focus:outline-none focus:border-primary/60 disabled:opacity-50"
       />
       <div className="flex items-center justify-between text-[9px] text-muted-foreground/60 px-0.5">
         <span>⌘⏎ pra commitar</span>
@@ -134,7 +161,7 @@ export default function CommitArea({
         disabled={!canCommit}
         title={`Commit ${pendingCount} arquivo${pendingCount !== 1 ? 's' : ''} em ${branch}`}
         className={cn(
-          'h-9 w-full rounded-md text-[12px] font-semibold inline-flex items-center gap-1.5 px-3 transition-colors min-w-0 overflow-hidden',
+          'h-7 w-full rounded-md text-[11px] font-medium inline-flex items-center gap-1.5 px-2.5 transition-colors min-w-0 overflow-hidden',
           canCommit
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'
             : 'bg-muted text-muted-foreground/60 cursor-not-allowed'
@@ -148,6 +175,29 @@ export default function CommitArea({
           {branch}
         </span>
       </button>
+      {lastCommitted && (
+        <div className="mt-1 flex items-center gap-2 rounded-md bg-green-500/10 border border-green-500/30 px-2 py-1.5">
+          <Check className="size-3 text-green-500 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-green-500 font-medium leading-tight">
+              Commitado {relativeTime(lastCommitted.at)}
+            </div>
+            <div className="text-[11px] text-foreground/80 truncate" title={lastCommitted.summary}>
+              {lastCommitted.summary}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={undo}
+            disabled={undoBusy}
+            title="Desfaz o último commit · mantém alterações no working tree"
+            className="flex-shrink-0 inline-flex items-center gap-1 px-2 h-6 text-[10px] rounded border border-border/60 bg-card/60 hover:bg-accent/60 disabled:opacity-50"
+          >
+            {undoBusy ? <Loader2 className="size-2.5 animate-spin" /> : <Undo2 className="size-2.5" />}
+            Desfazer
+          </button>
+        </div>
+      )}
     </div>
   )
 }

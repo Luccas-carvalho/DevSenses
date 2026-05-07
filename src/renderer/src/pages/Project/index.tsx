@@ -30,7 +30,10 @@ import {
   ExternalLink,
   MoreHorizontal,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Search,
+  Download,
+  Star
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -39,7 +42,12 @@ import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import {
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+  type ImperativePanelHandle
+} from 'react-resizable-panels'
 import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
@@ -61,9 +69,12 @@ import BranchSwitcher from '@/components/git/BranchSwitcher'
 import HistoryTab from '@/components/git/HistoryTab'
 import ConflictResolver from '@/components/git/ConflictResolver'
 import MediaPreview, { getMediaKind } from '@/components/git/MediaPreview'
+import NoChangesEmptyState from '@/components/git/NoChangesEmptyState'
+import ContextMenu, { type ContextMenuItem } from '@/components/ui/ContextMenu'
 import { prefetchBlob, trimCache, clearCacheFor } from '@/lib/mediaCache'
 import Tooltip from '@/components/ui/Tooltip'
 import Logo from '@/components/Logo'
+import AccountMenu from '@/components/AccountMenu'
 import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -364,6 +375,7 @@ export default function Project() {
   const [cloneOpen, setCloneOpen] = useState(false)
   const [commitDialogOpen, setCommitDialogOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
   const [repoMenuPos, setRepoMenuPos] = useState<{ left: number; top: number; width: number } | null>(null)
   const repoMenuButtonRef = useRef<HTMLButtonElement>(null)
@@ -455,6 +467,25 @@ export default function Project() {
 
   const streamIdRef = useRef<string | null>(null)
   const analysisRef = useRef<HTMLDivElement>(null)
+  const analysisPanelRef = useRef<ImperativePanelHandle>(null)
+  const [analysisAnimating, setAnalysisAnimating] = useState(false)
+
+  const expandAnalysisPanel = useCallback(() => {
+    const p = analysisPanelRef.current
+    if (!p) return
+    if (p.getSize() < 5) {
+      setAnalysisAnimating(true)
+      p.resize(40)
+      window.setTimeout(() => setAnalysisAnimating(false), 320)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Garante que panel inicia colapsado, mesmo que lib persista state interno
+    const p = analysisPanelRef.current
+    if (p && p.getSize() > 0) p.collapse()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const selectedFileRef = useRef<string | null>(null)
   const fetchInFlightRef = useRef(false)
   const fetchPendingRef = useRef(false)
@@ -885,6 +916,129 @@ export default function Project() {
     setDiff(fullDiff)
   }
 
+  async function copyText(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      /* noop */
+    }
+  }
+
+  function buildFileMenu(file: { path: string; status: string }): ContextMenuItem[] {
+    const dir = file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : ''
+    const ext = file.path.includes('.') ? file.path.slice(file.path.lastIndexOf('.') + 1) : ''
+    const dirParts = dir.length > 0 ? dir.split('/') : []
+    const folderItems: ContextMenuItem[] =
+      dirParts.length === 0
+        ? [{ type: 'item', label: '(arquivo na raiz)', disabled: true }]
+        : dirParts.map((_, idx) => {
+            const sub = dirParts.slice(0, idx + 1).join('/') + '/'
+            return {
+              type: 'item',
+              label: sub,
+              onClick: () => {
+                window.api.invoke('git:appendGitignore', { path, patterns: [sub] })
+              }
+            }
+          })
+    return [
+      {
+        type: 'item',
+        label: 'Descartar alterações',
+        primary: true,
+        onClick: () => {
+          window.api.invoke('git:discardFile', { path, file: file.path }).then(() => {
+            fetchProject()
+            fetchStatus()
+          })
+        }
+      },
+      { type: 'separator' },
+      {
+        type: 'item',
+        label: 'Ignorar arquivo (adicionar ao .gitignore)',
+        disabled: file.status !== 'added',
+        onClick: () => {
+          window.api.invoke('git:appendGitignore', { path, patterns: [file.path] }).then(() => {
+            fetchProject()
+            fetchStatus()
+          })
+        }
+      },
+      {
+        type: dir.length > 0 ? 'submenu' : 'item',
+        label: 'Ignorar pasta (adicionar ao .gitignore)',
+        disabled: dir.length === 0,
+        items: folderItems
+      },
+      ext.length > 0
+        ? {
+            type: 'item',
+            label: `Ignorar todos .${ext} (adicionar ao .gitignore)`,
+            onClick: () => {
+              window.api.invoke('git:appendGitignore', { path, patterns: [`*.${ext}`] }).then(() => {
+                fetchProject()
+                fetchStatus()
+              })
+            }
+          }
+        : { type: 'item', label: 'Sem extensão pra ignorar', disabled: true },
+      { type: 'separator' },
+      {
+        type: 'item',
+        label: 'Copiar caminho relativo',
+        onClick: () => copyText(file.path)
+      },
+      {
+        type: 'item',
+        label: 'Copiar caminho absoluto',
+        onClick: () => copyText(`${path}/${file.path}`)
+      },
+      { type: 'separator' },
+      {
+        type: 'item',
+        label: 'Mostrar no Finder',
+        onClick: () => window.api.invoke('repository:openInFinder', { path, file: file.path })
+      },
+      {
+        type: 'item',
+        label: 'Abrir no editor',
+        onClick: () => window.api.invoke('repository:openInEditor', { path, file: file.path })
+      },
+      {
+        type: 'item',
+        label: 'Abrir com app padrão',
+        onClick: () => window.api.invoke('repository:openFile', { path, file: file.path })
+      }
+    ]
+  }
+
+  function buildAllFilesMenu(): ContextMenuItem[] {
+    const hasChanges = files.length > 0
+    return [
+      {
+        type: 'item',
+        label: 'Descartar todas as alterações…',
+        destructive: true,
+        disabled: !hasChanges,
+        onClick: () => setDiscardOpen(true)
+      },
+      {
+        type: 'item',
+        label: 'Stash de todas as alterações',
+        disabled: !hasChanges,
+        onClick: () => {
+          window.api
+            .invoke('git:stash', { path, includeUntracked: true })
+            .then(() => {
+              fetchProject()
+              fetchStatus()
+            })
+        }
+      }
+    ]
+  }
+
   async function toggleTurbo(): Promise<void> {
     const next = !professorTurbo
     setProfessorTurbo(next)
@@ -893,6 +1047,7 @@ export default function Project() {
 
   function startAnalysis(): void {
     if (!fullDiff || files.length === 0 || !settingsReady) return
+    expandAnalysisPanel()
     runAnalysis(fullDiff)
   }
 
@@ -1166,6 +1321,10 @@ export default function Project() {
                   <History className="size-4" />
                 </button>
               </Tooltip>
+              <div className="mt-auto pt-1 flex flex-col items-center gap-1">
+                <div className="w-6 h-px bg-border/40 my-1" />
+                <AccountMenu size={28} side="right" />
+              </div>
             </aside>
           </div>
         ) : (
@@ -1206,7 +1365,7 @@ export default function Project() {
                 />
               </div>
             )}
-            <div className="mt-1.5 flex w-full rounded-md border border-border/40 bg-muted/30 p-0.5 gap-0.5 h-7">
+            <div className="mt-1.5 flex w-full rounded-md border border-border/60 bg-background/60 p-0.5 gap-0.5 h-7">
               <button
                 type="button"
                 onClick={() => {
@@ -1216,8 +1375,8 @@ export default function Project() {
                 className={cn(
                   'flex-1 text-[11px] rounded-sm transition-colors',
                   sidebarTab === 'changes'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
                 )}
               >
                 Changes{files.length > 0 ? ` (${files.length})` : ''}
@@ -1228,8 +1387,8 @@ export default function Project() {
                 className={cn(
                   'flex-1 text-[11px] rounded-sm transition-colors',
                   sidebarTab === 'history'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
                 )}
               >
                 History
@@ -1282,6 +1441,10 @@ export default function Project() {
               <>
                 <button
                   onClick={showAllFiles}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setCtxMenu({ x: e.clientX, y: e.clientY, items: buildAllFilesMenu() })
+                  }}
                   className={cn(
                     'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
                     selectedFile === null
@@ -1299,6 +1462,14 @@ export default function Project() {
                     <button
                       key={f.path}
                       onClick={() => selectFile(f.path)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setCtxMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          items: buildFileMenu({ path: f.path, status: f.status })
+                        })
+                      }}
                       onMouseEnter={() => {
                         if (getMediaKind(f.path)) {
                           if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
@@ -1308,7 +1479,7 @@ export default function Project() {
                       onDoubleClick={() =>
                         window.api.invoke('repository:openInEditor', { path, file: f.path })
                       }
-                      title={`${f.path} · duplo-clique pra abrir no editor`}
+                      title={`${f.path} · duplo-clique edita · botão direito pra opções`}
                       className={cn(
                         'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/15 last:border-0',
                         isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
@@ -1363,7 +1534,7 @@ export default function Project() {
           </div>
           )}
 
-          {sidebarTab === 'changes' && branch && (() => {
+          {sidebarTab === 'changes' && branch ? (() => {
             const allChanges = (repoStatus?.files ?? []).filter(
               (f) => f.staged !== null || f.unstaged !== null
             )
@@ -1383,16 +1554,15 @@ export default function Project() {
                 }}
               />
             )
-          })()}
-
-          <ProfileMenu />
+          })() : (
+            <ProfileMenu />
+          )}
         </aside>
         </div>
         )}
 
         <PanelGroup
           direction="horizontal"
-          autoSaveId="ds-diff-analysis-split"
           className="flex-1 min-w-0"
         >
         <Panel defaultSize={60} minSize={30}>
@@ -1478,9 +1648,17 @@ export default function Project() {
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-xs text-muted-foreground">Sem alterações.</p>
-              </div>
+              <NoChangesEmptyState
+                path={path}
+                branch={branch}
+                hasUpstream={!!repoStatus?.upstream}
+                hasRemote={!!remoteWebUrl || !!repoStatus?.upstream}
+                onPreviewPR={() => setPrDialogOpen(true)}
+                onPublished={() => {
+                  fetchProject()
+                  fetchStatus()
+                }}
+              />
             )}
             </>
             )}
@@ -1490,7 +1668,15 @@ export default function Project() {
 
         <PanelResizeHandle className="w-1 bg-border/30 hover:bg-primary/60 active:bg-primary transition-colors" />
 
-        <Panel defaultSize={40} minSize={20} collapsible collapsedSize={0} id="analysis-panel">
+        <Panel
+          ref={analysisPanelRef}
+          defaultSize={0}
+          minSize={20}
+          collapsible
+          collapsedSize={0}
+          id="analysis-panel"
+          className={analysisAnimating ? 'ds-panel-animating' : undefined}
+        >
         {/* ANALYSIS */}
         <section className="h-full flex flex-col overflow-hidden min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
@@ -1561,6 +1747,7 @@ export default function Project() {
           setDiff(record.diff)
           setSelectedFile(null)
           setAnalysisState('done')
+          expandAnalysisPanel()
         }}
         onExitView={() => {
           persistedAnalysisRef.current = ''
@@ -1670,6 +1857,15 @@ export default function Project() {
         }}
       />
 
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
+
       <ConfirmDialog
         open={discardOpen}
         title="Descartar todas as mudanças?"
@@ -1732,6 +1928,52 @@ interface RecentEntry {
   path: string
   name: string
   lastOpenedAt: number
+  favorite: boolean
+}
+
+function RepoRow({
+  entry,
+  onPick,
+  onToggleFav
+}: {
+  entry: RecentEntry
+  onPick: () => void
+  onToggleFav: () => void
+}): React.ReactElement {
+  return (
+    <div
+      className="w-full px-3 h-8 flex items-center gap-2 hover:bg-accent transition-colors group"
+      title={entry.path}
+    >
+      <button
+        type="button"
+        onClick={onPick}
+        className="flex-1 min-w-0 flex items-center gap-2 text-left"
+      >
+        <Folder className="size-3.5 text-muted-foreground/60 flex-shrink-0" />
+        <span className="text-[12px] font-medium text-foreground truncate">{entry.name}</span>
+        <span className="text-[10px] text-muted-foreground/50 font-mono truncate flex-1 min-w-0">
+          {entry.path}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleFav()
+        }}
+        title={entry.favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+        className={cn(
+          'flex-shrink-0 size-6 rounded flex items-center justify-center transition-all',
+          entry.favorite
+            ? 'text-yellow-400 hover:text-yellow-300'
+            : 'text-muted-foreground/30 hover:text-yellow-400 opacity-0 group-hover:opacity-100'
+        )}
+      >
+        <Star className={cn('size-3.5', entry.favorite && 'fill-current')} />
+      </button>
+    </div>
+  )
 }
 
 function ProjectSwitcher({
@@ -1770,10 +2012,51 @@ function ProjectSwitcher({
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
-  async function pickFolder(): Promise<void> {
+  const [addOpen, setAddOpen] = useState(false)
+  const [addPos, setAddPos] = useState<{ left: number; top: number } | null>(null)
+  const addBtnRef = useRef<HTMLButtonElement>(null)
+  const addPopupRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!addOpen) return
+    const rect = addBtnRef.current?.getBoundingClientRect()
+    if (rect) {
+      const w = 220
+      const h = 122
+      setAddPos({
+        left: Math.min(window.innerWidth - w - 8, rect.right + 6),
+        top: Math.min(window.innerHeight - h - 8, Math.max(8, rect.top))
+      })
+    }
+    function onClick(e: MouseEvent): void {
+      const t = e.target as Node
+      if (addBtnRef.current?.contains(t) || addPopupRef.current?.contains(t)) return
+      setAddOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [addOpen])
+
+  async function pickExisting(): Promise<void> {
+    setAddOpen(false)
     setOpen(false)
     const r = await window.api.invoke('workspace:pickFolder', undefined)
     if (r) onSwitch(r.path)
+  }
+
+  async function createNew(): Promise<void> {
+    setAddOpen(false)
+    const r = await window.api.invoke('repository:pickFolder', {
+      title: 'Pasta pra novo repositório'
+    })
+    if (!r) return
+    const init = await window.api.invoke('git:init', { dest: r.path })
+    if (!init.ok) {
+      window.alert(init.error ?? 'Falha ao inicializar repositório')
+      return
+    }
+    setOpen(false)
+    onSwitch(init.path ?? r.path)
   }
 
   const others = recents.filter((r) => r.path !== currentPath)
@@ -1783,6 +2066,21 @@ function ProjectSwitcher({
         (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)
       )
     : others
+  const favorites = filtered.filter((r) => r.favorite)
+  const nonFavorites = filtered.filter((r) => !r.favorite)
+
+  async function toggleFavorite(r: RecentEntry): Promise<void> {
+    const next = !r.favorite
+    setRecents((prev) =>
+      prev
+        .map((x) => (x.path === r.path ? { ...x, favorite: next } : x))
+        .sort((a, b) => {
+          if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
+          return b.lastOpenedAt - a.lastOpenedAt
+        })
+    )
+    await window.api.invoke('workspace:setFavorite', { path: r.path, favorite: next })
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -1810,65 +2108,110 @@ function ProjectSwitcher({
       </Tooltip>
       {open && (
         <div className="absolute left-0 right-0 top-full mt-1 z-[200] rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
-          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/40">
-            <input
-              ref={inputRef}
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Filtrar repositórios…"
-              className="flex-1 bg-transparent text-[11px] focus:outline-none"
-            />
-          </div>
-          {filtered.length > 0 ? (
-            <div className="max-h-64 overflow-y-auto">
-              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 border-b border-border/30">
-                Recentes ({filtered.length})
-              </div>
-              {filtered.map((r) => (
-                <button
-                  key={r.path}
-                  type="button"
-                  onClick={() => {
-                    setOpen(false)
-                    onSwitch(r.path)
-                  }}
-                  className="w-full px-3 py-2 flex items-center gap-2 hover:bg-accent transition-colors text-left"
-                >
-                  <Folder className="size-3.5 text-muted-foreground/70 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">{r.name}</div>
-                    <div className="text-[10px] text-muted-foreground/60 font-mono truncate">
-                      {r.path}
-                    </div>
-                  </div>
-                </button>
-              ))}
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/40 min-w-0">
+            <div className="flex-1 min-w-0 flex items-center gap-1.5 px-2 h-7 rounded-md border border-border/50 bg-background/60">
+              <Search className="size-3 text-muted-foreground/60 flex-shrink-0" />
+              <input
+                ref={inputRef}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filtrar…"
+                className="flex-1 min-w-0 bg-transparent text-[11px] focus:outline-none"
+              />
             </div>
-          ) : (
-            <p className="px-3 py-3 text-[11px] text-muted-foreground italic">
-              {q ? 'Nada com esse filtro.' : 'Sem outros projetos abertos.'}
-            </p>
+            <Tooltip label="Adicionar repositório">
+              <button
+                ref={addBtnRef}
+                type="button"
+                onClick={() => setAddOpen((o) => !o)}
+                className="inline-flex items-center justify-center size-7 rounded-md border border-border/50 bg-card/60 hover:bg-accent/60 flex-shrink-0"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+          {addOpen && addPos && createPortal(
+            <div
+              ref={addPopupRef}
+              className="fixed rounded-lg border border-border bg-popover shadow-2xl overflow-hidden z-[2147483000]"
+              style={{ left: addPos.left, top: addPos.top, width: 220 }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setAddOpen(false)
+                  setOpen(false)
+                  onCloneRequest()
+                }}
+                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left"
+              >
+                <Download className="size-3.5 text-muted-foreground" />
+                Clonar repositório…
+              </button>
+              <button
+                type="button"
+                onClick={createNew}
+                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left border-t border-border/40"
+              >
+                <FolderPlus className="size-3.5 text-muted-foreground" />
+                Criar novo repositório…
+              </button>
+              <button
+                type="button"
+                onClick={pickExisting}
+                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left border-t border-border/40"
+              >
+                <FolderOpen className="size-3.5 text-muted-foreground" />
+                Adicionar existente…
+              </button>
+            </div>,
+            document.body
           )}
-          <div className="border-t border-border/40">
-            <button
-              type="button"
-              onClick={pickFolder}
-              className="w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left"
-            >
-              <FolderPlus className="size-3.5 text-muted-foreground" />
-              Abrir outro projeto
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onCloneRequest()
-              }}
-              className="w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left border-t border-border/30"
-            >
-              <FolderPlus className="size-3.5 text-muted-foreground" />
-              Clonar repositório…
-            </button>
+          <div className="max-h-72 overflow-y-auto">
+            {filtered.length > 0 ? (
+              <>
+                {favorites.length > 0 && (
+                  <>
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      Favoritos ({favorites.length})
+                    </div>
+                    {favorites.map((r) => (
+                      <RepoRow
+                        key={r.path}
+                        entry={r}
+                        onPick={() => {
+                          setOpen(false)
+                          onSwitch(r.path)
+                        }}
+                        onToggleFav={() => toggleFavorite(r)}
+                      />
+                    ))}
+                  </>
+                )}
+                {nonFavorites.length > 0 && (
+                  <>
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      Recentes ({nonFavorites.length})
+                    </div>
+                    {nonFavorites.map((r) => (
+                      <RepoRow
+                        key={r.path}
+                        entry={r}
+                        onPick={() => {
+                          setOpen(false)
+                          onSwitch(r.path)
+                        }}
+                        onToggleFav={() => toggleFavorite(r)}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="px-3 py-4 text-[11px] text-muted-foreground italic">
+                {q ? 'Nada com esse filtro.' : 'Sem outros projetos abertos.'}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -1919,7 +2262,7 @@ function ProfileMenu() {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <div ref={ref} className="border-t border-border/40 p-2 relative">
+    <div ref={ref} className="m-2 mt-1 rounded-xl border border-border/60 bg-background/70 shadow-sm p-1.5 relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(

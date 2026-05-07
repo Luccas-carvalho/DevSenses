@@ -95,6 +95,15 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_telemetry_event ON telemetry_events(event);
       CREATE INDEX IF NOT EXISTS idx_telemetry_flushed ON telemetry_events(flushed, created_at);
     `
+  },
+  {
+    version: 5,
+    name: 'recent_workspaces_favorite',
+    sql: `
+      ALTER TABLE recent_workspaces ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+      CREATE INDEX IF NOT EXISTS recent_workspaces_favorite_idx
+        ON recent_workspaces (favorite DESC, last_opened_at DESC);
+    `
   }
 ]
 

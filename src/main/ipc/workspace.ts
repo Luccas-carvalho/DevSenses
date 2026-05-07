@@ -123,15 +123,27 @@ export function registerWorkspaceHandlers(): void {
     const rows = db
       .prepare(
         `
-      SELECT path, name, last_opened_at as lastOpenedAt
+      SELECT path, name, last_opened_at as lastOpenedAt, favorite
       FROM recent_workspaces
-      ORDER BY last_opened_at DESC
-      LIMIT 10
+      ORDER BY favorite DESC, last_opened_at DESC
+      LIMIT 30
     `
       )
-      .all() as { path: string; name: string; lastOpenedAt: number }[]
-    return rows
+      .all() as { path: string; name: string; lastOpenedAt: number; favorite: number }[]
+    return rows.map((r) => ({ ...r, favorite: r.favorite === 1 }))
   })
+
+  ipcMain.handle(
+    'workspace:setFavorite',
+    (_, p: { path: string; favorite: boolean }) => {
+      const db = getDb()
+      db.prepare('UPDATE recent_workspaces SET favorite = ? WHERE path = ?').run(
+        p.favorite ? 1 : 0,
+        p.path
+      )
+      return { ok: true }
+    }
+  )
 
   ipcMain.handle(
     'workspace:openProject',

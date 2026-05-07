@@ -53,6 +53,15 @@ export function registerRepositoryHandlers(): void {
       return { ok: false, error: (e as Error).message }
     }
   })
+  ipcMain.handle('repository:openFile', async (_, p: IpcContract['repository:openFile']['request']) => {
+    try {
+      const err = await shell.openPath(`${p.path}/${p.file}`)
+      if (err) return { ok: false, error: err }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: (e as Error).message }
+    }
+  })
   ipcMain.handle('repository:openUrl', async (_, p: IpcContract['repository:openUrl']['request']) => {
     try {
       await shell.openExternal(p.url)

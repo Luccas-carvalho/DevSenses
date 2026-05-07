@@ -174,6 +174,32 @@ export async function commit(
   return { ok: true, hash: hashOut.stdout.trim() }
 }
 
+export async function undoLastCommit(
+  repoPath: string
+): Promise<{ ok: boolean; error?: string }> {
+  const parentR = await gitRun(repoPath, ['rev-parse', '--verify', 'HEAD~1'])
+  if (!parentR.ok) {
+    return { ok: false, error: 'Sem commit anterior pra desfazer (HEAD inicial).' }
+  }
+  const r = await gitRun(repoPath, ['reset', '--mixed', 'HEAD~1'])
+  if (!r.ok) return { ok: false, error: r.stderr || r.stdout }
+  return { ok: true }
+}
+
+export async function lastCommit(
+  repoPath: string
+): Promise<{ hash: string; subject: string; body: string } | null> {
+  const sep = '\u0001'
+  const r = await gitRun(repoPath, [
+    'log',
+    '-1',
+    `--format=%H${sep}%s${sep}%b`
+  ])
+  if (!r.ok || !r.stdout.trim()) return null
+  const [hash, subject, body] = r.stdout.trim().split(sep)
+  return { hash, subject: subject ?? '', body: (body ?? '').trim() }
+}
+
 export async function push(
   repoPath: string,
   opts: { force?: boolean; setUpstream?: boolean } = {}
@@ -229,6 +255,37 @@ export async function aheadBehind(
     behind: parseInt(parts[0] ?? '0', 10) || 0,
     ahead: parseInt(parts[1] ?? '0', 10) || 0,
     upstream
+  }
+}
+
+export async function appendGitignore(
+  repoPath: string,
+  patterns: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  const fs = await import('node:fs/promises')
+  const path = await import('node:path')
+  const file = path.join(repoPath, '.gitignore')
+  try {
+    let existing = ''
+    try {
+      existing = await fs.readFile(file, 'utf8')
+    } catch {
+      existing = ''
+    }
+    const existingLines = new Set(
+      existing
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+    )
+    const toAdd = patterns.filter((p) => !existingLines.has(p.trim()))
+    if (toAdd.length === 0) return { ok: true }
+    const sep = existing.length > 0 && !existing.endsWith('\n') ? '\n' : ''
+    const block = sep + toAdd.join('\n') + '\n'
+    await fs.appendFile(file, block, 'utf8')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
   }
 }
 
@@ -387,6 +444,34 @@ export async function branchesDetailed(
         upstream: upstream?.trim() || null
       }
     })
+}
+
+export async function recentCheckouts(
+  repoPath: string,
+  limit = 20
+): Promise<string[]> {
+  // Parse reflog "checkout: moving from X to Y" — pega Y (branch destino)
+  const r = await gitRun(repoPath, [
+    'reflog',
+    '--pretty=format:%gs',
+    `-n`,
+    String(limit * 4)
+  ])
+  if (!r.ok) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const line of r.stdout.split('\n')) {
+    const m = line.match(/^checkout: moving from .+ to (.+)$/)
+    if (!m) continue
+    const branch = m[1].trim()
+    // Filtra commits SHA (40 chars hex) — só mantém branch names
+    if (/^[0-9a-f]{7,40}$/.test(branch)) continue
+    if (seen.has(branch)) continue
+    seen.add(branch)
+    out.push(branch)
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 export async function prPreview(

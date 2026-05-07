@@ -48,7 +48,11 @@ export interface IpcContract {
   }
   'workspace:recent': {
     request: void
-    response: Array<{ path: string; name: string; lastOpenedAt: number }>
+    response: Array<{ path: string; name: string; lastOpenedAt: number; favorite: boolean }>
+  }
+  'workspace:setFavorite': {
+    request: { path: string; favorite: boolean }
+    response: { ok: boolean }
   }
 
   'workspace:openProject': {
@@ -101,6 +105,10 @@ export interface IpcContract {
     request: { path: string }
     response: BranchDetailed[]
   }
+  'git:recentCheckouts': {
+    request: { path: string; limit?: number }
+    response: string[]
+  }
   'workspace:checkoutBranch': {
     request: { path: string; branch: string }
     response: { ok: boolean; error?: string }
@@ -121,6 +129,14 @@ export interface IpcContract {
   'git:commit': {
     request: { path: string; summary: string; description?: string; amend?: boolean }
     response: { ok: boolean; hash?: string; error?: string }
+  }
+  'git:undoLastCommit': {
+    request: { path: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:lastCommit': {
+    request: { path: string }
+    response: { hash: string; subject: string; body: string } | null
   }
   'git:push': {
     request: { path: string; force?: boolean; setUpstream?: boolean }
@@ -172,6 +188,10 @@ export interface IpcContract {
   }
   'git:discardFile': {
     request: { path: string; file: string }
+    response: { ok: boolean; error?: string }
+  }
+  'git:appendGitignore': {
+    request: { path: string; patterns: string[] }
     response: { ok: boolean; error?: string }
   }
   'git:stash': {
@@ -259,6 +279,10 @@ export interface IpcContract {
   }
   'repository:openInFinder': {
     request: { path: string; file?: string }
+    response: { ok: boolean; error?: string }
+  }
+  'repository:openFile': {
+    request: { path: string; file: string }
     response: { ok: boolean; error?: string }
   }
   'repository:openUrl': {

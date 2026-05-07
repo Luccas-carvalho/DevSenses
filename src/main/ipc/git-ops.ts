@@ -20,6 +20,15 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:commit', async (_, p: IpcContract['git:commit']['request']) => {
     return ops.commit(p.path, p.summary, p.description, p.amend)
   })
+  ipcMain.handle(
+    'git:undoLastCommit',
+    async (_, p: IpcContract['git:undoLastCommit']['request']) => {
+      return ops.undoLastCommit(p.path)
+    }
+  )
+  ipcMain.handle('git:lastCommit', async (_, p: IpcContract['git:lastCommit']['request']) => {
+    return ops.lastCommit(p.path)
+  })
   ipcMain.handle('git:push', async (_, p: IpcContract['git:push']['request']) => {
     return ops.push(p.path, { force: p.force, setUpstream: p.setUpstream })
   })
@@ -61,6 +70,9 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:discardFile', async (_, p: IpcContract['git:discardFile']['request']) => {
     return ops.discardFile(p.path, p.file)
   })
+  ipcMain.handle('git:appendGitignore', async (_, p: IpcContract['git:appendGitignore']['request']) => {
+    return ops.appendGitignore(p.path, p.patterns)
+  })
 
   ipcMain.handle('git:stash', async (_, p: IpcContract['git:stash']['request']) => {
     return ops.stashSave(p.path, p.message, p.includeUntracked)
@@ -96,9 +108,18 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:canMerge', async (_, p: IpcContract['git:canMerge']['request']) => {
     return ops.canMerge(p.path, p.base, p.head)
   })
-  ipcMain.handle('git:branchesDetailed', async (_, p: IpcContract['git:branchesDetailed']['request']) => {
-    return ops.branchesDetailed(p.path)
-  })
+  ipcMain.handle(
+    'git:branchesDetailed',
+    async (_, p: IpcContract['git:branchesDetailed']['request']) => {
+      return ops.branchesDetailed(p.path)
+    }
+  )
+  ipcMain.handle(
+    'git:recentCheckouts',
+    async (_, p: IpcContract['git:recentCheckouts']['request']) => {
+      return ops.recentCheckouts(p.path, p.limit)
+    }
+  )
 
   ipcMain.handle('git:clone', async (_, p: IpcContract['git:clone']['request']) => {
     return cloneOps.cloneRepo(p.url, p.dest)

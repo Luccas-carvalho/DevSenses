@@ -15,7 +15,7 @@ interface Props {
 
 const RECENT_KEY_PREFIX = 'ds-recent-branches:'
 
-function loadRecent(repoPath: string): string[] {
+function loadRecentLocal(repoPath: string): string[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY_PREFIX + repoPath)
     if (!raw) return []
@@ -27,7 +27,7 @@ function loadRecent(repoPath: string): string[] {
 }
 
 function pushRecent(repoPath: string, branch: string): void {
-  const cur = loadRecent(repoPath)
+  const cur = loadRecentLocal(repoPath)
   const next = [branch, ...cur.filter((b) => b !== branch)].slice(0, 10)
   localStorage.setItem(RECENT_KEY_PREFIX + repoPath, JSON.stringify(next))
 }
@@ -60,7 +60,7 @@ export default function BranchSwitcher({
   const [busy, setBusy] = useState(false)
   const [details, setDetails] = useState<BranchDetailed[]>([])
   const [loading, setLoading] = useState(false)
-  const [recent, setRecent] = useState<string[]>(() => loadRecent(path))
+  const [recent, setRecent] = useState<string[]>(() => loadRecentLocal(path))
   const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -68,7 +68,22 @@ export default function BranchSwitcher({
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setRecent(loadRecent(path))
+    let cancelled = false
+    setRecent(loadRecentLocal(path))
+    window.api
+      .invoke('git:recentCheckouts', { path, limit: 15 })
+      .then((fromGit) => {
+        if (cancelled) return
+        // Reflog é fonte da verdade (já vem mais-recente-primeiro).
+        // localStorage só serve enquanto reflog ainda tá carregando.
+        if (fromGit.length > 0) {
+          setRecent(fromGit.slice(0, 15))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [path, refreshKey])
 
   useEffect(() => {
@@ -132,7 +147,14 @@ export default function BranchSwitcher({
     try {
       await onSwitch(branch)
       pushRecent(path, branch)
-      setRecent(loadRecent(path))
+      // Atualiza local imediato + dispara refresh do reflog (que será fonte de verdade)
+      setRecent((prev) => [branch, ...prev.filter((b) => b !== branch)].slice(0, 15))
+      window.api
+        .invoke('git:recentCheckouts', { path, limit: 15 })
+        .then((fromGit) => {
+          if (fromGit.length > 0) setRecent(fromGit.slice(0, 15))
+        })
+        .catch(() => {})
     } finally {
       setBusy(false)
       setOpen(false)
@@ -147,7 +169,7 @@ export default function BranchSwitcher({
           ref={buttonRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex w-full items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] text-foreground hover:bg-accent/60"
+          className="flex w-full items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/70 bg-background/80 text-[11px] text-foreground hover:bg-accent/60 shadow-sm"
         >
           {busy ? <Loader2 className="size-3 animate-spin flex-shrink-0" /> : <GitBranch className="size-3 flex-shrink-0" />}
           <span className="font-medium font-mono flex-1 truncate text-left">{current}</span>
