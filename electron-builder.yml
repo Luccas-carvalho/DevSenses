@@ -48,13 +48,14 @@ mac:
 dmg:
   artifactName: ${name}-${version}.${ext}
   background: build/dmg-background.png
-  iconSize: 110
+  icon: build/icon.icns
+  iconSize: 80
   contents:
     - x: 140
-      y: 220
+      y: 200
       type: file
     - x: 400
-      y: 220
+      y: 200
       type: link
       path: /Applications
   window:
