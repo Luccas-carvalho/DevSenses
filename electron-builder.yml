@@ -47,15 +47,16 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
+  title: ${productName} ${version}
   background: build/dmg-background.png
   icon: build/icon.icns
-  iconSize: 80
+  iconSize: 110
   contents:
     - x: 140
-      y: 200
+      y: 220
       type: file
     - x: 400
-      y: 200
+      y: 220
       type: link
       path: /Applications
   window:

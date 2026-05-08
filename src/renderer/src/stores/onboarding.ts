@@ -29,11 +29,13 @@ type Draft = Partial<SettingsValueMap>
 interface OnboardingState {
   step: OnboardingStep
   draft: Draft
+  cosmic: boolean
 
   goNext: () => void
   goPrev: () => void
   goTo: (step: OnboardingStep) => void
   setDraft: <K extends keyof Draft>(key: K, value: Draft[K]) => void
+  setCosmic: (v: boolean) => void
   reset: () => void
 }
 
@@ -51,6 +53,7 @@ const INITIAL_DRAFT: Draft = {
 export const useOnboarding = create<OnboardingState>((set, get) => ({
   step: 'welcome',
   draft: { ...INITIAL_DRAFT },
+  cosmic: false,
 
   goNext: () => {
     const idx = STEP_ORDER.indexOf(get().step)
@@ -62,5 +65,6 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
   },
   goTo: (step) => set({ step }),
   setDraft: (key, value) => set((s) => ({ draft: { ...s.draft, [key]: value } })),
-  reset: () => set({ step: 'welcome', draft: { ...INITIAL_DRAFT } })
+  setCosmic: (v) => set({ cosmic: v }),
+  reset: () => set({ step: 'welcome', draft: { ...INITIAL_DRAFT }, cosmic: false })
 }))
