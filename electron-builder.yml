@@ -47,6 +47,26 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
+  title: ${productName} ${version}
+  background: build/dmg-background.png
+  icon: build/icon.icns
+  iconSize: 110
+  contents:
+    - x: 140
+      y: 220
+      type: file
+    - x: 400
+      y: 220
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380
+publish:
+  provider: github
+  owner: Luccas-carvalho
+  repo: DevSenses
+  releaseType: release
 linux:
   target:
     - AppImage

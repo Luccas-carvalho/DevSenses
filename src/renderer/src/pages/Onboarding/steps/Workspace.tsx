@@ -13,7 +13,7 @@ export default function Workspace() {
   }
 
   return (
-    <Shell title="Abrir um projeto?" subtitle="Você pode pular e abrir depois pelo menu." nextLabel={path ? 'Continuar' : 'Pular por agora'}>
+    <Shell title="Tem um projeto pra começar?" subtitle="Aponta um repo pra eu ler diff e te explicar. Pode pular se quiser configurar depois." nextLabel={path ? 'Continuar' : 'Pular por agora'}>
       <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <button
           onClick={() => void pick()}

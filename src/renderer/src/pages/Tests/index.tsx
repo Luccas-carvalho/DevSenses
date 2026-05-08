@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import Logo from '@/components/Logo'
 import {
   ArrowLeft,
   Globe,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 
 type Intensity = 'sane' | 'chaos' | 'nuclear'
 
@@ -277,7 +279,15 @@ export default function Tests() {
         className="h-10 flex items-stretch border-b border-border/30 bg-background/80 backdrop-blur-xl flex-shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="flex-1 pl-20" aria-hidden />
+        <div
+          className="flex-1 pl-20 flex items-center gap-2"
+          aria-hidden
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <Logo size={20} className="rounded-md flex-shrink-0" />
+          <span className="text-[12px] font-semibold text-foreground">DevSenses</span>
+          <span className="text-[11px] text-muted-foreground">· Testes IA</span>
+        </div>
         <div
           className="flex items-center gap-2 px-3"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
@@ -339,13 +349,14 @@ export default function Tests() {
                           {h.id} · {h.screenshotCount}📷
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => deleteRun(h.id, e)}
-                        title="Apagar"
-                        className="opacity-0 group-hover:opacity-100 transition-all w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
+                      <Tooltip label="Apagar este run">
+                        <button
+                          onClick={(e) => deleteRun(h.id, e)}
+                          className="opacity-0 group-hover:opacity-100 transition-all w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </button>
                 ))
@@ -391,20 +402,20 @@ export default function Tests() {
             <FormField label="Intensidade" icon={Zap}>
               <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
                 {INTENSITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setIntensity(opt.value)}
-                    title={opt.tip}
-                    className={cn(
-                      'flex-1 px-2 h-7 text-xs rounded transition-colors',
-                      intensity === opt.value
-                        ? 'bg-primary/15 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
+                  <Tooltip key={opt.value} label={opt.tip}>
+                    <button
+                      type="button"
+                      onClick={() => setIntensity(opt.value)}
+                      className={cn(
+                        'flex-1 px-2 h-7 text-xs rounded transition-colors',
+                        intensity === opt.value
+                          ? 'bg-primary/15 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  </Tooltip>
                 ))}
               </div>
               <p className="text-[10px] text-muted-foreground/60 mt-1">

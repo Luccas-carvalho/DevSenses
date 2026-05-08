@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState, useMemo, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useOnboarding, STEP_ORDER } from '@/stores/onboarding'
+import { AlertTriangle } from 'lucide-react'
 import type React from 'react'
 import './onboarding.css'
 
@@ -67,10 +67,10 @@ export function Shell({
   hidePrev,
   hideNext,
 }: Props): React.ReactElement {
-  const { step, goNext, goPrev } = useOnboarding()
-  const navigate = useNavigate()
+  const { step, goNext, goPrev, setCosmic } = useOnboarding()
   const [phase, setPhase] = useState<'idle' | 'exiting' | 'entering'>('idle')
   const [isAnimating, setIsAnimating] = useState(false)
+  const [skipOpen, setSkipOpen] = useState(false)
 
   const stepIndex = STEP_ORDER.indexOf(step)
   const isFirstStep = stepIndex === 0
@@ -105,13 +105,10 @@ export function Shell({
     }, 300)
   }, [isAnimating, hidePrev, isFirstStep, goPrev])
 
-  async function skipAll(): Promise<void> {
-    const ok = window.confirm(
-      'DevSenses funciona melhor configurado.\n\nPular significa: nenhuma CLI selecionada, modo júnior default.\n\nContinuar mesmo assim?'
-    )
-    if (!ok) return
+  async function confirmSkip(): Promise<void> {
+    setSkipOpen(false)
     await window.api.invoke('settings:set', { key: 'onboarding_completed', value: true })
-    navigate('/home', { replace: true })
+    setCosmic(true)
   }
 
   useEffect(() => {
@@ -131,9 +128,32 @@ export function Shell({
       <div className="onboarding-titlebar" />
 
       {!isLastStep && (
-        <button onClick={() => void skipAll()} className="onboarding-skip">
+        <button onClick={() => setSkipOpen(true)} className="onboarding-skip">
           Pular
         </button>
+      )}
+
+      {skipOpen && (
+        <div className="onboarding-modal-backdrop" onClick={() => setSkipOpen(false)}>
+          <div className="onboarding-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="onboarding-modal-icon">
+              <AlertTriangle size={22} />
+            </div>
+            <h2 className="onboarding-modal-title">Pular configuração?</h2>
+            <p className="onboarding-modal-desc">
+              DevSenses funciona melhor configurado. Pular significa <b>nenhuma CLI selecionada</b> e <b>modo júnior padrão</b>.
+            </p>
+            <p className="onboarding-modal-hint">Sempre dá pra ajustar nas Settings depois.</p>
+            <div className="onboarding-modal-actions">
+              <button className="onboarding-modal-cancel" onClick={() => setSkipOpen(false)}>
+                Continuar configurando
+              </button>
+              <button className="onboarding-modal-confirm" onClick={() => void confirmSkip()}>
+                Pular mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="onboarding-content">

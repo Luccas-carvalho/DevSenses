@@ -1,0 +1,375 @@
+/* ============================================
+   COSMIC TRANSITION
+   Gradual "universe opening" from onboarding purple → flow canvas.
+   Starts matching the last onboarding step purple, deepens into
+   cosmic space, then opens up. Duration: 4.5s
+   ============================================ */
+
+.cosmic-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* Start fully transparent — onboarding purple shows through underneath */
+  background: transparent;
+}
+
+/* Overlay that fades from transparent → deep purple → light */
+.cosmic-bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  animation: cosmicBgShift 4.5s ease-in-out forwards;
+}
+
+@keyframes cosmicBgShift {
+  0%   { background: transparent; }
+  8%   { background: rgba(60, 30, 110, 0.15); }
+  18%  { background: rgba(45, 20, 80, 0.6); }
+  28%  { background: #1e1040; }
+  55%  { background: #0e0820; }
+  80%  { background: #1a0f33; }
+  92%  { background: var(--color-background); }
+  100% { background: var(--color-background); }
+}
+
+/* Reduced motion: simple fade only */
+@media (prefers-reduced-motion: reduce) {
+  .cosmic-root *,
+  .cosmic-root *::before,
+  .cosmic-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cosmic-bg-overlay {
+    animation: cosmicBgShiftReduced 0.6s ease-out forwards !important;
+  }
+  @keyframes cosmicBgShiftReduced {
+    0%   { background: transparent; }
+    100% { background: var(--color-background); }
+  }
+}
+
+/* ─── Stars ────────────────────────────────── */
+
+.cosmic-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cosmic-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(216, 180, 254, 0.85);
+  animation: starAppear 4.5s ease-in-out forwards;
+}
+
+.cosmic-star.bright {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
+  animation: starBright 4.5s ease-in-out forwards;
+}
+
+@keyframes starAppear {
+  0%, 18% { opacity: 0; transform: scale(0); }
+  28%  { opacity: 0.9; transform: scale(1); }
+  55%  { opacity: 0.7; transform: scale(1); }
+  72%  { opacity: 0.2; transform: scale(1.8); }
+  88%  { opacity: 0; transform: scale(3); }
+  100% { opacity: 0; }
+}
+
+@keyframes starBright {
+  0%, 18% { opacity: 0; transform: scale(0); }
+  28%  { opacity: 1; transform: scale(1.2); }
+  40%  { opacity: 0.6; transform: scale(1); }
+  50%  { opacity: 1; transform: scale(1.3); }
+  55%  { opacity: 0.8; transform: scale(1); }
+  72%  { opacity: 0.3; transform: scale(2); }
+  88%  { opacity: 0; transform: scale(4); }
+  100% { opacity: 0; }
+}
+
+.cosmic-star.warp {
+  background: rgba(192, 148, 252, 0.8);
+  animation: starWarp 4.5s ease-in-out forwards;
+}
+
+@keyframes starWarp {
+  0%, 18% { opacity: 0; transform: scale(0); height: 2px; }
+  28%  { opacity: 1; transform: scale(1); height: 2px; }
+  55%  { opacity: 0.9; transform: scale(1); height: 2px; }
+  70%  { opacity: 1; height: 2px; }
+  82%  { opacity: 0.4; height: 40px; border-radius: 2px; }
+  92%  { opacity: 0; height: 80px; border-radius: 1px; }
+  100% { opacity: 0; height: 80px; }
+}
+
+/* ─── Orbital Rings ────────────────────────── */
+
+.cosmic-orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid transparent;
+}
+
+.cosmic-orbit-1 {
+  width: 160px;
+  height: 160px;
+  border-color: rgba(168, 85, 247, 0.4);
+  animation: orbitSpin1 4.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cosmic-orbit-2 {
+  width: 280px;
+  height: 280px;
+  border-color: rgba(139, 92, 246, 0.28);
+  border-style: dashed;
+  animation: orbitSpin2 4.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cosmic-orbit-3 {
+  width: 420px;
+  height: 420px;
+  border-color: rgba(124, 58, 237, 0.18);
+  animation: orbitSpin3 4.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cosmic-orbit-4 {
+  width: 600px;
+  height: 600px;
+  border-color: rgba(109, 40, 217, 0.08);
+  border-style: dotted;
+  animation: orbitSpin4 4.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes orbitSpin1 {
+  0%, 15% { opacity: 0; transform: rotate(0deg) scale(0); }
+  30%  { opacity: 1; transform: rotate(20deg) scale(1); }
+  55%  { opacity: 1; transform: rotate(80deg) scale(1); }
+  78%  { opacity: 0.2; transform: rotate(150deg) scale(4); }
+  100% { opacity: 0; transform: rotate(220deg) scale(7); }
+}
+
+@keyframes orbitSpin2 {
+  0%, 15% { opacity: 0; transform: rotate(45deg) scale(0); }
+  30%  { opacity: 0.8; transform: rotate(20deg) scale(1); }
+  55%  { opacity: 0.8; transform: rotate(-30deg) scale(1); }
+  78%  { opacity: 0.1; transform: rotate(-80deg) scale(3); }
+  100% { opacity: 0; transform: rotate(-120deg) scale(5); }
+}
+
+@keyframes orbitSpin3 {
+  0%, 15% { opacity: 0; transform: rotate(-20deg) scale(0); }
+  30%  { opacity: 0.5; transform: rotate(0deg) scale(1); }
+  55%  { opacity: 0.5; transform: rotate(40deg) scale(1); }
+  78%  { opacity: 0.05; transform: rotate(90deg) scale(2.5); }
+  100% { opacity: 0; transform: rotate(120deg) scale(3.5); }
+}
+
+@keyframes orbitSpin4 {
+  0%, 18% { opacity: 0; transform: rotate(10deg) scale(0); }
+  32%  { opacity: 0.3; transform: rotate(-5deg) scale(1); }
+  55%  { opacity: 0.3; transform: rotate(-25deg) scale(1); }
+  78%  { opacity: 0; transform: rotate(-50deg) scale(2); }
+  100% { opacity: 0; transform: rotate(-70deg) scale(3); }
+}
+
+/* ─── Orbital Dots (planets) ──────────────── */
+
+.cosmic-orbital-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.9);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+}
+
+.cosmic-orbital-dot-1 {
+  animation: orbitalDot1 4.5s ease-in-out forwards;
+}
+
+.cosmic-orbital-dot-2 {
+  width: 3px;
+  height: 3px;
+  background: rgba(192, 132, 252, 0.9);
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.5);
+  animation: orbitalDot2 4.5s ease-in-out forwards;
+}
+
+.cosmic-orbital-dot-3 {
+  width: 5px;
+  height: 5px;
+  background: rgba(139, 92, 246, 0.8);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.5);
+  animation: orbitalDot3 4.5s ease-in-out forwards;
+}
+
+@keyframes orbitalDot1 {
+  0%, 18% { opacity: 0; top: 50%; left: 50%; transform: translate(-50%, -80px); }
+  30%  { opacity: 1; top: 50%; left: 50%; transform: translate(70px, -50px); }
+  42%  { top: 50%; left: 50%; transform: translate(80px, 30px); }
+  55%  { top: 50%; left: 50%; transform: translate(-10px, 80px); }
+  68%  { opacity: 1; top: 50%; left: 50%; transform: translate(-80px, -10px); }
+  82%  { opacity: 0; top: 50%; left: 50%; transform: translate(-200px, -200px) scale(0); }
+  100% { opacity: 0; }
+}
+
+@keyframes orbitalDot2 {
+  0%, 18% { opacity: 0; top: 50%; left: 50%; transform: translate(100px, 30px); }
+  30%  { opacity: 1; top: 50%; left: 50%; transform: translate(-70px, -60px); }
+  42%  { top: 50%; left: 50%; transform: translate(-110px, 20px); }
+  55%  { top: 50%; left: 50%; transform: translate(40px, 100px); }
+  68%  { opacity: 1; top: 50%; left: 50%; transform: translate(120px, -40px); }
+  82%  { opacity: 0; top: 50%; left: 50%; transform: translate(250px, 250px) scale(0); }
+  100% { opacity: 0; }
+}
+
+@keyframes orbitalDot3 {
+  0%, 18% { opacity: 0; top: 50%; left: 50%; transform: translate(-130px, 40px); }
+  30%  { opacity: 1; top: 50%; left: 50%; transform: translate(15px, -130px); }
+  42%  { top: 50%; left: 50%; transform: translate(130px, -30px); }
+  55%  { top: 50%; left: 50%; transform: translate(-40px, 130px); }
+  68%  { opacity: 0.8; top: 50%; left: 50%; transform: translate(-140px, -60px); }
+  82%  { opacity: 0; top: 50%; left: 50%; transform: translate(0, -350px) scale(0); }
+  100% { opacity: 0; }
+}
+
+/* ─── Center Logo ──────────────────────────── */
+
+.cosmic-logo-wrapper {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cosmicLogoWrapper 4.5s ease-in-out forwards;
+}
+
+.cosmic-logo-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  position: relative;
+  z-index: 2;
+  animation: cosmicLogoPulse 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.5));
+}
+
+.cosmic-logo-glow {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.4) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 70%);
+  z-index: 1;
+  animation: cosmicGlowPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cosmicLogoPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.5)); }
+  50%      { transform: scale(1.05); filter: drop-shadow(0 0 35px rgba(124, 58, 237, 0.7)); }
+}
+
+@keyframes cosmicGlowPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+@keyframes cosmicLogoWrapper {
+  0%   { opacity: 0; transform: scale(0.4); }
+  6%   { opacity: 0; transform: scale(0.4); }
+  20%  { opacity: 1; transform: scale(1); }
+  58%  { opacity: 1; transform: scale(1); }
+  76%  { opacity: 0.5; transform: scale(2); }
+  90%  { opacity: 0; transform: scale(4); }
+  100% { opacity: 0; transform: scale(5); }
+}
+
+/* ─── Nebula Glow ──────────────────────────── */
+
+.cosmic-nebula {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: nebulaFade 4.5s ease-in-out forwards;
+}
+
+.cosmic-nebula-1 {
+  width: 400px;
+  height: 400px;
+  background: rgba(124, 58, 237, 0.2);
+  top: 40%;
+  left: 45%;
+  transform: translate(-50%, -50%);
+}
+
+.cosmic-nebula-2 {
+  width: 300px;
+  height: 300px;
+  background: rgba(168, 85, 247, 0.18);
+  top: 55%;
+  left: 60%;
+  transform: translate(-50%, -50%);
+}
+
+.cosmic-nebula-3 {
+  width: 250px;
+  height: 250px;
+  background: rgba(139, 92, 246, 0.14);
+  top: 30%;
+  left: 35%;
+  transform: translate(-50%, -50%);
+  animation-delay: 0.3s;
+}
+
+@keyframes nebulaFade {
+  0%, 8%  { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  55%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  80%  { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0; }
+}
+
+/* ─── Dissolve to app ──────────────────────── */
+
+.cosmic-dissolve {
+  position: absolute;
+  inset: 0;
+  background: var(--color-background);
+  opacity: 0;
+  animation: cosmicDissolve 4.5s ease-in-out forwards;
+  pointer-events: none;
+}
+
+@keyframes cosmicDissolve {
+  0%   { opacity: 0; }
+  80%  { opacity: 0; }
+  96%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* ─── App fade-in ──────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Onboarding exit ──────────────────────── */
+
+.onboarding-exit {
+  animation: onboardingExit 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes onboardingExit {
+  from { opacity: 1; transform: scale(1); filter: blur(0px); }
+  to   { opacity: 0; transform: scale(0.98); filter: blur(4px); }
+}

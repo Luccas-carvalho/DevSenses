@@ -6,8 +6,12 @@ import { ensureFullPath } from './utils/path-fix'
 import { getDb, closeDb } from './db/connection'
 import { runEmbeddedMigrations } from './db/migrations'
 import { registerIpcHandlers } from './ipc'
+import { installAppMenu } from './app-menu'
+import { installAutoUpdater } from './updater'
 
 ensureFullPath()
+
+app.setName('DevSenses')
 
 function openProjectInRenderer(path: string): void {
   const wins = BrowserWindow.getAllWindows()
@@ -96,6 +100,14 @@ function createWindow(): void {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.luccas.devsenses')
 
+  if (process.platform === 'darwin' && app.dock) {
+    try {
+      app.dock.setIcon(icon)
+    } catch (e) {
+      console.error('[dock] setIcon failed', e)
+    }
+  }
+
   const db = getDb()
   const ran = runEmbeddedMigrations(db)
   if (ran.length > 0) {
@@ -103,7 +115,9 @@ app.whenReady().then(() => {
   }
 
   registerIpcHandlers()
+  installAppMenu()
   refreshDockMenu()
+  installAutoUpdater()
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

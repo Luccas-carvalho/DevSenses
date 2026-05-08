@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   GitBranch,
@@ -17,15 +18,20 @@ import {
   LogOut,
   Settings as SettingsIcon,
   GitCommit,
-  Layers,
-  Pencil,
   ChevronDown,
   Folder,
+  FolderOpen,
   FolderPlus,
   History,
   X,
   Trash2,
-  FlaskConical
+  Terminal,
+  ExternalLink,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Star
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -34,11 +40,30 @@ import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import {
+  Panel,
+  PanelGroup,
+  PanelResizeHandle,
+  type ImperativePanelHandle
+} from 'react-resizable-panels'
 import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
+import DiffSearchBar from '@/components/git/DiffSearchBar'
+import { track } from '@/lib/telemetry'
+import DiffModeDropdown from '@/components/git/DiffModeDropdown'
+import BranchSwitcher from '@/components/git/BranchSwitcher'
+import HistoryTab from '@/components/git/HistoryTab'
+import ConflictResolver from '@/components/git/ConflictResolver'
+import MediaPreview, { getMediaKind } from '@/components/git/MediaPreview'
+import NoChangesEmptyState from '@/components/git/NoChangesEmptyState'
+import ContextMenu, { type ContextMenuItem } from '@/components/ui/ContextMenu'
+import { prefetchBlob, trimCache, clearCacheFor } from '@/lib/mediaCache'
+import Tooltip from '@/components/ui/Tooltip'
+import Logo from '@/components/Logo'
+import AccountMenu from '@/components/AccountMenu'
+import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
   ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
@@ -320,6 +345,20 @@ export default function Project() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchIndex, setSearchIndex] = useState(0)
+  const [diffMatches, setDiffMatches] = useState<Array<{ lineIdx: number }>>([])
+  const [sidebarTab, setSidebarTab] = useState<'changes' | 'history'>('changes')
+  const [viewingCommitHash, setViewingCommitHash] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
+  const [repoMenuOpen, setRepoMenuOpen] = useState(false)
+  const [repoMenuPos, setRepoMenuPos] = useState<{ left: number; top: number; width: number } | null>(null)
+  const repoMenuButtonRef = useRef<HTMLButtonElement>(null)
+  const repoMenuPopupRef = useRef<HTMLDivElement>(null)
+  const [remoteWebUrl, setRemoteWebUrl] = useState<string | null>(null)
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
@@ -406,14 +445,42 @@ export default function Project() {
 
   const streamIdRef = useRef<string | null>(null)
   const analysisRef = useRef<HTMLDivElement>(null)
+  const analysisPanelRef = useRef<ImperativePanelHandle>(null)
+  const [analysisAnimating, setAnalysisAnimating] = useState(false)
+
+  const expandAnalysisPanel = useCallback(() => {
+    const p = analysisPanelRef.current
+    if (!p) return
+    if (p.getSize() < 5) {
+      setAnalysisAnimating(true)
+      p.resize(40)
+      window.setTimeout(() => setAnalysisAnimating(false), 320)
+    }
+  }, [])
+
   const selectedFileRef = useRef<string | null>(null)
   const fetchInFlightRef = useRef(false)
   const fetchPendingRef = useRef(false)
   selectedFileRef.current = selectedFile
 
+  useEffect(() => {
+    if (!path || files.length === 0) return
+    const mediaFiles = files.filter((f) => getMediaKind(f.path)).slice(0, 30)
+    if (mediaFiles.length === 0) return
+    const handle = window.setTimeout(() => {
+      for (const f of mediaFiles) {
+        if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
+        if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
+      }
+      trimCache()
+    }, 50)
+    return () => window.clearTimeout(handle)
+  }, [files, path])
+
   const runAnalysis = useCallback(
     async (diffText: string) => {
       if (!providerDefault || !seniority || !diffText) return
+      track('ai_analyze_clicked', { provider: providerDefault, seniority, turbo: professorTurbo })
       if (streamIdRef.current) {
         await window.api.invoke('providers:abort', { streamId: streamIdRef.current })
       }
@@ -497,18 +564,225 @@ export default function Project() {
     fetchProject(true)
   }, [path, fetchProject])
 
+  useEffect(() => {
+    if (!path || !viewingCommitHash) return
+    let cancelled = false
+    setDiffLoading(true)
+    window.api
+      .invoke('git:diffForCommit', { path, hash: viewingCommitHash })
+      .then((r) => {
+        if (cancelled) return
+        setFullDiff(r.diff)
+        setDiff(r.diff)
+        setFiles(r.files)
+        setSelectedFile(null)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setDiffLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [path, viewingCommitHash])
+
+  const fetchStatus = useCallback(async (): Promise<void> => {
+    if (!path) return
+    try {
+      const s = await window.api.invoke('git:status', { path })
+      setRepoStatus(s)
+    } catch (e) {
+      console.error('[git:status] failed', e)
+    }
+  }, [path])
+
+  useEffect(() => {
+    if (!path) return
+    fetchStatus()
+    window.api
+      .invoke('git:remoteUrl', { path })
+      .then((r) => setRemoteWebUrl(r.webUrl))
+      .catch(() => setRemoteWebUrl(null))
+  }, [path, fetchStatus])
+
+  useEffect(() => {
+    if (!repoMenuOpen) return
+    const rect = repoMenuButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const w = 224
+      setRepoMenuPos({
+        left: Math.max(8, rect.right - w),
+        top: rect.bottom + 4,
+        width: w
+      })
+    }
+    const handler = (e: MouseEvent): void => {
+      const t = e.target as Node
+      if (
+        repoMenuButtonRef.current?.contains(t) ||
+        repoMenuPopupRef.current?.contains(t)
+      ) return
+      setRepoMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [repoMenuOpen])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSearchOpen(true)
+        setSearchIndex(0)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setSidebarCollapsed((c) => !c)
+      } else if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [searchOpen])
+
+  useEffect(() => {
+    if (!path) {
+      window.api.invoke('menu:setState', {
+        hasProject: false,
+        branchName: null,
+        onBranch: false,
+        onDetachedHead: false,
+        branchIsUnborn: false,
+        onNonDefaultBranch: false,
+        hasPublishedBranch: false,
+        hasRemote: false,
+        isHostedOnGitHub: false,
+        hasChangedFiles: false,
+        hasStaged: false,
+        hasMultipleBranches: false,
+        hasConflicts: false,
+        rebaseInProgress: false,
+        isMerging: false,
+        networkInProgress: false,
+        branchHasStash: false,
+        hasContributionTargetDefaultBranch: false,
+        onContributionTargetDefaultBranch: false,
+        isAhead: false,
+        isBehind: false
+      })
+      return
+    }
+    const defaultCandidates = ['main', 'master', 'develop', 'dev']
+    const defaultBranch = branches.find((b) => defaultCandidates.includes(b)) ?? null
+    const isOnDefault = defaultBranch !== null && branch === defaultBranch
+    const onDetachedHead = branch === 'HEAD' || branch === ''
+    const branchIsUnborn = !branch
+    const onBranch = !!branch && !onDetachedHead && !branchIsUnborn
+    const hasChanges = (repoStatus?.files.length ?? 0) > 0
+    const hasStaged = (repoStatus?.files ?? []).some(
+      (f) => f.staged !== null && f.staged !== 'untracked'
+    )
+    const hasConflicts = (repoStatus?.files ?? []).some(
+      (f) => f.staged === 'conflicted' || f.unstaged === 'conflicted'
+    )
+    const isGithubHost =
+      !!remoteWebUrl &&
+      (remoteWebUrl.includes('github.com') || remoteWebUrl.includes('github.'))
+    window.api.invoke('menu:setState', {
+      hasProject: true,
+      branchName: branch || null,
+      onBranch,
+      onDetachedHead,
+      branchIsUnborn,
+      onNonDefaultBranch: onBranch && !isOnDefault,
+      hasPublishedBranch: !!repoStatus?.upstream,
+      hasRemote: !!remoteWebUrl,
+      isHostedOnGitHub: isGithubHost,
+      hasChangedFiles: hasChanges,
+      hasStaged,
+      hasMultipleBranches: branches.length > 1,
+      hasConflicts,
+      rebaseInProgress: !!repoStatus?.isRebasing,
+      isMerging: !!repoStatus?.isMerging,
+      networkInProgress: false,
+      branchHasStash: false,
+      hasContributionTargetDefaultBranch: defaultBranch !== null && !isOnDefault,
+      onContributionTargetDefaultBranch: isOnDefault,
+      isAhead: (repoStatus?.ahead ?? 0) > 0,
+      isBehind: (repoStatus?.behind ?? 0) > 0
+    })
+  }, [path, branch, branches, repoStatus, remoteWebUrl])
+
+  useEffect(() => {
+    return window.api.on('menu:action', (event) => {
+      const a = event.action
+      if (a === 'open-settings') navigate('/settings')
+      else if (a === 'go-home') navigate('/home')
+      else if (a === 'open-local') {
+        window.api.invoke('workspace:pickFolder', undefined).then((r) => {
+          if (r) navigate(`/project?path=${encodeURIComponent(r.path)}`)
+        })
+      }
+      else if (a === 'find-in-diff') {
+        setSearchOpen(true)
+        setSearchIndex(0)
+      }
+      else if (a === 'git-push') window.api.invoke('git:push', { path }).then(() => { fetchProject(); fetchStatus() })
+      else if (a === 'git-pull') window.api.invoke('git:pull', { path }).then(() => { fetchProject(); fetchStatus() })
+      else if (a === 'git-fetch') window.api.invoke('git:fetch', { path, prune: true }).then(() => fetchStatus())
+      else if (a === 'open-in-editor') window.api.invoke('repository:openInEditor', { path })
+      else if (a === 'open-in-terminal') window.api.invoke('repository:openInTerminal', { path })
+      else if (a === 'open-in-finder') window.api.invoke('repository:openInFinder', { path })
+      else if (a === 'view-on-github' && remoteWebUrl) window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+      else if (a === 'create-issue' && remoteWebUrl)
+        window.api.invoke('repository:openUrl', { url: `${remoteWebUrl}/issues/new` })
+      else if (a === 'view-branch-on-github' && remoteWebUrl && repoStatus?.branch)
+        window.api.invoke('repository:openUrl', {
+          url: `${remoteWebUrl}/tree/${repoStatus.branch}`
+        })
+    })
+  }, [navigate, path, fetchProject, fetchStatus, remoteWebUrl, repoStatus])
+
   // File watcher: re-fetch on save (NÃO dispara análise — botão manual)
   useEffect(() => {
     if (!path) return
     window.api.invoke('workspace:watch', { path })
     const off = window.api.on('workspace:changed', () => {
+      clearCacheFor(path)
       fetchProject()
+      fetchStatus()
     })
     return () => {
       off()
       window.api.invoke('workspace:unwatch', undefined)
     }
   }, [path, fetchProject])
+
+  // Refetch on window/app focus — pega commits feitos via terminal/IDE externa
+  useEffect(() => {
+    if (!path) return
+    const lastRefreshRef = { current: Date.now() }
+    function refresh(): void {
+      const now = Date.now()
+      if (now - lastRefreshRef.current < 1500) return
+      lastRefreshRef.current = now
+      clearCacheFor(path)
+      fetchProject()
+      fetchStatus()
+    }
+    function onFocus(): void {
+      refresh()
+    }
+    function onVisibility(): void {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [path, fetchProject, fetchStatus])
 
   // Listen to dock menu / recent doc open requests
   useEffect(() => {
@@ -545,6 +819,16 @@ export default function Project() {
 
   async function selectFile(filePath: string): Promise<void> {
     setSelectedFile(filePath)
+    if (getMediaKind(filePath)) {
+      setDiff('')
+      setDiffSwitching(false)
+      const f = files.find((x) => x.path === filePath)
+      if (f) {
+        if (f.status !== 'added') prefetchBlob(path, filePath, 'HEAD')
+        if (f.status !== 'deleted') prefetchBlob(path, filePath, null)
+      }
+      return
+    }
     setDiffSwitching(true)
     try {
       const result = await window.api.invoke('workspace:getDiffForFile', {
@@ -583,6 +867,46 @@ export default function Project() {
     setDiff(fullDiff)
   }
 
+  async function copyText(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      /* noop */
+    }
+  }
+
+  function buildFileMenu(file: { path: string; status: string }): ContextMenuItem[] {
+    return [
+      {
+        type: 'item',
+        label: 'Abrir no editor',
+        primary: true,
+        onClick: () => window.api.invoke('repository:openInEditor', { path, file: file.path })
+      },
+      {
+        type: 'item',
+        label: 'Mostrar no Finder',
+        onClick: () => window.api.invoke('repository:openInFinder', { path, file: file.path })
+      },
+      {
+        type: 'item',
+        label: 'Abrir com app padrão',
+        onClick: () => window.api.invoke('repository:openFile', { path, file: file.path })
+      },
+      { type: 'separator' },
+      {
+        type: 'item',
+        label: 'Copiar caminho relativo',
+        onClick: () => copyText(file.path)
+      },
+      {
+        type: 'item',
+        label: 'Copiar caminho absoluto',
+        onClick: () => copyText(`${path}/${file.path}`)
+      }
+    ]
+  }
+
   async function toggleTurbo(): Promise<void> {
     const next = !professorTurbo
     setProfessorTurbo(next)
@@ -591,6 +915,7 @@ export default function Project() {
 
   function startAnalysis(): void {
     if (!fullDiff || files.length === 0 || !settingsReady) return
+    expandAnalysisPanel()
     runAnalysis(fullDiff)
   }
 
@@ -609,88 +934,296 @@ export default function Project() {
           className="flex items-center gap-1.5 px-3"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <DiffModeToggle mode={diffMode} onChange={changeDiffMode} />
+          <DiffModeDropdown mode={diffMode} onChange={changeDiffMode} />
 
-          <button
-            onClick={startAnalysis}
-            disabled={!canAnalyze}
-            className={cn(
-              'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium transition-all',
-              canAnalyze
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-                : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+          <div className="relative">
+            <Tooltip label="Mais ações do repositório">
+              <button
+                ref={repoMenuButtonRef}
+                onClick={() => setRepoMenuOpen((o) => !o)}
+                className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            </Tooltip>
+            {repoMenuOpen && repoMenuPos && createPortal(
+              <div
+                ref={repoMenuPopupRef}
+                className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden"
+                style={{ left: repoMenuPos.left, top: repoMenuPos.top, width: repoMenuPos.width }}
+              >
+                <RepoMenuItem
+                  icon={ExternalLink}
+                  label="Abrir no editor"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInEditor', { path })
+                  }}
+                />
+                <RepoMenuItem
+                  icon={Terminal}
+                  label="Abrir no terminal"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInTerminal', { path })
+                  }}
+                />
+                <RepoMenuItem
+                  icon={Folder}
+                  label="Mostrar no Finder"
+                  onClick={() => {
+                    setRepoMenuOpen(false)
+                    window.api.invoke('repository:openInFinder', { path })
+                  }}
+                />
+                {remoteWebUrl && (
+                  <>
+                    <div className="border-t border-border/30 my-0.5" />
+                    <RepoMenuItem
+                      icon={ExternalLink}
+                      label="Ver no GitHub"
+                      onClick={() => {
+                        setRepoMenuOpen(false)
+                        window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+                      }}
+                    />
+                  </>
+                )}
+              </div>,
+              document.body
             )}
-          >
-            <Sparkles className="size-3" />
-            {analysisState === 'done' ? 'Reanalisar' : 'Analisar'}
-          </button>
+          </div>
 
-          <button
-            onClick={toggleTurbo}
-            title={professorTurbo ? 'Modo Professor Turbo ativo' : 'Ativar modo Professor Turbo'}
-            className={cn(
-              'flex items-center gap-1.5 text-xs rounded-md px-2.5 h-7 border transition-all font-medium',
+          <Tooltip
+            label={
+              !canAnalyze
+                ? 'Sem alterações pra explicar — edita um arquivo primeiro'
+                : analysisState === 'done'
+                  ? 'Pedir nova explicação · IA reanalisa o diff atual'
+                  : 'Pedir explicação · IA vai te ensinar o que mudou e por quê'
+            }
+          >
+            <button
+              onClick={startAnalysis}
+              disabled={!canAnalyze}
+              className={cn(
+                'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-semibold transition-all relative',
+                canAnalyze
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20'
+                  : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed',
+                canAnalyze && analysisState === 'idle' && 'ds-cta-breathe ds-cta-sheen-wrap'
+              )}
+            >
+              <Sparkles
+                className={cn(
+                  'size-3.5 relative',
+                  canAnalyze && analysisState === 'idle' && 'ds-icon-drift'
+                )}
+              />
+              <span className="relative">
+                {analysisState === 'done' ? 'Explicar de novo' : 'Explicar'}
+              </span>
+            </button>
+          </Tooltip>
+
+          <Tooltip
+            label={
               professorTurbo
-                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400'
-                : 'bg-muted/50 border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
+                ? 'Professor Turbo ativo · explica conceitos a fundo'
+                : 'Ativar Professor Turbo · explicação detalhada'
+            }
           >
-            <Zap className="size-3" />
-            Turbo
-          </button>
+            <button
+              onClick={toggleTurbo}
+              className={cn(
+                'flex items-center gap-1.5 text-xs rounded-md px-2.5 h-7 border transition-all font-medium',
+                professorTurbo
+                  ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400'
+                  : 'bg-muted/50 border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Zap className="size-3" />
+              Turbo
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => navigate('/tests', { state: { projectPath: path } })}
-            title="Testes IA"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <FlaskConical className="size-3.5" />
-          </button>
+          <Tooltip label="Histórico de explicações">
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <History className="size-3.5" />
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setHistoryOpen(true)}
-            title="Histórico de análises"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <History className="size-3.5" />
-          </button>
-
-          <button
-            onClick={() => fetchProject()}
-            title="Recarregar diff"
-            disabled={diffLoading}
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
-          >
-            <RefreshCw className={cn('size-3.5', diffLoading && 'animate-spin')} />
-          </button>
+          <Tooltip label="Recarregar diff">
+            <button
+              onClick={() => fetchProject()}
+              disabled={diffLoading}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={cn('size-3.5', diffLoading && 'animate-spin')} />
+            </button>
+          </Tooltip>
         </div>
       </header>
 
+
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* SIDEBAR — floating, padding around, rounded corners */}
+        {sidebarCollapsed ? (
+          <div className="pl-2 pr-1 py-2 flex-shrink-0">
+            <aside className="w-12 h-full flex flex-col items-center bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm py-2 gap-1">
+              <Tooltip label="Expandir sidebar" shortcut="⌘B" side="right">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <PanelLeftOpen className="size-4" />
+                </button>
+              </Tooltip>
+              <div className="w-6 h-px bg-border/40 my-1" />
+              <Tooltip label={`Repositório · ${repoName}`} side="right">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <FolderOpen className="size-4" />
+                </button>
+              </Tooltip>
+              {branch && (
+                <Tooltip label={`Branch · ${branch}`} side="right">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                  >
+                    <GitBranch className="size-4" />
+                  </button>
+                </Tooltip>
+              )}
+              <div className="w-6 h-px bg-border/40 my-1" />
+              <Tooltip
+                label={`Changes${files.length ? ` (${files.length} arquivo${files.length !== 1 ? 's' : ''})` : ' · sem alterações'}`}
+                side="right"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab('changes')
+                    setViewingCommitHash(null)
+                    setSidebarCollapsed(false)
+                  }}
+                  className={cn(
+                    'size-8 rounded-md flex items-center justify-center relative transition-colors',
+                    sidebarTab === 'changes'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <GitCommit className="size-4" />
+                  {files.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                      {files.length}
+                    </span>
+                  )}
+                </button>
+              </Tooltip>
+              <Tooltip label="Histórico de commits" side="right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarTab('history')
+                    setSidebarCollapsed(false)
+                  }}
+                  className={cn(
+                    'size-8 rounded-md flex items-center justify-center transition-colors',
+                    sidebarTab === 'history'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <History className="size-4" />
+                </button>
+              </Tooltip>
+              <div className="mt-auto pt-1 flex flex-col items-center gap-1">
+                <div className="w-6 h-px bg-border/40 my-1" />
+                <AccountMenu size={28} side="right" />
+              </div>
+            </aside>
+          </div>
+        ) : (
         <div className="pl-2 pr-1 py-2 flex-shrink-0">
         <aside className="w-[252px] h-full flex flex-col overflow-hidden bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm">
           {/* Sidebar header */}
-          <div className="px-2 pt-2 pb-3 border-b border-border/30">
-            <ProjectSwitcher
-              currentName={repoName}
-              currentPath={path}
-              onSwitch={(p) =>
-                navigate(`/project?path=${encodeURIComponent(p)}`)
-              }
-            />
+          <div className="px-3 pt-2 pb-3 border-b border-border/30">
+            <div className="flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <ProjectSwitcher
+                  currentName={repoName}
+                  currentPath={path}
+                  onSwitch={(p) =>
+                    navigate(`/project?path=${encodeURIComponent(p)}`)
+                  }
+                />
+              </div>
+              <Tooltip label="Colapsar sidebar" shortcut="⌘B">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                >
+                  <PanelLeftClose className="size-4" />
+                </button>
+              </Tooltip>
+            </div>
             {branch && (
-              <div className="px-2 mt-1.5">
-                <BranchDropdown
+              <div className="mt-1.5">
+                <BranchSwitcher
+                  path={path}
                   current={branch}
-                  branches={branches}
-                  busy={checkingOut}
-                  onChange={switchBranch}
+                  onSwitch={async (b) => {
+                    await switchBranch(b)
+                  }}
+                  onCreateRequest={() => {
+                    /* desabilitado — modo somente-leitura */
+                  }}
                 />
               </div>
             )}
+            <div className="mt-1.5 flex w-full rounded-md border border-border/60 bg-background/60 p-0.5 gap-0.5 h-7">
+              <button
+                type="button"
+                onClick={() => {
+                  setSidebarTab('changes')
+                  setViewingCommitHash(null)
+                }}
+                className={cn(
+                  'flex-1 text-[11px] rounded-sm transition-colors',
+                  sidebarTab === 'changes'
+                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                )}
+              >
+                Changes{files.length > 0 ? ` (${files.length})` : ''}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab('history')}
+                className={cn(
+                  'flex-1 text-[11px] rounded-sm transition-colors',
+                  sidebarTab === 'history'
+                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                )}
+              >
+                History
+              </button>
+            </div>
             {!diffLoading && (
-              <div className="mt-2.5 flex items-center justify-between gap-2 px-2">
+              <div className="mt-2.5 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground/60">
                   {files.length === 0
                     ? 'sem alterações'
@@ -712,7 +1245,17 @@ export default function Project() {
             )}
           </div>
 
-          {/* File list */}
+          {sidebarTab === 'history' ? (
+            <HistoryTab
+              path={path}
+              refreshKey={historyVersion}
+              selectedHash={viewingCommitHash}
+              onSelect={(h) => {
+                setViewingCommitHash(h)
+                if (!h) fetchProject()
+              }}
+            />
+          ) : (
           <div className="flex-1 overflow-y-auto">
             {diffLoading ? (
               <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
@@ -727,30 +1270,48 @@ export default function Project() {
                 <button
                   onClick={showAllFiles}
                   className={cn(
-                    'w-full text-left px-3 py-2 flex items-center gap-2 text-xs transition-colors border-b border-border/30',
+                    'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
                     selectedFile === null
                       ? 'bg-primary/10 text-primary'
                       : 'hover:bg-accent/60 text-muted-foreground'
                   )}
                 >
                   <FileCode className="size-3 flex-shrink-0" />
-                  <span className="font-medium">Todos</span>
+                  <span className="font-medium">Todos os arquivos</span>
                 </button>
                 {files.map((f) => {
                   const { name, dir } = splitPath(f.path)
+                  const isSelected = selectedFile === f.path
                   return (
                     <button
                       key={f.path}
                       onClick={() => selectFile(f.path)}
-                      title={f.path}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setCtxMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          items: buildFileMenu({ path: f.path, status: f.status })
+                        })
+                      }}
+                      onMouseEnter={() => {
+                        if (getMediaKind(f.path)) {
+                          if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
+                          if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
+                        }
+                      }}
+                      onDoubleClick={() =>
+                        window.api.invoke('repository:openInEditor', { path, file: f.path })
+                      }
+                      title={`${f.path} · duplo-clique edita · botão direito pra opções`}
                       className={cn(
-                        'w-full text-left px-3 py-2 flex items-start gap-2 text-xs transition-colors border-b border-border/20 last:border-0',
-                        selectedFile === f.path ? 'bg-primary/10' : 'hover:bg-accent/50'
+                        'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/15 last:border-0',
+                        isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
                       )}
                     >
                       <span
                         className={cn(
-                          'mt-0.5 w-3 text-[10px] font-bold flex-shrink-0',
+                          'w-3 text-[10px] font-bold flex-shrink-0 text-center',
                           f.status === 'added'
                             ? 'text-green-500'
                             : f.status === 'deleted'
@@ -768,75 +1329,125 @@ export default function Project() {
                               ? 'R'
                               : 'M'}
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <div
+                      <span className="flex-1 min-w-0 truncate">
+                        {dir && (
+                          <span className="text-muted-foreground/50">{dir}</span>
+                        )}
+                        <span
                           className={cn(
-                            'truncate',
-                            selectedFile === f.path ? 'text-primary font-medium' : 'text-foreground/85'
+                            'font-medium',
+                            isSelected ? 'text-primary' : 'text-foreground/90'
                           )}
                         >
                           {name}
-                        </div>
-                        {dir && (
-                          <div className="text-[10px] text-muted-foreground/40 truncate font-mono">
-                            {dir}
-                          </div>
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] font-mono flex-shrink-0">
+                        {f.additions > 0 && (
+                          <span className="text-green-500">+{f.additions}</span>
                         )}
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {f.additions > 0 && (
-                            <span className="text-green-500 text-[10px] flex items-center gap-0.5">
-                              <Plus className="size-2" />
-                              {f.additions}
-                            </span>
-                          )}
-                          {f.deletions > 0 && (
-                            <span className="text-red-400 text-[10px] flex items-center gap-0.5">
-                              <Minus className="size-2" />
-                              {f.deletions}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                        {f.deletions > 0 && (
+                          <span className="text-red-400">−{f.deletions}</span>
+                        )}
+                      </span>
                     </button>
                   )
                 })}
               </>
             )}
           </div>
+          )}
 
           <ProfileMenu />
         </aside>
         </div>
+        )}
 
         <PanelGroup
           direction="horizontal"
-          autoSaveId="ds-diff-analysis-split"
           className="flex-1 min-w-0"
         >
         <Panel defaultSize={60} minSize={30}>
         {/* DIFF */}
         <section className="h-full flex flex-col overflow-hidden border-r border-border/40 min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-2 flex-shrink-0">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <FileCode className="size-3 text-muted-foreground/60" />
               Diff
             </span>
-            {selectedFile && (
-              <span className="text-xs font-mono text-muted-foreground/50 truncate">
+            {selectedFile ? (
+              <span className="text-xs font-mono text-muted-foreground/50 truncate" title={selectedFile}>
                 {selectedFile}
               </span>
+            ) : (
+              files.length > 0 && (
+                <span className="text-[11px] text-muted-foreground/60">
+                  {files.length} arquivo{files.length !== 1 ? 's' : ''} alterado{files.length !== 1 ? 's' : ''}
+                </span>
+              )
             )}
           </div>
           <div className="flex-1 overflow-auto min-h-0 relative">
+            {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) ? (
+              <ConflictResolver
+                path={path}
+                status={repoStatus}
+                onChanged={() => {
+                  fetchProject()
+                  fetchStatus()
+                }}
+              />
+            ) : (
+            <>
+            {searchOpen && (
+              <DiffSearchBar
+                query={searchQuery}
+                onQueryChange={(q) => {
+                  setSearchQuery(q)
+                  setSearchIndex(0)
+                }}
+                matchCount={diffMatches.length}
+                currentIndex={searchIndex}
+                onPrev={() =>
+                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i - 1 + diffMatches.length) % diffMatches.length))
+                }
+                onNext={() =>
+                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i + 1) % diffMatches.length))
+                }
+                onClose={() => {
+                  setSearchOpen(false)
+                  setSearchQuery('')
+                }}
+              />
+            )}
             {diffLoading ? (
               <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> carregando diff...
               </div>
+            ) : selectedFile && getMediaKind(selectedFile) ? (
+              <>
+                <MediaPreview
+                  path={path}
+                  file={selectedFile}
+                  status={files.find((f) => f.path === selectedFile)?.status ?? 'modified'}
+                  kind={getMediaKind(selectedFile)!}
+                />
+                {diffSwitching && (
+                  <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
+                    <Loader2 className="size-3 animate-spin" />
+                    carregando
+                  </div>
+                )}
+              </>
             ) : diff ? (
               <>
                 <DiffViewer
                   diff={diff}
                   hideFileHeaders={selectedFile !== null}
                   comments={lineComments}
+                  searchQuery={searchOpen ? searchQuery : ''}
+                  searchCurrentIndex={searchIndex}
+                  onSearchMatchesChange={setDiffMatches}
                 />
                 {diffSwitching && (
                   <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
@@ -846,9 +1457,9 @@ export default function Project() {
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-xs text-muted-foreground">Sem alterações.</p>
-              </div>
+              <NoChangesEmptyState path={path} />
+            )}
+            </>
             )}
           </div>
         </section>
@@ -856,12 +1467,21 @@ export default function Project() {
 
         <PanelResizeHandle className="w-1 bg-border/30 hover:bg-primary/60 active:bg-primary transition-colors" />
 
-        <Panel defaultSize={40} minSize={20}>
+        <Panel
+          ref={analysisPanelRef}
+          defaultSize={40}
+          minSize={20}
+          collapsible
+          collapsedSize={0}
+          id="analysis-panel"
+          className={analysisAnimating ? 'ds-panel-animating' : undefined}
+        >
         {/* ANALYSIS */}
         <section className="h-full flex flex-col overflow-hidden min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Análise IA
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <Sparkles className="size-3 text-primary/70" />
+              Explicação IA
             </span>
             {providerDefault && (
               <span
@@ -927,6 +1547,7 @@ export default function Project() {
           setDiff(record.diff)
           setSelectedFile(null)
           setAnalysisState('done')
+          expandAnalysisPanel()
         }}
         onExitView={() => {
           persistedAnalysisRef.current = ''
@@ -940,7 +1561,7 @@ export default function Project() {
       {viewingAnalysisId !== null && (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs shadow-xl">
           <History className="size-3" />
-          Visualizando análise antiga
+          Visualizando explicação antiga
           <button
             type="button"
             onClick={() => {
@@ -955,42 +1576,44 @@ export default function Project() {
           </button>
         </div>
       )}
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   )
 }
 
-const DIFF_MODE_OPTIONS: { value: DiffMode; label: string; icon: typeof Layers; tip: string }[] = [
-  { value: 'all', label: 'Tudo', icon: Layers, tip: 'Commits recentes + não commitado' },
-  { value: 'uncommitted', label: 'Pendente', icon: Pencil, tip: 'Apenas alterações não commitadas' },
-  { value: 'committed', label: 'Commits', icon: GitCommit, tip: 'Apenas commits recentes' }
-]
-
-function DiffModeToggle({
-  mode,
-  onChange
+function RepoMenuItem({
+  icon: Icon,
+  label,
+  onClick,
+  variant = 'default'
 }: {
-  mode: DiffMode
-  onChange: (mode: DiffMode) => void
-}) {
+  icon: typeof GitBranch
+  label: string
+  onClick: () => void
+  variant?: 'default' | 'destructive'
+}): React.ReactElement {
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5">
-      {DIFF_MODE_OPTIONS.map(({ value, label, icon: Icon, tip }) => (
-        <button
-          key={value}
-          onClick={() => onChange(value)}
-          title={tip}
-          className={cn(
-            'flex items-center gap-1 px-2 h-6 rounded text-[11px] font-medium transition-colors',
-            mode === value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Icon className="size-3" />
-          {label}
-        </button>
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-left transition-colors',
+        variant === 'destructive'
+          ? 'text-destructive hover:bg-destructive/10'
+          : 'text-foreground/85 hover:bg-accent/60'
+      )}
+    >
+      <Icon className="size-3 flex-shrink-0" />
+      {label}
+    </button>
   )
 }
 
@@ -998,6 +1621,52 @@ interface RecentEntry {
   path: string
   name: string
   lastOpenedAt: number
+  favorite: boolean
+}
+
+function RepoRow({
+  entry,
+  onPick,
+  onToggleFav
+}: {
+  entry: RecentEntry
+  onPick: () => void
+  onToggleFav: () => void
+}): React.ReactElement {
+  return (
+    <div
+      className="w-full px-3 h-8 flex items-center gap-2 hover:bg-accent transition-colors group"
+      title={entry.path}
+    >
+      <button
+        type="button"
+        onClick={onPick}
+        className="flex-1 min-w-0 flex items-center gap-2 text-left"
+      >
+        <Folder className="size-3.5 text-muted-foreground/60 flex-shrink-0" />
+        <span className="text-[12px] font-medium text-foreground truncate">{entry.name}</span>
+        <span className="text-[10px] text-muted-foreground/50 font-mono truncate flex-1 min-w-0">
+          {entry.path}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleFav()
+        }}
+        title={entry.favorite ? 'Remover dos favoritos' : 'Marcar como favorito'}
+        className={cn(
+          'flex-shrink-0 size-6 rounded flex items-center justify-center transition-all',
+          entry.favorite
+            ? 'text-yellow-400 hover:text-yellow-300'
+            : 'text-muted-foreground/30 hover:text-yellow-400 opacity-0 group-hover:opacity-100'
+        )}
+      >
+        <Star className={cn('size-3.5', entry.favorite && 'fill-current')} />
+      </button>
+    </div>
+  )
 }
 
 function ProjectSwitcher({
@@ -1011,10 +1680,14 @@ function ProjectSwitcher({
 }) {
   const [open, setOpen] = useState(false)
   const [recents, setRecents] = useState<RecentEntry[]>([])
+  const [filter, setFilter] = useState('')
   const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
+    setFilter('')
+    setTimeout(() => inputRef.current?.focus(), 50)
     window.api
       .invoke('workspace:recent', undefined)
       .then((rows) => setRecents(rows ?? []))
@@ -1024,166 +1697,135 @@ function ProjectSwitcher({
   useEffect(() => {
     if (!open) return
     function onClick(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current?.contains(e.target as Node)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
-  async function pickFolder(): Promise<void> {
+  async function pickExisting(): Promise<void> {
     setOpen(false)
     const r = await window.api.invoke('workspace:pickFolder', undefined)
     if (r) onSwitch(r.path)
   }
 
   const others = recents.filter((r) => r.path !== currentPath)
+  const q = filter.toLowerCase()
+  const filtered = q
+    ? others.filter(
+        (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)
+      )
+    : others
+  const favorites = filtered.filter((r) => r.favorite)
+  const nonFavorites = filtered.filter((r) => !r.favorite)
+
+  async function toggleFavorite(r: RecentEntry): Promise<void> {
+    const next = !r.favorite
+    setRecents((prev) =>
+      prev
+        .map((x) => (x.path === r.path ? { ...x, favorite: next } : x))
+        .sort((a, b) => {
+          if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
+          return b.lastOpenedAt - a.lastOpenedAt
+        })
+    )
+    await window.api.invoke('workspace:setFavorite', { path: r.path, favorite: next })
+  }
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'w-full flex items-center gap-2 p-2 rounded-lg transition-colors',
-          open ? 'bg-primary/10' : 'hover:bg-accent/60'
-        )}
-      >
-        <div className="w-7 h-7 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
-          <FileCode className="size-3.5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate">{currentName}</div>
-        </div>
-        <ChevronDown
+      <Tooltip label={`Trocar de repositório · ${currentPath}`}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
           className={cn(
-            'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
-            open && 'rotate-180'
+            'w-full flex items-center gap-2 p-2 rounded-lg transition-colors',
+            open ? 'bg-primary/10' : 'hover:bg-accent/60'
           )}
-        />
-      </button>
-      {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
-          {others.length > 0 && (
-            <div className="max-h-64 overflow-y-auto">
-              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 border-b border-border/30">
-                Recentes
-              </div>
-              {others.map((r) => (
-                <button
-                  key={r.path}
-                  type="button"
-                  onClick={() => {
-                    setOpen(false)
-                    onSwitch(r.path)
-                  }}
-                  className="w-full px-3 py-2 flex items-center gap-2 hover:bg-accent transition-colors text-left"
-                >
-                  <Folder className="size-3.5 text-muted-foreground/70 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium truncate">{r.name}</div>
-                    <div className="text-[10px] text-muted-foreground/60 font-mono truncate">
-                      {r.path}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={pickFolder}
-            className={cn(
-              'w-full px-3 py-2.5 flex items-center gap-2 text-xs hover:bg-accent transition-colors text-left',
-              others.length > 0 && 'border-t border-border/40'
-            )}
-          >
-            <FolderPlus className="size-3.5 text-muted-foreground" />
-            Abrir outro projeto
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function BranchDropdown({
-  current,
-  branches,
-  busy,
-  onChange
-}: {
-  current: string
-  branches: string[]
-  busy: boolean
-  onChange: (b: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function onClick(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
-  const hasOthers = branches.length > 1
-
-  return (
-    <div ref={ref} className="relative mt-0.5">
-      <button
-        type="button"
-        onClick={() => hasOthers && !busy && setOpen((o) => !o)}
-        disabled={!hasOthers || busy}
-        className={cn(
-          'flex items-center gap-1 text-[11px] text-muted-foreground transition-colors max-w-full',
-          hasOthers && !busy && 'hover:text-foreground cursor-pointer',
-          (!hasOthers || busy) && 'cursor-default'
-        )}
-      >
-        {busy ? (
-          <Loader2 className="size-2.5 flex-shrink-0 animate-spin" />
-        ) : (
-          <GitBranch className="size-2.5 flex-shrink-0" />
-        )}
-        <span className="font-mono truncate">{current}</span>
-        {hasOthers && !busy && (
+        >
+          <Logo size={28} className="rounded-md flex-shrink-0 shadow-sm" />
+          <div className="flex-1 min-w-0 text-left flex items-center gap-1.5">
+            <FolderOpen className="size-3.5 text-muted-foreground/60 flex-shrink-0" />
+            <span className="font-semibold text-sm truncate">{currentName}</span>
+          </div>
           <ChevronDown
             className={cn(
-              'size-2.5 flex-shrink-0 text-muted-foreground/50 transition-transform',
+              'size-3.5 text-muted-foreground/60 flex-shrink-0 transition-transform',
               open && 'rotate-180'
             )}
           />
-        )}
-      </button>
-      {open && hasOthers && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-[220px] rounded-md border border-border bg-popover shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-          <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground/60 border-b border-border/30">
-            Branches ({branches.length})
+        </button>
+      </Tooltip>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-[200] rounded-xl border border-border bg-popover shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/40 min-w-0">
+            <div className="flex-1 min-w-0 flex items-center gap-1.5 px-2 h-7 rounded-md border border-border/50 bg-background/60">
+              <Search className="size-3 text-muted-foreground/60 flex-shrink-0" />
+              <input
+                ref={inputRef}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filtrar…"
+                className="flex-1 min-w-0 bg-transparent text-[11px] focus:outline-none"
+              />
+            </div>
+            <Tooltip label="Abrir outra pasta">
+              <button
+                type="button"
+                onClick={pickExisting}
+                className="inline-flex items-center justify-center size-7 rounded-md border border-border/50 bg-card/60 hover:bg-accent/60 flex-shrink-0"
+              >
+                <FolderPlus className="size-3.5" />
+              </button>
+            </Tooltip>
           </div>
-          {branches.map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onChange(b)
-              }}
-              className={cn(
-                'w-full px-3 py-2 text-xs text-left font-mono hover:bg-accent transition-colors flex items-center gap-2',
-                b === current && 'bg-primary/10 text-primary'
-              )}
-            >
-              {b === current ? (
-                <span className="text-primary text-[10px]">●</span>
-              ) : (
-                <span className="text-muted-foreground/30 text-[10px]">○</span>
-              )}
-              <span className="truncate">{b}</span>
-            </button>
-          ))}
+          <div className="max-h-72 overflow-y-auto">
+            {filtered.length > 0 ? (
+              <>
+                {favorites.length > 0 && (
+                  <>
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      Favoritos ({favorites.length})
+                    </div>
+                    {favorites.map((r) => (
+                      <RepoRow
+                        key={r.path}
+                        entry={r}
+                        onPick={() => {
+                          setOpen(false)
+                          onSwitch(r.path)
+                        }}
+                        onToggleFav={() => toggleFavorite(r)}
+                      />
+                    ))}
+                  </>
+                )}
+                {nonFavorites.length > 0 && (
+                  <>
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      Recentes ({nonFavorites.length})
+                    </div>
+                    {nonFavorites.map((r) => (
+                      <RepoRow
+                        key={r.path}
+                        entry={r}
+                        onPick={() => {
+                          setOpen(false)
+                          onSwitch(r.path)
+                        }}
+                        onToggleFav={() => toggleFavorite(r)}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            ) : (
+              <p className="px-3 py-4 text-[11px] text-muted-foreground italic">
+                {q ? 'Nada com esse filtro.' : 'Sem outros projetos abertos.'}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -1233,7 +1875,7 @@ function ProfileMenu() {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <div ref={ref} className="border-t border-border/40 p-2 relative">
+    <div ref={ref} className="m-2 mt-1 rounded-xl border border-border/60 bg-background/70 shadow-sm p-1.5 relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
@@ -1306,42 +1948,100 @@ function EmptyAnalysis({
 }) {
   if (!ready) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground h-full">
         <Loader2 className="size-3 animate-spin" /> carregando configurações...
       </div>
     )
   }
   if (!hasDiff) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
-          <Sparkles className="size-5 text-muted-foreground/40" />
+      <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-md mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+          <Sparkles className="size-6 text-primary/60" />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Sem alterações pra analisar.
+        <h3 className="text-sm font-semibold text-foreground mb-2">Sem alterações pra explicar</h3>
+        <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
+          Quando tu (ou tua IA) editar arquivos no projeto, eles vão aparecer aqui na sidebar.
+          Aí é só clicar em <span className="font-semibold text-foreground">Explicar</span> que
+          a IA quebra cada mudança pra ti.
         </p>
-        <p className="text-[11px] text-muted-foreground/50 mt-1">
-          Edita um arquivo e clica em Analisar.
-        </p>
+        <div className="flex flex-col gap-2 w-full text-[11px] text-muted-foreground/80">
+          <Step n={1} label="Edita arquivos no editor (ou deixa Cursor/Copilot fazer)" />
+          <Step n={2} label="Salva — eles aparecem na lista da esquerda" />
+          <Step n={3} label='Clica em "Explicar" no topo' />
+          <Step n={4} label="IA vai te ensinar o que mudou e por quê" />
+        </div>
       </div>
     )
   }
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
-        <Sparkles className="size-5 text-primary" />
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-md mx-auto">
+      <div className="relative mb-5 ds-float w-20 h-20 flex items-center justify-center">
+        {/* Conic glow background */}
+        <span
+          className="absolute inset-0 rounded-full opacity-40 blur-md ds-conic-spin"
+          style={{
+            background:
+              'conic-gradient(from 0deg, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent 35%, color-mix(in srgb, var(--color-primary) 40%, transparent) 65%, transparent)'
+          }}
+          aria-hidden
+        />
+
+        {/* Stacked halos */}
+        <span className="absolute inset-2 rounded-2xl bg-primary/25 ds-halo" aria-hidden />
+        <span className="absolute inset-2 rounded-2xl bg-primary/20 ds-halo-delay-1" aria-hidden />
+        <span className="absolute inset-2 rounded-2xl bg-primary/15 ds-halo-delay-2" aria-hidden />
+
+        {/* Icon container */}
+        <div className="relative w-14 h-14 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/10 ds-inner-pulse">
+          <Sparkles className="size-6 text-primary ds-icon-drift" />
+        </div>
+
+        {/* Orbiting dots */}
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+          <span className="block size-1.5 rounded-full bg-primary/80 shadow-[0_0_6px_var(--color-primary)] ds-orbit-small" />
+        </span>
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+          <span className="block size-1 rounded-full bg-primary/60 shadow-[0_0_4px_var(--color-primary)] ds-orbit-small-rev" />
+        </span>
+
+        {/* Twinkle stars */}
+        <Sparkles className="absolute -top-1 -right-2 size-3 text-primary/80 ds-twinkle" aria-hidden />
+        <Sparkles className="absolute -bottom-2 -left-1 size-2.5 text-primary/70 ds-twinkle-d-1" aria-hidden />
+        <Sparkles className="absolute top-0 -left-3 size-2 text-primary/60 ds-twinkle-d-2" aria-hidden />
+
+        {/* Sparkle dust */}
+        <span className="ds-dust-1 absolute top-1 right-0 size-1 rounded-full bg-primary/80" aria-hidden />
+        <span className="ds-dust-2 absolute -top-1 left-3 size-1 rounded-full bg-primary/70" aria-hidden />
+        <span className="ds-dust-3 absolute bottom-0 -left-1 size-1 rounded-full bg-primary/80" aria-hidden />
+        <span className="ds-dust-4 absolute -bottom-1 right-2 size-1 rounded-full bg-primary/60" aria-hidden />
       </div>
-      <p className="text-xs text-foreground/80 mb-1">Pronto pra analisar.</p>
-      <p className="text-[11px] text-muted-foreground/60 mb-4">
-        Clica em Analisar quando quiser revisar.
+      <h3 className="text-sm font-semibold text-foreground mb-2">Pronto pra te ensinar</h3>
+      <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
+        Vou ler o diff inteiro, identificar conceitos novos, marcar trechos com comentários
+        inline e ajustar a profundidade pro teu nível.
       </p>
       <button
         onClick={onAnalyze}
-        className="flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        className="relative flex items-center gap-1.5 text-[13px] rounded-md px-4 h-9 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ds-cta-breathe ds-cta-sheen-wrap"
       >
-        <Sparkles className="size-3" />
-        Analisar agora
+        <Sparkles className="size-3.5 ds-icon-drift relative" />
+        <span className="relative">Explicar agora</span>
       </button>
+      <p className="text-[10px] text-muted-foreground/50 mt-3">
+        ou clica em <span className="font-mono text-muted-foreground/70">Explicar</span> no header
+      </p>
+    </div>
+  )
+}
+
+function Step({ n, label }: { n: number; label: string }): React.ReactElement {
+  return (
+    <div className="flex items-start gap-2 text-left">
+      <span className="size-4 rounded-full bg-primary/15 border border-primary/30 text-primary text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+        {n}
+      </span>
+      <span>{label}</span>
     </div>
   )
 }
@@ -1353,7 +2053,7 @@ const ANALYSIS_MESSAGES = [
   'Cruzando contexto com senioridade...',
   'Detectando code smells e race conditions...',
   'Avaliando trade-offs arquiteturais...',
-  'Compondo análise final...'
+  'Compondo explicação final...'
 ]
 
 const L1 = [
@@ -1514,11 +2214,17 @@ function AnalysisSkeleton() {
 const DiffViewer = React.memo(function DiffViewer({
   diff,
   hideFileHeaders = false,
-  comments = []
+  comments = [],
+  searchQuery = '',
+  searchCurrentIndex = 0,
+  onSearchMatchesChange
 }: {
   diff: string
   hideFileHeaders?: boolean
   comments?: LineComment[]
+  searchQuery?: string
+  searchCurrentIndex?: number
+  onSearchMatchesChange?: (matches: Array<{ lineIdx: number }>) => void
 }) {
   const sections = useMemo(() => parseDiff(diff), [diff])
   const commentMap = useMemo(() => {
@@ -1530,6 +2236,34 @@ const DiffViewer = React.memo(function DiffViewer({
   }, [comments])
   const { variant: codeVariant } = useCodeTheme()
   const prismTheme = codeVariant.prism
+
+  const matches = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 2) return []
+    const q = searchQuery.toLowerCase()
+    const out: Array<{ lineIdx: number }> = []
+    sections.forEach((s, i) => {
+      if (s.kind === 'line' && s.content.toLowerCase().includes(q)) {
+        out.push({ lineIdx: i })
+      }
+    })
+    return out
+  }, [sections, searchQuery])
+
+  useEffect(() => {
+    onSearchMatchesChange?.(matches)
+  }, [matches, onSearchMatchesChange])
+
+  const currentMatchLineIdx =
+    matches.length > 0 ? matches[searchCurrentIndex % matches.length]?.lineIdx ?? -1 : -1
+
+  const matchRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  useEffect(() => {
+    if (currentMatchLineIdx >= 0) {
+      const el = matchRefs.current.get(currentMatchLineIdx)
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [currentMatchLineIdx])
+
   return (
     <div className="text-xs font-mono leading-5 select-text">
       {sections.map((s, i) => {
@@ -1578,14 +2312,23 @@ const DiffViewer = React.memo(function DiffViewer({
         const comment =
           isAdd && s.newNum != null ? commentMap.get(`${fileBase}:${s.newNum}`) : undefined
 
+        const isMatch = searchQuery && searchQuery.length >= 2 && s.content.toLowerCase().includes(searchQuery.toLowerCase())
+        const isCurrentMatch = i === currentMatchLineIdx
+
         return (
           <React.Fragment key={i}>
             <div
+              ref={(el) => {
+                if (el && isMatch) matchRefs.current.set(i, el)
+                else matchRefs.current.delete(i)
+              }}
               className={cn(
                 'flex',
                 isAdd && 'bg-green-500/8',
                 isDel && 'bg-red-500/8',
-                comment && 'border-l-2 border-primary/60'
+                comment && 'border-l-2 border-primary/60',
+                isMatch && !isCurrentMatch && 'ring-1 ring-primary/40 ring-inset',
+                isCurrentMatch && 'ring-2 ring-primary ring-inset bg-primary/10'
               )}
             >
               <div
@@ -1797,7 +2540,7 @@ function AnalysisTabs({
         {tab === 'concepts' && (
           concepts.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">
-              Nenhum conceito identificado nessa análise.
+              Nenhum conceito identificado nessa explicação.
             </p>
           ) : (
             <ul className="space-y-2.5">
@@ -1927,7 +2670,7 @@ function HistoryDrawer({
       >
         <header className="h-12 px-4 flex items-center gap-2 border-b border-border/40 flex-shrink-0">
           <History className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Histórico de análises</h2>
+          <h2 className="text-sm font-semibold">Histórico de explicações</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1974,7 +2717,7 @@ function HistoryDrawer({
             <div className="text-center py-12 px-4">
               <Sparkles className="size-6 mx-auto mb-2 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">
-                Nenhuma análise salva{' '}
+                Nenhuma explicação salva{' '}
                 {filter === 'branch' ? 'nessa branch' : 'nesse projeto'} ainda.
               </p>
             </div>
@@ -2024,14 +2767,15 @@ function HistoryDrawer({
                       )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => deleteItem(it.id, e)}
-                    title="Apagar"
-                    className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                  <Tooltip label="Apagar explicação">
+                    <button
+                      type="button"
+                      onClick={(e) => deleteItem(it.id, e)}
+                      className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </Tooltip>
                 </div>
               </button>
             ))

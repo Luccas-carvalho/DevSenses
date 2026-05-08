@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpen, CheckCircle2, Search, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Tooltip from '@/components/ui/Tooltip'
 
 interface SeenConcept {
   id: number
@@ -143,19 +144,22 @@ export default function Glossary() {
                 c.markedLearned ? 'border-green-500/30 bg-green-500/5' : 'border-border/50'
               )}
             >
-              <button
-                type="button"
-                title={c.markedLearned ? 'Desmarcar' : 'Marcar como aprendido'}
-                onClick={() => toggleLearned(c.id, c.markedLearned)}
-                className={cn(
-                  'mt-0.5 flex-shrink-0 transition-colors',
-                  c.markedLearned
-                    ? 'text-green-500 hover:text-green-400'
-                    : 'text-muted-foreground/30 hover:text-primary'
-                )}
+              <Tooltip
+                label={c.markedLearned ? 'Desmarcar como aprendido' : 'Marcar como aprendido'}
               >
-                <CheckCircle2 className="size-5" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => toggleLearned(c.id, c.markedLearned)}
+                  className={cn(
+                    'mt-0.5 flex-shrink-0 transition-colors',
+                    c.markedLearned
+                      ? 'text-green-500 hover:text-green-400'
+                      : 'text-muted-foreground/30 hover:text-primary'
+                  )}
+                >
+                  <CheckCircle2 className="size-5" />
+                </button>
+              </Tooltip>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <code className="bg-muted px-1.5 py-0.5 rounded text-[12px] font-mono text-primary">

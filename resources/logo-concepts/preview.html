@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>DevSenses · Logo concepts</title>
+<style>
+  body {
+    margin: 0;
+    background: #0d0a18;
+    color: #ddd;
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 32px;
+  }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  p.sub { margin: 0 0 32px; color: #888; font-size: 13px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+  }
+  .card {
+    background: #161224;
+    border: 1px solid #2a2440;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .card .images {
+    background:
+      linear-gradient(0deg, #1a1530 50%, #f5f5f7 50%);
+    display: flex;
+    gap: 0;
+    align-items: center;
+    justify-content: space-around;
+    padding: 24px 12px;
+  }
+  .card img.big {
+    width: 128px;
+    height: 128px;
+    border-radius: 28px;
+  }
+  .card img.small {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+  }
+  .meta {
+    padding: 12px 16px;
+    border-top: 1px solid #2a2440;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .meta .name { font-weight: 600; font-size: 14px; }
+  .meta .sub { color: #888; font-size: 11px; }
+  .row-bg-light { background: #f5f5f7; padding: 12px; }
+  .row-bg-dark { background: #1a1530; padding: 12px; }
+</style>
+</head>
+<body>
+  <h1>DevSenses · Logos</h1>
+  <p class="sub">SVG escalável. Mostrando 128×128 (ícone app) e 32×32 (favicon/dock) sobre fundo claro e escuro.</p>
+
+  <h2 style="font-size:14px; margin:24px 0 12px; color:#bd93f9;">OFICIAL — variantes do ícone limpo</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="images">
+        <img class="big" src="00-official.svg" alt="">
+        <img class="small" src="00-official.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">00 · Oficial (gradiente roxo)</div>
+          <div class="sub">app icon padrão pro DMG/installer</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="images">
+        <img class="big" src="00-official-light.svg" alt="">
+        <img class="small" src="00-official-light.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">00 · Light (fundo branco)</div>
+          <div class="sub">pra docs, README, fundo claro</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="images">
+        <img class="big" src="00-official-dark.svg" alt="">
+        <img class="small" src="00-official-dark.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">00 · Dark (purple lilac)</div>
+          <div class="sub">tema escuro, hero do app</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="images" style="background: linear-gradient(0deg, #1a1530 50%, #f5f5f7 50%);">
+        <img class="big" src="00-official-mark.svg" style="color:#512D6D;" alt="">
+        <img class="small" src="00-official-mark.svg" style="color:#bd93f9;" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">00 · Mark (transparente)</div>
+          <div class="sub">currentColor, vai pra qualquer fundo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="font-size:14px; margin:32px 0 12px; color:#bd93f9;">CONCEITOS — alternativas (vc escolhe se mantém só oficial ou explora)</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="images">
+        <img class="big" src="01-eye-diff.svg" alt="">
+        <img class="small" src="01-eye-diff.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">01 · Eye + Diff</div>
+          <div class="sub">olho como sentido, pupila = diff</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="images">
+        <img class="big" src="02-ds-monogram.svg" alt="">
+        <img class="small" src="02-ds-monogram.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">02 · DS Monograma</div>
+          <div class="sub">D + S sobrepostos, dots +/−</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="images">
+        <img class="big" src="03-prism.svg" alt="">
+        <img class="small" src="03-prism.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">03 · Prisma</div>
+          <div class="sub">luz entra, diff sai (analisar)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="images">
+        <img class="big" src="04-fork-eye.svg" alt="">
+        <img class="small" src="04-fork-eye.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">04 · Fork + Olho</div>
+          <div class="sub">grafo git observado</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="images">
+        <img class="big" src="05-sigil.svg" alt="">
+        <img class="small" src="05-sigil.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">05 · Sigil minimalista</div>
+          <div class="sub">3 barras + dots, identidade limpa</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="images">
+        <img class="big" src="06-orbit.svg" alt="">
+        <img class="small" src="06-orbit.svg" alt="">
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name">06 · Orbit</div>
+          <div class="sub">commits orbitando núcleo (lente)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

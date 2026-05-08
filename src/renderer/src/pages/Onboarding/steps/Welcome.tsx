@@ -1,23 +1,18 @@
 import { Shell } from '../Shell'
-import { Code2, Lightbulb, Bug } from 'lucide-react'
+import { Code2, Lightbulb, BookOpen } from 'lucide-react'
+import Logo from '@/components/Logo'
 
 const FEATURES = [
-  { icon: Code2, title: 'Diff inteligente', desc: 'A cada mudança do seu repo, o DevSenses lê o diff e te conta o que mudou.' },
-  { icon: Lightbulb, title: 'Modo educação', desc: 'Explica os conceitos por trás (hooks, libs, patterns) no seu nível.' },
-  { icon: Bug, title: 'Análise crítica', desc: 'Aponta bugs prováveis, problemas de segurança, anti-patterns.' },
+  { icon: Code2, title: 'Lê seu diff', desc: 'Quando tu (ou tua IA) editar arquivos, o DevSenses pega tudo que mudou.' },
+  { icon: Lightbulb, title: 'Explica IA', desc: 'A IA quebra cada trecho, aponta conceitos, ajusta a profundidade pro teu nível.' },
+  { icon: BookOpen, title: 'Fixa o aprendizado', desc: 'Comentários inline, glossário pessoal, histórico de explicações por branch.' },
 ]
 
 export default function Welcome() {
   return (
-    <Shell title="Bem-vindo ao DevSenses" subtitle="A IDE que ensina o que sua IA fez." hidePrev nextLabel="Vamos começar">
-      <div
-        style={{ marginBottom: 32, filter: 'drop-shadow(0 8px 32px rgba(139,92,246,0.5))' }}
-      >
-        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-          <rect width="64" height="64" rx="18" fill="rgba(139,92,246,0.2)" />
-          <rect x="2" y="2" width="60" height="60" rx="16" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-          <text x="32" y="40" textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="28" fontFamily="SF Mono, monospace">&lt;/&gt;</text>
-        </svg>
+    <Shell title="Bem-vindo ao DevSenses" subtitle="Tu deixou IA escrever. Deixa o DevSenses te ensinar o que ela fez." hidePrev nextLabel="Bora configurar">
+      <div style={{ marginBottom: 32, filter: 'drop-shadow(0 8px 32px rgba(139,92,246,0.5))' }}>
+        <Logo size={96} style={{ borderRadius: 22 }} />
       </div>
       <div className="feature-list">
         {FEATURES.map((f) => (

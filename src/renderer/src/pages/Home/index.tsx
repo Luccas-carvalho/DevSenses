@@ -8,13 +8,14 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  Monitor,
-  FlaskConical
+  Monitor
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
 import type { ThemeMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
+import Logo from '@/components/Logo'
+import Tooltip from '@/components/ui/Tooltip'
 
 interface Recent {
   path: string
@@ -33,22 +34,22 @@ function ThemeIconToggle() {
   return (
     <div className="inline-flex items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5">
       {THEME_OPTIONS.map(({ value, icon: Icon, label }) => (
-        <button
-          key={value}
-          onClick={() => {
-            setTheme(value)
-            window.api.invoke('settings:set', { key: 'theme', value })
-          }}
-          title={label}
-          className={cn(
-            'flex items-center justify-center w-7 h-6 rounded transition-colors',
-            theme === value
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Icon className="size-3.5" />
-        </button>
+        <Tooltip key={value} label={`Tema · ${label}`}>
+          <button
+            onClick={() => {
+              setTheme(value)
+              window.api.invoke('settings:set', { key: 'theme', value })
+            }}
+            className={cn(
+              'flex items-center justify-center w-7 h-6 rounded transition-colors',
+              theme === value
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Icon className="size-3.5" />
+          </button>
+        </Tooltip>
       ))}
     </div>
   )
@@ -69,6 +70,42 @@ export default function Home() {
       if (event.path) navigate(`/project?path=${encodeURIComponent(event.path)}`)
     })
   }, [navigate])
+
+  useEffect(() => {
+    return window.api.on('menu:action', (event) => {
+      const a = event.action
+      if (a === 'open-settings') navigate('/settings')
+      else if (a === 'open-local') pick()
+      else if (a === 'go-home') navigate('/home')
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate])
+
+  useEffect(() => {
+    window.api.invoke('menu:setState', {
+      hasProject: false,
+      branchName: null,
+      onBranch: false,
+      onDetachedHead: false,
+      branchIsUnborn: false,
+      onNonDefaultBranch: false,
+      hasPublishedBranch: false,
+      hasRemote: false,
+      isHostedOnGitHub: false,
+      hasChangedFiles: false,
+      hasStaged: false,
+      hasMultipleBranches: false,
+      hasConflicts: false,
+      rebaseInProgress: false,
+      isMerging: false,
+      networkInProgress: false,
+      branchHasStash: false,
+      hasContributionTargetDefaultBranch: false,
+      onContributionTargetDefaultBranch: false,
+      isAhead: false,
+      isBehind: false
+    })
+  }, [])
 
   async function pick(): Promise<void> {
     const r = await window.api.invoke('workspace:pickFolder', undefined)
@@ -92,20 +129,14 @@ export default function Home() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <ThemeIconToggle />
-          <button
-            onClick={() => navigate('/tests')}
-            title="Testes IA"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <FlaskConical className="size-3.5" />
-          </button>
-          <button
-            onClick={() => navigate('/settings')}
-            title="Configurações"
-            className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <SettingsIcon className="size-3.5" />
-          </button>
+          <Tooltip label="Configurações">
+            <button
+              onClick={() => navigate('/settings')}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <SettingsIcon className="size-3.5" />
+            </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -113,29 +144,41 @@ export default function Home() {
         <div className="max-w-2xl mx-auto px-6 py-12">
 
           {/* Greeting */}
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold tracking-tight mb-2">
-              E aí,{' '}
-              <span className="text-primary">{name || 'dev'}</span>
-            </h1>
-            <p className="text-base text-muted-foreground">
-              Seleciona um projeto pra o DevSenses começar a analisar os diffs.
-            </p>
+          <div className="mb-10 flex items-center gap-4">
+            <Logo size={64} className="flex-shrink-0 rounded-2xl shadow-lg" />
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight mb-1">
+                E aí,{' '}
+                <span className="text-primary">{name || 'dev'}</span>
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Tu deixou IA escrever. Deixa o DevSenses te ensinar o que ela fez.
+              </p>
+              <p className="text-sm text-muted-foreground/70 mt-1.5 leading-relaxed">
+                Abre um repositório, edita arquivos (ou deixa Cursor/Copilot fazer), e a IA
+                explica cada diff no teu nível — com conceitos, comentários inline e glossário pessoal.
+              </p>
+            </div>
           </div>
 
           {/* Open project */}
-          <button
-            onClick={pick}
-            className="w-full group rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-card/50 hover:bg-primary/5 transition-all duration-200 p-10 flex flex-col items-center gap-3 mb-6 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-              <FolderOpen className="size-5 text-primary" />
-            </div>
-            <div className="text-center">
-              <div className="font-semibold text-sm mb-1">Abrir projeto</div>
-              <div className="text-xs text-muted-foreground">Seleciona a pasta raiz de um repo git</div>
-            </div>
-          </button>
+          <div className="mb-6">
+            <button
+              onClick={pick}
+              className="group w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/60 bg-card/50 hover:bg-primary/5 transition-all duration-200 p-8 flex items-center gap-5 cursor-pointer"
+            >
+              <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200 flex-shrink-0">
+                <FolderOpen className="size-6 text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-base mb-1">Abrir projeto</div>
+                <div className="text-xs text-muted-foreground">
+                  Escolhe a pasta raiz de qualquer repositório git
+                </div>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+            </button>
+          </div>
 
           {/* Recents */}
           {recents.length > 0 && (
@@ -169,6 +212,7 @@ export default function Home() {
           )}
         </div>
       </div>
+
     </div>
   )
 }

@@ -154,3 +154,157 @@ body {
   scrollbar-color: var(--color-border) transparent;
   scrollbar-width: thin;
 }
+
+/* Subtle breathing glow for primary CTAs awaiting interaction */
+@keyframes ds-cta-breathe {
+  0%, 100% {
+    box-shadow:
+      0 4px 12px -3px color-mix(in srgb, var(--color-primary) 35%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent) inset;
+  }
+  50% {
+    box-shadow:
+      0 6px 20px -3px color-mix(in srgb, var(--color-primary) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent) inset;
+  }
+}
+.ds-cta-breathe {
+  animation: ds-cta-breathe 2.6s ease-in-out infinite;
+}
+
+/* Sheen sweep — light pass over button surface */
+@keyframes ds-cta-sheen {
+  0%   { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+  20%  { opacity: 0.7; }
+  60%  { opacity: 0.7; }
+  100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+}
+.ds-cta-sheen-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.ds-cta-sheen-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, white 35%, transparent) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: ds-cta-sheen 3.4s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+/* Slow icon drift — sparkles wiggle gently */
+@keyframes ds-icon-drift {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-8deg); }
+  75%      { transform: rotate(8deg); }
+}
+.ds-icon-drift {
+  animation: ds-icon-drift 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Floating halo — gentle Y bob for the icon container in empty state */
+@keyframes ds-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+.ds-float {
+  animation: ds-float 3.2s ease-in-out infinite;
+}
+
+/* Halo expanding ring (slower than ping, fades cleaner) */
+@keyframes ds-halo {
+  0%   { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.6);  opacity: 0;   }
+}
+.ds-halo {
+  animation: ds-halo 2.8s ease-out infinite;
+}
+.ds-halo-delay-1 { animation: ds-halo 2.8s ease-out infinite; animation-delay: 0.9s; }
+.ds-halo-delay-2 { animation: ds-halo 2.8s ease-out infinite; animation-delay: 1.8s; }
+
+/* Conic gradient rotating behind icon */
+@keyframes ds-conic-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.ds-conic-spin {
+  animation: ds-conic-spin 6s linear infinite;
+}
+
+/* Inner pulse — scale + opacity on icon container */
+@keyframes ds-inner-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   color-mix(in srgb, var(--color-primary) 0%, transparent); }
+  50%      { transform: scale(1.05); box-shadow: 0 0 24px 4px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+}
+.ds-inner-pulse {
+  animation: ds-inner-pulse 2.4s ease-in-out infinite;
+}
+
+/* Orbiting dot — rotates around icon */
+@keyframes ds-orbit-small {
+  from { transform: rotate(0deg)   translateX(28px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(28px) rotate(-360deg); }
+}
+@keyframes ds-orbit-small-rev {
+  from { transform: rotate(0deg)   translateX(34px) rotate(0deg); }
+  to   { transform: rotate(-360deg) translateX(34px) rotate(360deg); }
+}
+.ds-orbit-small      { animation: ds-orbit-small      3.6s linear infinite; }
+.ds-orbit-small-rev  { animation: ds-orbit-small-rev  5.2s linear infinite; }
+
+/* Sparkle dust — tiny dots floating around icon */
+@keyframes ds-dust-1 {
+  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  50%      { transform: translate(12px, -14px) scale(1); opacity: 0.9; }
+}
+@keyframes ds-dust-2 {
+  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  50%      { transform: translate(-14px, -8px) scale(1); opacity: 0.9; }
+}
+@keyframes ds-dust-3 {
+  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  50%      { transform: translate(10px, 12px) scale(1); opacity: 0.9; }
+}
+@keyframes ds-dust-4 {
+  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  50%      { transform: translate(-8px, 14px) scale(1); opacity: 0.9; }
+}
+.ds-dust-1 { animation: ds-dust-1 2.4s ease-in-out infinite; animation-delay: 0s; }
+.ds-dust-2 { animation: ds-dust-2 2.4s ease-in-out infinite; animation-delay: 0.6s; }
+.ds-dust-3 { animation: ds-dust-3 2.4s ease-in-out infinite; animation-delay: 1.2s; }
+.ds-dust-4 { animation: ds-dust-4 2.4s ease-in-out infinite; animation-delay: 1.8s; }
+
+/* Twinkle — small star scale/opacity flash */
+@keyframes ds-twinkle {
+  0%, 100% { transform: scale(0.5) rotate(0deg);   opacity: 0.2; }
+  50%      { transform: scale(1.2) rotate(180deg); opacity: 1;   }
+}
+.ds-twinkle      { animation: ds-twinkle 1.8s ease-in-out infinite; }
+.ds-twinkle-d-1  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 0.5s; }
+.ds-twinkle-d-2  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 1.0s; }
+
+/* Smooth slide-in/out for analysis panel toggle */
+.ds-panel-animating {
+  transition: flex 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ds-panel-animating > * {
+  animation: ds-slide-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes ds-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
