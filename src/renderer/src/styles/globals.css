@@ -291,6 +291,71 @@ body {
 .ds-twinkle-d-1  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 0.5s; }
 .ds-twinkle-d-2  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 1.0s; }
 
+/* ─── Home cosmic backdrop ────────────────── */
+.ds-home-root {
+  background: var(--color-background);
+}
+[data-theme="dark"] .ds-home-root {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%,
+      color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
+      transparent 60%),
+    linear-gradient(180deg, hsl(258 30% 8%) 0%, hsl(258 25% 7%) 50%, var(--color-background) 100%);
+}
+.ds-home-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.ds-home-aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+.ds-home-aurora-1 {
+  width: 380px;
+  height: 380px;
+  left: -10%;
+  top: -10%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 70%);
+  animation: ds-home-aurora-drift 24s ease-in-out infinite alternate;
+}
+.ds-home-aurora-2 {
+  width: 460px;
+  height: 460px;
+  right: -12%;
+  top: 30%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.18), transparent 70%);
+  animation: ds-home-aurora-drift 30s ease-in-out 5s infinite alternate-reverse;
+}
+.ds-home-aurora-3 {
+  width: 320px;
+  height: 320px;
+  left: 30%;
+  bottom: -15%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.14), transparent 70%);
+  animation: ds-home-aurora-drift 22s ease-in-out 8s infinite alternate;
+}
+@keyframes ds-home-aurora-drift {
+  from { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  to   { transform: translate(40px, -30px) scale(1.15); opacity: 1; }
+}
+[data-theme="light"] .ds-home-aurora,
+:root:not([data-theme="dark"]) .ds-home-aurora {
+  opacity: 0.4;
+}
+.ds-home-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+[data-theme="light"] .ds-home-stars,
+:root:not([data-theme="dark"]) .ds-home-stars {
+  display: none;
+}
+
 /* ─── Galaxy loading ───────────────────────── */
 .ds-galaxy-stage {
   position: relative;
