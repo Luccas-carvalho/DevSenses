@@ -1,4 +1,6 @@
 import type { SeniorityLevel } from '@shared/seniority'
+import type { ExplanationDepth } from '@shared/settings'
+import { PERSONAS, type PersonaId } from '@shared/personas'
 
 const LEVEL_INSTRUCTIONS: Record<SeniorityLevel, string> = {
   intern:
@@ -9,6 +11,22 @@ const LEVEL_INSTRUCTIONS: Record<SeniorityLevel, string> = {
     'Análise técnica: o que mudou, impactos, possíveis bugs introduzidos, oportunidades de melhoria de código e performance.',
   senior:
     'Revisão sênior direta: arquitetura, performance, segurança, anti-patterns, trade-offs. Aponte problemas críticos primeiro.'
+}
+
+export const DEPTH_LABELS: Record<ExplanationDepth, string> = {
+  1: 'Pra criança',
+  2: 'Resumido',
+  3: 'Equilibrado',
+  4: 'Detalhado',
+  5: 'Profundo'
+}
+
+export const DEPTH_DESCRIPTIONS: Record<ExplanationDepth, string> = {
+  1: 'Explique como pra criança de 10 anos. Analogias do cotidiano. Zero jargão.',
+  2: 'Explicação curta e direta. Só o essencial, em poucas frases.',
+  3: 'Equilibrado: explica o que mudou + por que, com termos técnicos comuns.',
+  4: 'Detalhado: padrões, edge cases, performance, trade-offs.',
+  5: 'Profundidade máxima: trade-offs algorítmicos, big-O, approaches alternativos, worst-case.'
 }
 
 const FORMAT_INSTRUCTION = `
@@ -44,12 +62,13 @@ REGRAS:
 export function buildDiffPrompt(
   diff: string,
   seniority: SeniorityLevel,
-  professorTurbo: boolean
+  depth: ExplanationDepth,
+  persona: PersonaId = 'default'
 ): string {
-  const instruction = LEVEL_INSTRUCTIONS[seniority]
-  const turbo = professorTurbo
-    ? 'MODO PROFESSOR TURBO ATIVO: Explique absolutamente tudo em detalhes, mesmo conceitos óbvios para um sênior. Não assuma conhecimento prévio.\n\n'
-    : ''
+  const seniorityInstruction = LEVEL_INSTRUCTIONS[seniority]
+  const depthInstruction = `MODO PROFUNDIDADE — ${DEPTH_LABELS[depth]}: ${DEPTH_DESCRIPTIONS[depth]}\n\n`
+  const personaPrompt = PERSONAS[persona].prompt
+  const personaInstruction = personaPrompt ? `PERSONA: ${personaPrompt}\n\n` : ''
 
-  return `${turbo}${instruction}${FORMAT_INSTRUCTION}\n\nDiff a analisar:\n\`\`\`diff\n${diff.slice(0, 12_000)}\n\`\`\``
+  return `${personaInstruction}${depthInstruction}${seniorityInstruction}${FORMAT_INSTRUCTION}\n\nDiff a analisar:\n\`\`\`diff\n${diff.slice(0, 12_000)}\n\`\`\``
 }

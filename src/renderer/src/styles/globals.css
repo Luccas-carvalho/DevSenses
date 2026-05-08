@@ -291,6 +291,205 @@ body {
 .ds-twinkle-d-1  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 0.5s; }
 .ds-twinkle-d-2  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 1.0s; }
 
+/* ─── Galaxy loading ───────────────────────── */
+.ds-galaxy-stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.ds-galaxy-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 40%,
+      color-mix(in srgb, var(--color-primary) 8%, transparent) 0%,
+      transparent 60%),
+    radial-gradient(circle at 50% 50%,
+      rgba(20, 12, 40, 0.4) 0%,
+      transparent 70%);
+}
+
+.ds-galaxy-nebula {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+}
+.ds-galaxy-nebula-1 {
+  width: 220px;
+  height: 220px;
+  left: 15%;
+  top: 25%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 70%);
+  animation: ds-galaxy-nebula-drift 18s ease-in-out infinite alternate;
+}
+.ds-galaxy-nebula-2 {
+  width: 280px;
+  height: 280px;
+  right: 8%;
+  bottom: 20%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.25), transparent 70%);
+  animation: ds-galaxy-nebula-drift 22s ease-in-out 4s infinite alternate-reverse;
+}
+.ds-galaxy-nebula-3 {
+  width: 180px;
+  height: 180px;
+  left: 50%;
+  top: 70%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18), transparent 70%);
+  animation: ds-galaxy-nebula-drift 14s ease-in-out 2s infinite alternate;
+}
+@keyframes ds-galaxy-nebula-drift {
+  from { transform: translate(0, 0) scale(1); opacity: 0.55; }
+  to   { transform: translate(20px, -16px) scale(1.12); opacity: 0.85; }
+}
+
+.ds-galaxy-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ds-galaxy-star {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(216, 180, 254, 0.7);
+  animation: ds-galaxy-twinkle 3.6s ease-in-out infinite;
+}
+.ds-galaxy-star-bright {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
+}
+@keyframes ds-galaxy-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.4); }
+}
+
+/* Galaxy core (orbits + center) */
+.ds-galaxy-core {
+  position: relative;
+  width: 240px;
+  height: 240px;
+}
+.ds-galaxy-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  animation: ds-galaxy-spin 18s linear infinite;
+}
+.ds-galaxy-orbit-2 {
+  inset: 12%;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  animation-direction: reverse;
+  animation-duration: 14s;
+}
+.ds-galaxy-orbit-3 {
+  inset: 26%;
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  animation-duration: 10s;
+}
+.ds-galaxy-orbit-4 {
+  inset: 40%;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-primary) 65%, transparent);
+  animation-direction: reverse;
+  animation-duration: 7s;
+}
+@keyframes ds-galaxy-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.ds-galaxy-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 90%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+.ds-galaxy-dot-1 {
+  width: 6px; height: 6px;
+  top: 50%; left: 50%;
+  transform-origin: 0 0;
+  animation: ds-galaxy-orbit-1 9s linear infinite;
+}
+.ds-galaxy-dot-2 {
+  width: 5px; height: 5px;
+  top: 50%; left: 50%;
+  transform-origin: 0 0;
+  animation: ds-galaxy-orbit-2 6s linear infinite;
+}
+.ds-galaxy-dot-3 {
+  width: 4px; height: 4px;
+  top: 50%; left: 50%;
+  transform-origin: 0 0;
+  animation: ds-galaxy-orbit-3 4s linear infinite;
+}
+.ds-galaxy-dot-4 {
+  width: 3px; height: 3px;
+  top: 50%; left: 50%;
+  transform-origin: 0 0;
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 0 6px rgba(255,255,255,0.7);
+  animation: ds-galaxy-orbit-4 3s linear infinite;
+}
+@keyframes ds-galaxy-orbit-1 {
+  from { transform: rotate(0deg) translate(110px, 0) rotate(0deg); }
+  to   { transform: rotate(360deg) translate(110px, 0) rotate(-360deg); }
+}
+@keyframes ds-galaxy-orbit-2 {
+  from { transform: rotate(0deg) translate(85px, 0) rotate(0deg); }
+  to   { transform: rotate(-360deg) translate(85px, 0) rotate(360deg); }
+}
+@keyframes ds-galaxy-orbit-3 {
+  from { transform: rotate(0deg) translate(60px, 0) rotate(0deg); }
+  to   { transform: rotate(360deg) translate(60px, 0) rotate(-360deg); }
+}
+@keyframes ds-galaxy-orbit-4 {
+  from { transform: rotate(0deg) translate(36px, 0) rotate(0deg); }
+  to   { transform: rotate(-360deg) translate(36px, 0) rotate(360deg); }
+}
+
+/* Pulse ring around center */
+.ds-galaxy-pulse {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 70%, transparent);
+  transform: translate(-50%, -50%);
+  animation: ds-galaxy-pulse-ring 2.4s ease-out infinite;
+}
+@keyframes ds-galaxy-pulse-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0;   }
+}
+
+.ds-galaxy-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: grid; place-items: center;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 0%,
+    color-mix(in srgb, var(--color-primary) 18%, transparent) 60%,
+    transparent 100%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 50%, transparent);
+  animation: ds-galaxy-center-pulse 2.4s ease-in-out infinite;
+}
+@keyframes ds-galaxy-center-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.12); }
+}
+
 /* Smooth slide-in/out for analysis panel toggle */
 .ds-panel-animating {
   transition: flex 280ms cubic-bezier(0.16, 1, 0.3, 1);

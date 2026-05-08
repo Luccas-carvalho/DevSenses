@@ -7,6 +7,8 @@ import ProviderDetect from './steps/ProviderDetect'
 import ProviderTest from './steps/ProviderTest'
 import ModelSelect from './steps/ModelSelect'
 import Seniority from './steps/Seniority'
+import Depth from './steps/Depth'
+import Persona from './steps/Persona'
 import Theme from './steps/Theme'
 import Workspace from './steps/Workspace'
 import Summary from './steps/Summary'
@@ -27,6 +29,18 @@ export default function Onboarding() {
     await window.api.invoke('settings:set', { key: 'provider_model', value: draft.provider_model ?? '' })
     await window.api.invoke('settings:set', { key: 'provider_tested', value: draft.provider_tested ?? {} })
     await window.api.invoke('settings:set', { key: 'theme', value: draft.theme! })
+    if (draft.explanation_depth != null) {
+      await window.api.invoke('settings:set', {
+        key: 'explanation_depth',
+        value: draft.explanation_depth
+      })
+    }
+    if (draft.explanation_persona) {
+      await window.api.invoke('settings:set', {
+        key: 'explanation_persona',
+        value: draft.explanation_persona
+      })
+    }
     await window.api.invoke('settings:set', { key: 'last_workspace', value: draft.last_workspace ?? null })
     await window.api.invoke('settings:set', { key: 'onboarding_completed', value: true })
     setCosmic(true)
@@ -55,6 +69,10 @@ export default function Onboarding() {
       return <ModelSelect />
     case 'seniority':
       return <Seniority />
+    case 'depth':
+      return <Depth />
+    case 'persona':
+      return <Persona />
     case 'theme':
       return <Theme />
     case 'workspace':

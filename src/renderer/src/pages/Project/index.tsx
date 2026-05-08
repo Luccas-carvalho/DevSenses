@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   GitBranch,
-  Zap,
+  Home,
   RefreshCw,
   Loader2,
   AlertTriangle,
@@ -38,7 +38,13 @@ import { useTheme } from '@/components/ThemeProvider'
 import { buildDiffPrompt } from '@/lib/diffPrompt'
 import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
-import type { ThemeMode, DiffMode } from '@shared/settings'
+import type { ThemeMode, DiffMode, ExplanationDepth } from '@shared/settings'
+import type { PersonaId } from '@shared/personas'
+import DepthSlider from '@/components/analysis/DepthSlider'
+import PersonaPicker from '@/components/analysis/PersonaPicker'
+import Quiz from '@/components/analysis/Quiz'
+import TermLink from '@/components/analysis/TermLink'
+import { detectTerms } from '@/lib/termDetector'
 import { cn } from '@/lib/utils'
 import {
   Panel,
@@ -288,25 +294,49 @@ function splitPath(filePath: string): { name: string; dir: string } {
   return { name, dir }
 }
 
+function renderTermLinks(plain: string, baseKey: number): React.ReactNode[] {
+  const matches = detectTerms(plain)
+  if (matches.length === 0) return [plain]
+  const out: React.ReactNode[] = []
+  let cursor = 0
+  matches.forEach((m, idx) => {
+    if (m.start > cursor) out.push(plain.slice(cursor, m.start))
+    out.push(
+      <TermLink
+        key={`tl-${baseKey}-${idx}`}
+        term={m.term}
+        contextSnippet={plain.slice(Math.max(0, m.start - 60), Math.min(plain.length, m.end + 60))}
+      />
+    )
+    cursor = m.end
+  })
+  if (cursor < plain.length) out.push(plain.slice(cursor))
+  return out
+}
+
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) => {
+  const out: React.ReactNode[] = []
+  parts.forEach((part, i) => {
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-      return (
-        <code key={i} className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80">
+      out.push(
+        <code key={`c-${i}`} className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80">
           {part.slice(1, -1)}
         </code>
       )
+      return
     }
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return (
-        <strong key={i} className="font-semibold text-foreground">
+      out.push(
+        <strong key={`b-${i}`} className="font-semibold text-foreground">
           {part.slice(2, -2)}
         </strong>
       )
+      return
     }
-    return part
+    for (const node of renderTermLinks(part, i)) out.push(node)
   })
+  return out
 }
 
 export default function Project() {
@@ -318,7 +348,8 @@ export default function Project() {
   const { value: seniority, loading: seniorityLoading } = useSettings('seniority')
   const { value: providerDefault, loading: providerLoading } = useSettings('provider_default')
   const { value: providerModel } = useSettings('provider_model')
-  const { value: professorTurboSaved } = useSettings('professor_turbo')
+  const { value: explanationDepthSaved } = useSettings('explanation_depth')
+  const { value: explanationPersonaSaved } = useSettings('explanation_persona')
   const { value: diffModeSaved } = useSettings('diff_mode')
 
   const settingsReady = !seniorityLoading && !providerLoading && !!seniority && !!providerDefault
@@ -341,9 +372,12 @@ export default function Project() {
 
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle')
   const [analysisText, setAnalysisText] = useState('')
-  const [professorTurbo, setProfessorTurbo] = useState(false)
+  const [explanationDepth, setExplanationDepth] = useState<ExplanationDepth>(3)
+  const [explanationPersona, setExplanationPersona] = useState<PersonaId>('default')
+  const professorTurbo = explanationDepth >= 5
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
+  const [savedAnalysisId, setSavedAnalysisId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -414,6 +448,7 @@ export default function Project() {
         })
         .then((id) => {
           console.log('[analyses:save] saved id=', id)
+          setSavedAnalysisId(id)
           setHistoryVersion((v) => v + 1)
         })
         .catch((err) => {
@@ -440,6 +475,7 @@ export default function Project() {
     providerDefault,
     seniority,
     professorTurbo,
+    explanationDepth,
     viewingAnalysisId
   ])
 
@@ -480,7 +516,7 @@ export default function Project() {
   const runAnalysis = useCallback(
     async (diffText: string) => {
       if (!providerDefault || !seniority || !diffText) return
-      track('ai_analyze_clicked', { provider: providerDefault, seniority, turbo: professorTurbo })
+      track('ai_analyze_clicked', { provider: providerDefault, seniority, depth: explanationDepth })
       if (streamIdRef.current) {
         await window.api.invoke('providers:abort', { streamId: streamIdRef.current })
       }
@@ -488,15 +524,21 @@ export default function Project() {
       streamIdRef.current = streamId
       setAnalysisText('')
       setAnalysisState('loading')
+      setSavedAnalysisId(null)
       setError('')
-      const prompt = buildDiffPrompt(diffText, seniority as SeniorityLevel, professorTurbo)
+      const prompt = buildDiffPrompt(
+        diffText,
+        seniority as SeniorityLevel,
+        explanationDepth,
+        explanationPersona
+      )
       await window.api.invoke('providers:invoke', {
         id: providerDefault as 'claude' | 'codex' | 'gemini' | 'aider' | 'ollama',
         prompt,
         streamId
       })
     },
-    [providerDefault, seniority, professorTurbo]
+    [providerDefault, seniority, explanationDepth, explanationPersona]
   )
 
   const diffModeRef = useRef(diffMode)
@@ -794,8 +836,16 @@ export default function Project() {
   }, [navigate, path])
 
   useEffect(() => {
-    if (professorTurboSaved !== undefined) setProfessorTurbo(Boolean(professorTurboSaved))
-  }, [professorTurboSaved])
+    if (explanationDepthSaved != null) {
+      setExplanationDepth(explanationDepthSaved as ExplanationDepth)
+    }
+  }, [explanationDepthSaved])
+
+  useEffect(() => {
+    if (explanationPersonaSaved) {
+      setExplanationPersona(explanationPersonaSaved as PersonaId)
+    }
+  }, [explanationPersonaSaved])
 
   useEffect(() => {
     return window.api.on('providers:stream', (event) => {
@@ -907,10 +957,12 @@ export default function Project() {
     ]
   }
 
-  async function toggleTurbo(): Promise<void> {
-    const next = !professorTurbo
-    setProfessorTurbo(next)
-    await window.api.invoke('settings:set', { key: 'professor_turbo', value: next })
+  function handleDepthChange(next: ExplanationDepth): void {
+    setExplanationDepth(next)
+  }
+
+  function handlePersonaChange(next: PersonaId): void {
+    setExplanationPersona(next)
   }
 
   function startAnalysis(): void {
@@ -929,7 +981,20 @@ export default function Project() {
         className="h-10 flex items-stretch border-b border-border/30 bg-background/80 backdrop-blur-xl flex-shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="flex-1 pl-20" aria-hidden />
+        <div
+          className="flex items-center gap-1 pl-20 pr-2"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <Tooltip label="Voltar pra Home" shortcut="⌘H">
+            <button
+              onClick={() => navigate('/home')}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <Home className="size-3.5" />
+            </button>
+          </Tooltip>
+        </div>
+        <div className="flex-1" aria-hidden />
         <div
           className="flex items-center gap-1.5 px-3"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
@@ -1026,26 +1091,8 @@ export default function Project() {
             </button>
           </Tooltip>
 
-          <Tooltip
-            label={
-              professorTurbo
-                ? 'Professor Turbo ativo · explica conceitos a fundo'
-                : 'Ativar Professor Turbo · explicação detalhada'
-            }
-          >
-            <button
-              onClick={toggleTurbo}
-              className={cn(
-                'flex items-center gap-1.5 text-xs rounded-md px-2.5 h-7 border transition-all font-medium',
-                professorTurbo
-                  ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-400'
-                  : 'bg-muted/50 border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <Zap className="size-3" />
-              Turbo
-            </button>
-          </Tooltip>
+          <DepthSlider onChange={handleDepthChange} />
+          <PersonaPicker onChange={handlePersonaChange} />
 
           <Tooltip label="Histórico de explicações">
             <button
@@ -1516,7 +1563,14 @@ export default function Project() {
             ) : analysisState === 'loading' ? (
               <AnalysisSkeleton />
             ) : analysisText ? (
-              <AnalysisTabs text={analysisText} lineComments={lineComments} />
+              <>
+                <AnalysisTabs text={analysisText} lineComments={lineComments} />
+                {analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null && (
+                  <div className="mt-5">
+                    <Quiz analysisId={(viewingAnalysisId ?? savedAnalysisId) as number} />
+                  </div>
+                )}
+              </>
             ) : (
               <EmptyAnalysis
                 ready={!!settingsReady}
@@ -2056,112 +2110,6 @@ const ANALYSIS_MESSAGES = [
   'Compondo explicação final...'
 ]
 
-const L1 = [
-  { x: 30, y: 24 },
-  { x: 30, y: 60 },
-  { x: 30, y: 100 },
-  { x: 30, y: 140 }
-]
-const L2 = [
-  { x: 160, y: 14 },
-  { x: 160, y: 50 },
-  { x: 160, y: 86 },
-  { x: 160, y: 122 },
-  { x: 160, y: 158 }
-]
-const L3 = [
-  { x: 290, y: 40 },
-  { x: 290, y: 86 },
-  { x: 290, y: 132 }
-]
-
-const EDGES_12: { x1: number; y1: number; x2: number; y2: number; key: string }[] = []
-L1.forEach((a, i) =>
-  L2.forEach((b, j) => EDGES_12.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, key: `12-${i}-${j}` }))
-)
-const EDGES_23: { x1: number; y1: number; x2: number; y2: number; key: string }[] = []
-L2.forEach((a, i) =>
-  L3.forEach((b, j) => EDGES_23.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, key: `23-${i}-${j}` }))
-)
-
-function NeuralNet() {
-  return (
-    <svg
-      viewBox="0 0 320 172"
-      className="w-full max-w-[340px] h-auto"
-      aria-hidden
-    >
-      <defs>
-        <filter id="ds-nn-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <linearGradient id="ds-nn-edge" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0" />
-          <stop offset="50%" stopColor="var(--color-primary)" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* base edges (dim) */}
-      {[...EDGES_12, ...EDGES_23].map((e) => (
-        <line
-          key={`b-${e.key}`}
-          x1={e.x1}
-          y1={e.y1}
-          x2={e.x2}
-          y2={e.y2}
-          stroke="currentColor"
-          strokeOpacity="0.10"
-          strokeWidth="0.6"
-        />
-      ))}
-
-      {/* traveling pulse edges (subset) */}
-      {[...EDGES_12, ...EDGES_23]
-        .filter((_, i) => i % 4 === 0)
-        .map((e, i) => (
-          <line
-            key={`p-${e.key}`}
-            x1={e.x1}
-            y1={e.y1}
-            x2={e.x2}
-            y2={e.y2}
-            stroke="url(#ds-nn-edge)"
-            strokeWidth="1.2"
-            strokeDasharray="14 56"
-            className="ds-nn-trace"
-            style={{ animationDelay: `${(i * 0.18) % 2.4}s` }}
-          />
-        ))}
-
-      {/* nodes */}
-      {[...L1, ...L2, ...L3].map((n, i) => (
-        <g key={`n-${i}`} filter="url(#ds-nn-glow)">
-          <circle
-            cx={n.x}
-            cy={n.y}
-            r="4"
-            className="fill-primary ds-nn-pulse"
-            style={{ animationDelay: `${(i * 0.12) % 1.8}s` }}
-          />
-          <circle cx={n.x} cy={n.y} r="2" fill="white" opacity="0.85" />
-        </g>
-      ))}
-
-      {/* layer labels */}
-      <g className="text-[7px] fill-current opacity-30 font-mono">
-        <text x="14" y="172">input</text>
-        <text x="143" y="172">hidden</text>
-        <text x="270" y="172">output</text>
-      </g>
-    </svg>
-  )
-}
-
 function AnalysisSkeleton() {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
@@ -2172,39 +2120,92 @@ function AnalysisSkeleton() {
     return () => clearInterval(t)
   }, [])
 
+  // Generate stars once
+  const stars = useMemo(() => {
+    const arr: Array<{ x: number; y: number; size: number; delay: number; bright: boolean }> = []
+    for (let i = 0; i < 70; i++) {
+      arr.push({
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: 1 + Math.random() * 2,
+        delay: Math.random() * 4,
+        bright: i % 6 === 0
+      })
+    }
+    return arr
+  }, [])
+
   return (
-    <div className="flex flex-col items-center justify-center py-8 select-none text-primary">
-      <NeuralNet />
-
-      {/* status with rotating message */}
-      <div className="mt-5 flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-        </span>
-        <span
-          key={idx}
-          className="ds-fade-up text-[12px] font-mono tracking-tight text-foreground/85"
-        >
-          {ANALYSIS_MESSAGES[idx]}
-        </span>
-      </div>
-
-      {/* token stream */}
-      <div className="mt-5 w-full max-w-[340px] overflow-hidden rounded-md border border-border/30 bg-muted/20 px-2 py-1.5 font-mono text-[10px] text-primary/70 ds-token-stream">
-        <span className="ds-token-row">
-          0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
-          0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
-        </span>
-      </div>
-
-      {/* progress bars */}
-      <div className="mt-4 w-full max-w-[340px] space-y-2">
-        <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
-          <div className="h-full w-full ds-shimmer" />
+    <div className="ds-galaxy-stage flex flex-col h-full select-none">
+      {/* Cosmic backdrop fills the entire panel */}
+      <div className="ds-galaxy-bg" aria-hidden>
+        <div className="ds-galaxy-nebula ds-galaxy-nebula-1" />
+        <div className="ds-galaxy-nebula ds-galaxy-nebula-2" />
+        <div className="ds-galaxy-nebula ds-galaxy-nebula-3" />
+        <div className="ds-galaxy-stars">
+          {stars.map((s, i) => (
+            <span
+              key={i}
+              className={cn('ds-galaxy-star', s.bright && 'ds-galaxy-star-bright')}
+              style={{
+                left: `${s.x}%`,
+                top: `${s.y}%`,
+                width: s.size,
+                height: s.size,
+                animationDelay: `${s.delay}s`
+              }}
+            />
+          ))}
         </div>
-        <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden w-5/6">
-          <div className="h-full w-full ds-shimmer" style={{ animationDelay: '0.25s' }} />
+      </div>
+
+      {/* Center: galaxy core */}
+      <div className="relative flex-1 min-h-[280px] flex items-center justify-center">
+        <div className="ds-galaxy-core" aria-hidden>
+          <div className="ds-galaxy-orbit ds-galaxy-orbit-1" />
+          <div className="ds-galaxy-orbit ds-galaxy-orbit-2" />
+          <div className="ds-galaxy-orbit ds-galaxy-orbit-3" />
+          <div className="ds-galaxy-orbit ds-galaxy-orbit-4" />
+          <span className="ds-galaxy-dot ds-galaxy-dot-1" />
+          <span className="ds-galaxy-dot ds-galaxy-dot-2" />
+          <span className="ds-galaxy-dot ds-galaxy-dot-3" />
+          <span className="ds-galaxy-dot ds-galaxy-dot-4" />
+          <div className="ds-galaxy-pulse" />
+          <div className="ds-galaxy-center">
+            <Sparkles className="size-5 text-primary" />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom panel: status + token stream + bars */}
+      <div className="relative px-4 pt-2 pb-6 z-[1]">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+          </span>
+          <span
+            key={idx}
+            className="ds-fade-up text-[12px] font-mono tracking-tight text-foreground/90"
+          >
+            {ANALYSIS_MESSAGES[idx]}
+          </span>
+        </div>
+
+        <div className="mx-auto max-w-[340px] overflow-hidden rounded-md border border-border/30 bg-background/40 backdrop-blur-sm px-2 py-1.5 font-mono text-[10px] text-primary/70 ds-token-stream">
+          <span className="ds-token-row">
+            0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
+            0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
+          </span>
+        </div>
+
+        <div className="mx-auto max-w-[340px] mt-3 space-y-2">
+          <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+            <div className="h-full w-full ds-shimmer" />
+          </div>
+          <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden w-5/6">
+            <div className="h-full w-full ds-shimmer" style={{ animationDelay: '0.25s' }} />
+          </div>
         </div>
       </div>
     </div>

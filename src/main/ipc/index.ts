@@ -3,6 +3,7 @@ import { registerProviderHandlers } from './providers'
 import { registerWorkspaceHandlers } from './workspace'
 import { registerConceptsHandlers } from './concepts'
 import { registerAnalysesHandlers } from './analyses'
+import { registerQuizzesHandlers } from './quizzes'
 import { registerTestsHandlers } from './tests'
 import { registerGitHandlers } from './git-ops'
 import { registerRepositoryHandlers } from './repository'
@@ -14,6 +15,7 @@ export function registerIpcHandlers(): void {
   registerWorkspaceHandlers()
   registerConceptsHandlers()
   registerAnalysesHandlers()
+  registerQuizzesHandlers()
   registerTestsHandlers()
   registerGitHandlers()
   registerRepositoryHandlers()

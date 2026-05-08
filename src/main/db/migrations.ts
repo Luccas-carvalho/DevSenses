@@ -104,6 +104,36 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS recent_workspaces_favorite_idx
         ON recent_workspaces (favorite DESC, last_opened_at DESC);
     `
+  },
+  {
+    version: 6,
+    name: 'quizzes',
+    sql: `
+      CREATE TABLE IF NOT EXISTS quizzes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        analysis_id INTEGER NOT NULL,
+        question TEXT NOT NULL,
+        options_json TEXT NOT NULL,
+        correct_idx INTEGER NOT NULL,
+        explain_correct TEXT NOT NULL,
+        explain_wrong TEXT NOT NULL,
+        user_answer_idx INTEGER,
+        answered_at INTEGER,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS quizzes_analysis_idx
+        ON quizzes (analysis_id, created_at);
+    `
+  },
+  {
+    version: 7,
+    name: 'concepts_definition',
+    sql: `
+      ALTER TABLE concepts ADD COLUMN definition TEXT;
+      ALTER TABLE concepts ADD COLUMN example TEXT;
+      ALTER TABLE concepts ADD COLUMN updated_at INTEGER;
+    `
   }
 ]
 

@@ -8,6 +8,8 @@ export type OnboardingStep =
   | 'test'
   | 'model'
   | 'seniority'
+  | 'depth'
+  | 'persona'
   | 'theme'
   | 'workspace'
   | 'summary'
@@ -19,6 +21,8 @@ export const STEP_ORDER: OnboardingStep[] = [
   'test',
   'model',
   'seniority',
+  'depth',
+  'persona',
   'theme',
   'workspace',
   'summary'
@@ -47,6 +51,8 @@ const INITIAL_DRAFT: Draft = {
   provider_model: 'claude-sonnet-4-6',
   provider_tested: {},
   theme: 'auto',
+  explanation_depth: 3,
+  explanation_persona: 'default',
   last_workspace: null
 }
 

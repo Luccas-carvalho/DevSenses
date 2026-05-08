@@ -379,6 +379,10 @@ export interface IpcContract {
     request: { id: number; note: string | null }
     response: void
   }
+  'concepts:explainTerm': {
+    request: { term: string; contextSnippet?: string; regenerate?: boolean }
+    response: { definition: string; example: string }
+  }
 
   'analyses:save': {
     request: {
@@ -441,6 +445,52 @@ export interface IpcContract {
   'analyses:clearProject': {
     request: { path: string }
     response: void
+  }
+
+  'quiz:generate': {
+    request: { analysisId: number; regenerate?: boolean }
+    response: Array<{
+      id: number
+      analysisId: number
+      question: string
+      options: string[]
+      correctIdx: number
+      explainCorrect: string
+      explainWrong: string
+      userAnswerIdx: number | null
+      answeredAt: number | null
+      createdAt: number
+    }>
+  }
+  'quiz:answer': {
+    request: { id: number; idx: number }
+    response: {
+      id: number
+      analysisId: number
+      question: string
+      options: string[]
+      correctIdx: number
+      explainCorrect: string
+      explainWrong: string
+      userAnswerIdx: number | null
+      answeredAt: number | null
+      createdAt: number
+    } | null
+  }
+  'quiz:byAnalysis': {
+    request: { analysisId: number }
+    response: Array<{
+      id: number
+      analysisId: number
+      question: string
+      options: string[]
+      correctIdx: number
+      explainCorrect: string
+      explainWrong: string
+      userAnswerIdx: number | null
+      answeredAt: number | null
+      createdAt: number
+    }>
   }
 
   'tests:detectUrl': {

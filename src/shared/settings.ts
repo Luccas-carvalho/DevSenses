@@ -1,5 +1,7 @@
 export type ThemeMode = 'dark' | 'light' | 'auto'
 export type DiffMode = 'all' | 'uncommitted' | 'committed'
+export type ExplanationDepth = 1 | 2 | 3 | 4 | 5
+export type ExplanationPersona = 'default' | 'sarcastic' | 'pragmatic' | 'academic' | 'mentor'
 export type CodeThemeId =
   | 'default'
   | 'dracula'
@@ -23,6 +25,8 @@ export interface SettingsValueMap {
   code_theme: CodeThemeId
   last_workspace: string | null
   professor_turbo: boolean
+  explanation_depth: ExplanationDepth
+  explanation_persona: ExplanationPersona
   diff_mode: DiffMode
   editor_default: string
   terminal_default: string
@@ -46,6 +50,8 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   code_theme: 'default',
   last_workspace: null,
   professor_turbo: false,
+  explanation_depth: 3,
+  explanation_persona: 'default',
   diff_mode: 'all',
   editor_default: '',
   terminal_default: '',

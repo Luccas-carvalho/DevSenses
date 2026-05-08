@@ -2,6 +2,9 @@ import { Shell } from '../Shell'
 import { useOnboarding } from '@/stores/onboarding'
 import { SENIORITY_LABELS } from '@shared/seniority'
 import { PROVIDER_META } from '@shared/providers'
+import { PERSONAS, type PersonaId } from '@shared/personas'
+import { DEPTH_LABELS } from '@/lib/diffPrompt'
+import type { ExplanationDepth } from '@shared/settings'
 import {
   User,
   GraduationCap,
@@ -11,7 +14,9 @@ import {
   Check,
   Cpu,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Layers,
+  Compass
 } from 'lucide-react'
 
 interface Props {
@@ -57,7 +62,17 @@ export default function Summary({ onFinalize }: Props) {
       accent: 'from-sky-500/30 to-violet-500/10',
       rows: [
         { icon: Bot, label: 'IA padrão', value: providerLabel },
-        { icon: Cpu, label: 'Modelo', value: draft.provider_model || '—' }
+        { icon: Cpu, label: 'Modelo', value: draft.provider_model || '—' },
+        {
+          icon: Layers,
+          label: 'Detalhe',
+          value: DEPTH_LABELS[(draft.explanation_depth as ExplanationDepth) ?? 3]
+        },
+        {
+          icon: Compass,
+          label: 'Persona',
+          value: PERSONAS[(draft.explanation_persona as PersonaId) ?? 'default'].label
+        }
       ]
     },
     {

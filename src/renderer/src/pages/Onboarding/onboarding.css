@@ -27,7 +27,9 @@
 .onboarding-root[data-step="5"] { background: linear-gradient(170deg, #141228 0%, #18162e 25%, #1c1a34 45%, #151328 65%, #111022 85%, #0e0c1c 100%); }
 .onboarding-root[data-step="6"] { background: linear-gradient(170deg, #1a1225 0%, #1e1530 25%, #221838 45%, #1c1328 65%, #181020 85%, #140e1a 100%); }
 .onboarding-root[data-step="7"] { background: linear-gradient(170deg, #141228 0%, #18162e 25%, #1c1a34 45%, #151328 65%, #111022 85%, #0e0c1c 100%); }
-.onboarding-root[data-step="8"] { background: linear-gradient(170deg, #1a1225 0%, #1e1530 25%, #221838 45%, #1c1328 65%, #181020 85%, #140e1a 100%); }
+.onboarding-root[data-step="8"] { background: linear-gradient(170deg, #0e1e1a 0%, #122420 25%, #142824 45%, #10201c 65%, #0c1a16 85%, #081410 100%); }
+.onboarding-root[data-step="9"] { background: linear-gradient(170deg, #1a1225 0%, #1e1530 25%, #221838 45%, #1c1328 65%, #181020 85%, #140e1a 100%); }
+.onboarding-root[data-step="10"] { background: linear-gradient(170deg, #141228 0%, #18162e 25%, #1c1a34 45%, #151328 65%, #111022 85%, #0e0c1c 100%); }
 
 /* ─── Symbol Pattern ─────────────────────────── */
 .onboarding-pattern {

@@ -132,4 +132,26 @@ export class ConceptsRepository {
     if (!this.noteCol) return
     this.updateNoteStmt.run(note, id)
   }
+
+  getDefinition(name: string): { definition: string; example: string } | null {
+    const row = this.findIdStmt.get(name, null, null) as { id: number } | undefined
+    if (!row) return null
+    const def = this.upsertConceptStmt.database
+      .prepare('SELECT definition, example FROM concepts WHERE id = ?')
+      .get(row.id) as { definition: string | null; example: string | null } | undefined
+    if (!def || !def.definition) return null
+    return { definition: def.definition, example: def.example ?? '' }
+  }
+
+  upsertDefinition(name: string, definition: string, example: string): void {
+    const db = this.upsertConceptStmt.database
+    db.prepare(
+      `INSERT INTO concepts (name, category, language, framework, definition, example, updated_at)
+       VALUES (?, 'general', NULL, NULL, ?, ?, ?)
+       ON CONFLICT(name, language, framework) DO UPDATE SET
+         definition = excluded.definition,
+         example = excluded.example,
+         updated_at = excluded.updated_at`
+    ).run(name, definition, example, Date.now())
+  }
 }
