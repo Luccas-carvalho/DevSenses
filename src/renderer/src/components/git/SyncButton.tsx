@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, RefreshCw, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Tooltip from '@/components/ui/Tooltip'
+import { useSettings } from '@/hooks/useSettings'
 import type { RepoStatus } from '@shared/git'
 
 interface Props {
@@ -45,6 +46,8 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
   const behind = status?.behind ?? 0
   const hasUpstream = !!status?.upstream
 
+  const { value: updateStrategy } = useSettings('update_strategy')
+
   async function run(action: Action): Promise<void> {
     setBusy(action)
     setError('')
@@ -53,14 +56,17 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
     if (action === 'push') {
       r = await window.api.invoke('git:push', { path, setUpstream: !hasUpstream })
     } else if (action === 'pull') {
-      r = await window.api.invoke('git:pull', { path })
+      r = await window.api.invoke('git:pull', {
+        path,
+        rebase: updateStrategy === 'rebase'
+      })
     } else {
       r = await window.api.invoke('git:fetch', { path, prune: true })
     }
     setBusy(null)
     if (!r.ok) {
       setError(r.error ?? 'Falha')
-      setTimeout(() => setError(''), 6000)
+      setTimeout(() => setError(''), 12000)
       return
     }
     onChanged()
@@ -126,7 +132,7 @@ export default function SyncButton({ path, status, onChanged }: Props): React.Re
       </div>
 
       {error && (
-        <div className="absolute right-0 top-full mt-1 text-[10px] text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1 max-w-xs whitespace-pre-wrap z-50">
+        <div className="absolute right-0 top-full mt-1 text-[11px] text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-2.5 py-1.5 max-w-md whitespace-pre-wrap z-50 shadow-lg">
           {error}
         </div>
       )}

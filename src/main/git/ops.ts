@@ -211,7 +211,34 @@ export async function push(
   }
   if (opts.force) args.push('--force-with-lease')
   const r = await gitRun(repoPath, args, TIMEOUT_LONG)
-  if (!r.ok) return { ok: false, output: r.stdout, error: r.stderr || r.stdout }
+  if (!r.ok) {
+    const raw = r.stderr || r.stdout
+    const lower = raw.toLowerCase()
+    if (
+      lower.includes('non-fast-forward') ||
+      lower.includes('rejected') ||
+      lower.includes('fetch first') ||
+      lower.includes('updates were rejected')
+    ) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Remote tem commits novos que tu não tem. Faz Pull primeiro pra trazer as mudanças, depois Push.\n\n' +
+          raw
+      }
+    }
+    if (lower.includes('no upstream') || lower.includes('has no upstream')) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Branch sem upstream configurado. Usa "Publicar branch" pra criar no remoto primeiro.\n\n' +
+          raw
+      }
+    }
+    return { ok: false, output: r.stdout, error: raw }
+  }
   return { ok: true, output: r.stderr || r.stdout }
 }
 
@@ -222,7 +249,46 @@ export async function pull(
   const args = ['pull']
   if (opts.rebase) args.push('--rebase')
   const r = await gitRun(repoPath, args, TIMEOUT_LONG)
-  if (!r.ok) return { ok: false, output: r.stdout, error: r.stderr || r.stdout }
+  if (!r.ok) {
+    const raw = r.stderr || r.stdout
+    const lower = raw.toLowerCase()
+    if (lower.includes('no tracking information') || lower.includes('no upstream')) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Branch sem upstream configurado. Configura com: git push -u origin <branch> ou usa "Publicar branch".\n\n' +
+          raw
+      }
+    }
+    if (lower.includes('refusing to merge unrelated histories')) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Histórias não relacionadas. Repos foram inicializados separados — precisa de --allow-unrelated-histories manual.\n\n' +
+          raw
+      }
+    }
+    if (lower.includes('uncommitted changes') || lower.includes('your local changes')) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Tem alterações não commitadas que conflitam com o pull. Commita ou Stash antes.\n\n' +
+          raw
+      }
+    }
+    if (lower.includes('conflict')) {
+      return {
+        ok: false,
+        output: r.stdout,
+        error:
+          'Pull gerou conflito. Resolve os conflitos e finaliza o merge.\n\n' + raw
+      }
+    }
+    return { ok: false, output: r.stdout, error: raw }
+  }
   return { ok: true, output: r.stderr || r.stdout }
 }
 

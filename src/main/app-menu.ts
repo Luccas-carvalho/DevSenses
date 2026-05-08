@@ -65,34 +65,9 @@ function buildMenu(s: MenuState): Menu {
   const isMac = process.platform === 'darwin'
   const repoActive = s.hasProject
 
-  // GH Desktop rules
-  const canRename =
-    repoActive &&
-    (s.onNonDefaultBranch || !s.hasPublishedBranch) &&
-    !s.branchIsUnborn &&
-    !s.onDetachedHead
-  const canDelete =
-    repoActive && s.onNonDefaultBranch && !s.branchIsUnborn && !s.onDetachedHead
-  const canUpdate =
-    repoActive &&
-    s.onBranch &&
-    s.hasContributionTargetDefaultBranch &&
-    !s.onContributionTargetDefaultBranch
-  const canMerge = repoActive && s.onBranch && s.hasMultipleBranches
-  const canRebase = repoActive && s.onBranch && s.hasMultipleBranches
-  const canCompareToBranch = repoActive && !s.onDetachedHead && s.hasMultipleBranches
-  const canCompareOnGitHub = repoActive && s.isHostedOnGitHub && s.hasPublishedBranch
+  // Read-only mode — só leitura externa
   const canBranchOnGitHub = repoActive && s.isHostedOnGitHub && s.hasPublishedBranch
   const canViewOnGitHub = repoActive && s.isHostedOnGitHub
-  const canCreatePR = repoActive && s.isHostedOnGitHub && !s.branchIsUnborn && !s.onDetachedHead
-  const canPreviewPR = repoActive && s.isHostedOnGitHub && !s.branchIsUnborn && !s.onDetachedHead
-  const canPush = repoActive && !s.branchIsUnborn && !s.onDetachedHead && !s.networkInProgress
-  const canPull = repoActive && s.hasPublishedBranch && !s.networkInProgress
-  const canFetch = repoActive && s.hasRemote && !s.networkInProgress
-  const canCreateBranch = repoActive && !s.branchIsUnborn && !s.rebaseInProgress
-  const canDiscard = repoActive && s.hasChangedFiles && !s.rebaseInProgress
-  const canStash =
-    repoActive && s.hasChangedFiles && s.onBranch && !s.rebaseInProgress && !s.hasConflicts
 
   const appMenu: MenuItemConstructorOptions = {
     label: app.name,
@@ -174,12 +149,8 @@ function buildMenu(s: MenuState): Menu {
   }
 
   const repoMenu: MenuItemConstructorOptions = {
-    label: 'Repository',
+    label: 'Repositório',
     submenu: [
-      { label: 'Push', accelerator: 'CmdOrCtrl+P', enabled: canPush, click: menuAction('git-push') },
-      { label: 'Pull', accelerator: 'CmdOrCtrl+Shift+P', enabled: canPull, click: menuAction('git-pull') },
-      { label: 'Fetch', accelerator: 'CmdOrCtrl+Shift+T', enabled: canFetch, click: menuAction('git-fetch') },
-      { type: 'separator' },
       {
         label: 'Abrir no editor',
         accelerator: 'CmdOrCtrl+Shift+A',
@@ -206,50 +177,11 @@ function buildMenu(s: MenuState): Menu {
         click: menuAction('view-on-github')
       },
       {
-        label: 'Criar Issue',
-        enabled: canViewOnGitHub,
-        click: menuAction('create-issue')
+        label: 'Ver branch no GitHub',
+        accelerator: 'CmdOrCtrl+Alt+B',
+        enabled: canBranchOnGitHub,
+        click: menuAction('view-branch-on-github')
       }
-    ]
-  }
-
-  const branchMenu: MenuItemConstructorOptions = {
-    label: 'Branch',
-    submenu: [
-      { label: 'Nova branch…', accelerator: 'CmdOrCtrl+Shift+N', enabled: canCreateBranch, click: menuAction('new-branch') },
-      { label: 'Renomear…', accelerator: 'CmdOrCtrl+Shift+R', enabled: canRename, click: menuAction('rename-branch') },
-      { label: 'Deletar…', accelerator: 'CmdOrCtrl+Shift+D', enabled: canDelete, click: menuAction('delete-branch') },
-      { type: 'separator' },
-      {
-        label: 'Descartar todas mudanças…',
-        accelerator: 'CmdOrCtrl+Shift+Backspace',
-        enabled: canDiscard,
-        click: menuAction('discard-all')
-      },
-      {
-        label: 'Stash todas mudanças',
-        accelerator: 'CmdOrCtrl+Shift+S',
-        enabled: canStash,
-        click: menuAction('stash-all')
-      },
-      { type: 'separator' },
-      {
-        label: s.hasContributionTargetDefaultBranch && currentState.branchName
-          ? `Atualizar do default`
-          : 'Atualizar do default',
-        accelerator: 'CmdOrCtrl+Shift+U',
-        enabled: canUpdate,
-        click: menuAction('update-from-default')
-      },
-      { label: 'Comparar com branch…', enabled: canCompareToBranch, click: menuAction('compare-to-branch') },
-      { label: 'Mergear na atual…', accelerator: 'CmdOrCtrl+Shift+M', enabled: canMerge, click: menuAction('merge-into-current') },
-      { label: 'Squash + Merge na atual…', accelerator: 'CmdOrCtrl+Shift+H', enabled: canMerge, click: menuAction('squash-into-current') },
-      { label: 'Rebase na atual…', accelerator: 'CmdOrCtrl+Shift+E', enabled: canRebase, click: menuAction('rebase-current') },
-      { type: 'separator' },
-      { label: 'Comparar no GitHub', accelerator: 'CmdOrCtrl+Shift+C', enabled: canCompareOnGitHub, click: menuAction('compare-on-github') },
-      { label: 'Ver branch no GitHub', accelerator: 'CmdOrCtrl+Alt+B', enabled: canBranchOnGitHub, click: menuAction('view-branch-on-github') },
-      { label: 'Preview Pull Request', accelerator: 'CmdOrCtrl+Alt+P', enabled: canPreviewPR, click: menuAction('preview-pr') },
-      { label: 'Criar Pull Request', accelerator: 'CmdOrCtrl+R', enabled: canCreatePR, click: menuAction('create-pr') }
     ]
   }
 
@@ -275,8 +207,8 @@ function buildMenu(s: MenuState): Menu {
   }
 
   const template: MenuItemConstructorOptions[] = isMac
-    ? [appMenu, fileMenu, editMenu, viewMenu, repoMenu, branchMenu, helpMenu]
-    : [fileMenu, editMenu, viewMenu, repoMenu, branchMenu, helpMenu]
+    ? [appMenu, fileMenu, editMenu, viewMenu, repoMenu, helpMenu]
+    : [fileMenu, editMenu, viewMenu, repoMenu, helpMenu]
 
   return Menu.buildFromTemplate(template)
 }

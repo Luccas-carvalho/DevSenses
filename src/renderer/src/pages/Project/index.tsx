@@ -25,14 +25,12 @@ import {
   History,
   X,
   Trash2,
-  FlaskConical,
   Terminal,
   ExternalLink,
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Download,
   Star
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
@@ -52,17 +50,7 @@ import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
-import SyncButton from '@/components/git/SyncButton'
 import DiffSearchBar from '@/components/git/DiffSearchBar'
-import NewBranchDialog from '@/components/git/dialogs/NewBranchDialog'
-import ConfirmDialog from '@/components/git/dialogs/ConfirmDialog'
-import MergeIntoDialog from '@/components/git/dialogs/MergeIntoDialog'
-import RenameBranchDialog from '@/components/git/dialogs/RenameBranchDialog'
-import DeleteBranchDialog from '@/components/git/dialogs/DeleteBranchDialog'
-import OpenPullRequestDialog from '@/components/git/dialogs/OpenPullRequestDialog'
-import CloneDialog from '@/components/git/dialogs/CloneDialog'
-import CommitDialog from '@/components/git/dialogs/CommitDialog'
-import CommitArea from '@/components/git/CommitArea'
 import { track } from '@/lib/telemetry'
 import DiffModeDropdown from '@/components/git/DiffModeDropdown'
 import BranchSwitcher from '@/components/git/BranchSwitcher'
@@ -362,18 +350,8 @@ export default function Project() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchIndex, setSearchIndex] = useState(0)
   const [diffMatches, setDiffMatches] = useState<Array<{ lineIdx: number }>>([])
-  const [newBranchOpen, setNewBranchOpen] = useState(false)
-  const [mergeOpen, setMergeOpen] = useState<{ strategy: 'merge' | 'squash' | 'rebase' } | null>(null)
-  const [renameOpen, setRenameOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [discardOpen, setDiscardOpen] = useState(false)
-  const [discardBusy, setDiscardBusy] = useState(false)
-  const [discardError, setDiscardError] = useState('')
-  const [prDialogOpen, setPrDialogOpen] = useState(false)
   const [sidebarTab, setSidebarTab] = useState<'changes' | 'history'>('changes')
   const [viewingCommitHash, setViewingCommitHash] = useState<string | null>(null)
-  const [cloneOpen, setCloneOpen] = useState(false)
-  const [commitDialogOpen, setCommitDialogOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
@@ -480,12 +458,6 @@ export default function Project() {
     }
   }, [])
 
-  useEffect(() => {
-    // Garante que panel inicia colapsado, mesmo que lib persista state interno
-    const p = analysisPanelRef.current
-    if (p && p.getSize() > 0) p.collapse()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   const selectedFileRef = useRef<string | null>(null)
   const fetchInFlightRef = useRef(false)
   const fetchPendingRef = useRef(false)
@@ -764,31 +736,10 @@ export default function Project() {
       else if (a === 'view-on-github' && remoteWebUrl) window.api.invoke('repository:openUrl', { url: remoteWebUrl })
       else if (a === 'create-issue' && remoteWebUrl)
         window.api.invoke('repository:openUrl', { url: `${remoteWebUrl}/issues/new` })
-      else if (a === 'new-branch') setNewBranchOpen(true)
-      else if (a === 'rename-branch') setRenameOpen(true)
-      else if (a === 'delete-branch') setDeleteOpen(true)
-      else if (a === 'merge-into-current') setMergeOpen({ strategy: 'merge' })
-      else if (a === 'squash-into-current') setMergeOpen({ strategy: 'squash' })
-      else if (a === 'rebase-current') setMergeOpen({ strategy: 'rebase' })
-      else if (a === 'update-from-default') setMergeOpen({ strategy: 'merge' })
-      else if (a === 'compare-to-branch') setMergeOpen({ strategy: 'merge' })
-      else if (a === 'compare-on-github' && remoteWebUrl && repoStatus?.branch)
-        window.api.invoke('repository:openUrl', {
-          url: `${remoteWebUrl}/compare/${repoStatus.branch}`
-        })
       else if (a === 'view-branch-on-github' && remoteWebUrl && repoStatus?.branch)
         window.api.invoke('repository:openUrl', {
           url: `${remoteWebUrl}/tree/${repoStatus.branch}`
         })
-      else if (a === 'preview-pr') setPrDialogOpen(true)
-      else if (a === 'create-pr') setPrDialogOpen(true)
-      else if (a === 'discard-all') setDiscardOpen(true)
-      else if (a === 'stash-all') {
-        window.api.invoke('git:stash', { path, message: '', includeUntracked: false }).then(() => {
-          fetchProject()
-          fetchStatus()
-        })
-      }
     })
   }, [navigate, path, fetchProject, fetchStatus, remoteWebUrl, repoStatus])
 
@@ -925,64 +876,23 @@ export default function Project() {
   }
 
   function buildFileMenu(file: { path: string; status: string }): ContextMenuItem[] {
-    const dir = file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : ''
-    const ext = file.path.includes('.') ? file.path.slice(file.path.lastIndexOf('.') + 1) : ''
-    const dirParts = dir.length > 0 ? dir.split('/') : []
-    const folderItems: ContextMenuItem[] =
-      dirParts.length === 0
-        ? [{ type: 'item', label: '(arquivo na raiz)', disabled: true }]
-        : dirParts.map((_, idx) => {
-            const sub = dirParts.slice(0, idx + 1).join('/') + '/'
-            return {
-              type: 'item',
-              label: sub,
-              onClick: () => {
-                window.api.invoke('git:appendGitignore', { path, patterns: [sub] })
-              }
-            }
-          })
     return [
       {
         type: 'item',
-        label: 'Descartar alterações',
+        label: 'Abrir no editor',
         primary: true,
-        onClick: () => {
-          window.api.invoke('git:discardFile', { path, file: file.path }).then(() => {
-            fetchProject()
-            fetchStatus()
-          })
-        }
+        onClick: () => window.api.invoke('repository:openInEditor', { path, file: file.path })
       },
-      { type: 'separator' },
       {
         type: 'item',
-        label: 'Ignorar arquivo (adicionar ao .gitignore)',
-        disabled: file.status !== 'added',
-        onClick: () => {
-          window.api.invoke('git:appendGitignore', { path, patterns: [file.path] }).then(() => {
-            fetchProject()
-            fetchStatus()
-          })
-        }
+        label: 'Mostrar no Finder',
+        onClick: () => window.api.invoke('repository:openInFinder', { path, file: file.path })
       },
       {
-        type: dir.length > 0 ? 'submenu' : 'item',
-        label: 'Ignorar pasta (adicionar ao .gitignore)',
-        disabled: dir.length === 0,
-        items: folderItems
+        type: 'item',
+        label: 'Abrir com app padrão',
+        onClick: () => window.api.invoke('repository:openFile', { path, file: file.path })
       },
-      ext.length > 0
-        ? {
-            type: 'item',
-            label: `Ignorar todos .${ext} (adicionar ao .gitignore)`,
-            onClick: () => {
-              window.api.invoke('git:appendGitignore', { path, patterns: [`*.${ext}`] }).then(() => {
-                fetchProject()
-                fetchStatus()
-              })
-            }
-          }
-        : { type: 'item', label: 'Sem extensão pra ignorar', disabled: true },
       { type: 'separator' },
       {
         type: 'item',
@@ -993,48 +903,6 @@ export default function Project() {
         type: 'item',
         label: 'Copiar caminho absoluto',
         onClick: () => copyText(`${path}/${file.path}`)
-      },
-      { type: 'separator' },
-      {
-        type: 'item',
-        label: 'Mostrar no Finder',
-        onClick: () => window.api.invoke('repository:openInFinder', { path, file: file.path })
-      },
-      {
-        type: 'item',
-        label: 'Abrir no editor',
-        onClick: () => window.api.invoke('repository:openInEditor', { path, file: file.path })
-      },
-      {
-        type: 'item',
-        label: 'Abrir com app padrão',
-        onClick: () => window.api.invoke('repository:openFile', { path, file: file.path })
-      }
-    ]
-  }
-
-  function buildAllFilesMenu(): ContextMenuItem[] {
-    const hasChanges = files.length > 0
-    return [
-      {
-        type: 'item',
-        label: 'Descartar todas as alterações…',
-        destructive: true,
-        disabled: !hasChanges,
-        onClick: () => setDiscardOpen(true)
-      },
-      {
-        type: 'item',
-        label: 'Stash de todas as alterações',
-        disabled: !hasChanges,
-        onClick: () => {
-          window.api
-            .invoke('git:stash', { path, includeUntracked: true })
-            .then(() => {
-              fetchProject()
-              fetchStatus()
-            })
-        }
       }
     ]
   }
@@ -1067,16 +935,6 @@ export default function Project() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <DiffModeDropdown mode={diffMode} onChange={changeDiffMode} />
-
-
-          <SyncButton
-            path={path}
-            status={repoStatus}
-            onChanged={() => {
-              fetchProject()
-              fetchStatus()
-            }}
-          />
 
           <div className="relative">
             <Tooltip label="Mais ações do repositório">
@@ -1129,38 +987,8 @@ export default function Project() {
                         window.api.invoke('repository:openUrl', { url: remoteWebUrl })
                       }}
                     />
-                    {branch && repoStatus?.branch && (
-                      <RepoMenuItem
-                        icon={ExternalLink}
-                        label="Criar Pull Request"
-                        onClick={() => {
-                          setRepoMenuOpen(false)
-                          window.api.invoke('repository:openUrl', {
-                            url: `${remoteWebUrl}/pull/new/${repoStatus.branch}`
-                          })
-                        }}
-                      />
-                    )}
                   </>
                 )}
-                <div className="border-t border-border/30 my-0.5" />
-                <RepoMenuItem
-                  icon={GitBranch}
-                  label="Nova branch"
-                  onClick={() => {
-                    setRepoMenuOpen(false)
-                    setNewBranchOpen(true)
-                  }}
-                />
-                <RepoMenuItem
-                  icon={Trash2}
-                  label="Descartar tudo"
-                  variant="destructive"
-                  onClick={() => {
-                    setRepoMenuOpen(false)
-                    setDiscardOpen(true)
-                  }}
-                />
               </div>,
               document.body
             )}
@@ -1169,24 +997,32 @@ export default function Project() {
           <Tooltip
             label={
               !canAnalyze
-                ? 'Sem alterações pra analisar'
+                ? 'Sem alterações pra explicar — edita um arquivo primeiro'
                 : analysisState === 'done'
-                  ? 'Explicar de novo · IA revisa o diff'
-                  : 'Explicar diff · IA explica o que mudou'
+                  ? 'Pedir nova explicação · IA reanalisa o diff atual'
+                  : 'Pedir explicação · IA vai te ensinar o que mudou e por quê'
             }
           >
             <button
               onClick={startAnalysis}
               disabled={!canAnalyze}
               className={cn(
-                'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium transition-all',
+                'flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-semibold transition-all relative',
                 canAnalyze
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-                  : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20'
+                  : 'bg-muted/50 text-muted-foreground/40 cursor-not-allowed',
+                canAnalyze && analysisState === 'idle' && 'ds-cta-breathe ds-cta-sheen-wrap'
               )}
             >
-              <Sparkles className="size-3" />
-              {analysisState === 'done' ? 'Explicar de novo' : 'Explicar'}
+              <Sparkles
+                className={cn(
+                  'size-3.5 relative',
+                  canAnalyze && analysisState === 'idle' && 'ds-icon-drift'
+                )}
+              />
+              <span className="relative">
+                {analysisState === 'done' ? 'Explicar de novo' : 'Explicar'}
+              </span>
             </button>
           </Tooltip>
 
@@ -1208,15 +1044,6 @@ export default function Project() {
             >
               <Zap className="size-3" />
               Turbo
-            </button>
-          </Tooltip>
-
-          <Tooltip label="Testes IA">
-            <button
-              onClick={() => navigate('/tests', { state: { projectPath: path } })}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <FlaskConical className="size-3.5" />
             </button>
           </Tooltip>
 
@@ -1340,7 +1167,6 @@ export default function Project() {
                   onSwitch={(p) =>
                     navigate(`/project?path=${encodeURIComponent(p)}`)
                   }
-                  onCloneRequest={() => setCloneOpen(true)}
                 />
               </div>
               <Tooltip label="Colapsar sidebar" shortcut="⌘B">
@@ -1361,7 +1187,9 @@ export default function Project() {
                   onSwitch={async (b) => {
                     await switchBranch(b)
                   }}
-                  onCreateRequest={() => setNewBranchOpen(true)}
+                  onCreateRequest={() => {
+                    /* desabilitado — modo somente-leitura */
+                  }}
                 />
               </div>
             )}
@@ -1441,10 +1269,6 @@ export default function Project() {
               <>
                 <button
                   onClick={showAllFiles}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setCtxMenu({ x: e.clientX, y: e.clientY, items: buildAllFilesMenu() })
-                  }}
                   className={cn(
                     'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
                     selectedFile === null
@@ -1534,29 +1358,7 @@ export default function Project() {
           </div>
           )}
 
-          {sidebarTab === 'changes' && branch ? (() => {
-            const allChanges = (repoStatus?.files ?? []).filter(
-              (f) => f.staged !== null || f.unstaged !== null
-            )
-            const toStage = allChanges
-              .filter((f) => f.unstaged !== null)
-              .map((f) => f.path)
-            return (
-              <CommitArea
-                path={path}
-                branch={branch}
-                pendingCount={allChanges.length}
-                filesToStage={toStage}
-                onCommitted={() => {
-                  track('commit_inline_committed')
-                  fetchProject()
-                  fetchStatus()
-                }}
-              />
-            )
-          })() : (
-            <ProfileMenu />
-          )}
+          <ProfileMenu />
         </aside>
         </div>
         )}
@@ -1569,13 +1371,20 @@ export default function Project() {
         {/* DIFF */}
         <section className="h-full flex flex-col overflow-hidden border-r border-border/40 min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-2 flex-shrink-0">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <FileCode className="size-3 text-muted-foreground/60" />
               Diff
             </span>
-            {selectedFile && (
-              <span className="text-xs font-mono text-muted-foreground/50 truncate">
+            {selectedFile ? (
+              <span className="text-xs font-mono text-muted-foreground/50 truncate" title={selectedFile}>
                 {selectedFile}
               </span>
+            ) : (
+              files.length > 0 && (
+                <span className="text-[11px] text-muted-foreground/60">
+                  {files.length} arquivo{files.length !== 1 ? 's' : ''} alterado{files.length !== 1 ? 's' : ''}
+                </span>
+              )
             )}
           </div>
           <div className="flex-1 overflow-auto min-h-0 relative">
@@ -1648,17 +1457,7 @@ export default function Project() {
                 )}
               </>
             ) : (
-              <NoChangesEmptyState
-                path={path}
-                branch={branch}
-                hasUpstream={!!repoStatus?.upstream}
-                hasRemote={!!remoteWebUrl || !!repoStatus?.upstream}
-                onPreviewPR={() => setPrDialogOpen(true)}
-                onPublished={() => {
-                  fetchProject()
-                  fetchStatus()
-                }}
-              />
+              <NoChangesEmptyState path={path} />
             )}
             </>
             )}
@@ -1670,7 +1469,7 @@ export default function Project() {
 
         <Panel
           ref={analysisPanelRef}
-          defaultSize={0}
+          defaultSize={40}
           minSize={20}
           collapsible
           collapsedSize={0}
@@ -1680,7 +1479,8 @@ export default function Project() {
         {/* ANALYSIS */}
         <section className="h-full flex flex-col overflow-hidden min-w-0">
           <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <Sparkles className="size-3 text-primary/70" />
               Explicação IA
             </span>
             {providerDefault && (
@@ -1777,86 +1577,6 @@ export default function Project() {
         </div>
       )}
 
-      <NewBranchDialog
-        path={path}
-        branches={branches}
-        currentBranch={branch}
-        open={newBranchOpen}
-        onClose={() => setNewBranchOpen(false)}
-        onCreated={() => {
-          fetchProject()
-          fetchStatus()
-        }}
-      />
-
-      <MergeIntoDialog
-        path={path}
-        branches={branches}
-        currentBranch={branch}
-        open={!!mergeOpen}
-        defaultStrategy={mergeOpen?.strategy ?? 'merge'}
-        onClose={() => setMergeOpen(null)}
-        onDone={() => {
-          fetchProject()
-          fetchStatus()
-        }}
-      />
-
-      <RenameBranchDialog
-        path={path}
-        oldName={branch}
-        open={renameOpen}
-        onClose={() => setRenameOpen(false)}
-        onDone={() => {
-          fetchProject()
-          fetchStatus()
-        }}
-      />
-
-      <DeleteBranchDialog
-        path={path}
-        branches={branches}
-        currentBranch={branch}
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onDone={() => {
-          fetchProject()
-          fetchStatus()
-        }}
-      />
-
-      <OpenPullRequestDialog
-        path={path}
-        branches={branches}
-        defaultBranch={
-          branches.find((b) => ['main', 'master', 'develop', 'dev'].includes(b)) ?? null
-        }
-        currentBranch={branch}
-        webUrl={remoteWebUrl}
-        open={prDialogOpen}
-        onClose={() => setPrDialogOpen(false)}
-      />
-
-      <CloneDialog
-        open={cloneOpen}
-        onClose={() => setCloneOpen(false)}
-        onCloned={(p) => navigate(`/project?path=${encodeURIComponent(p)}`)}
-      />
-
-      <CommitDialog
-        path={path}
-        branch={branch}
-        stagedCount={
-          repoStatus?.files.filter((f) => f.staged !== null && f.staged !== 'untracked').length ?? 0
-        }
-        open={commitDialogOpen}
-        onClose={() => setCommitDialogOpen(false)}
-        onCommitted={() => {
-          fetchProject()
-          fetchStatus()
-        }}
-      />
-
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x}
@@ -1865,33 +1585,6 @@ export default function Project() {
           onClose={() => setCtxMenu(null)}
         />
       )}
-
-      <ConfirmDialog
-        open={discardOpen}
-        title="Descartar todas as mudanças?"
-        message="Vai resetar working dir e index pro último commit. Mudanças perdidas. Confirma?"
-        confirmLabel="Descartar tudo"
-        variant="destructive"
-        busy={discardBusy}
-        error={discardError}
-        onCancel={() => {
-          setDiscardOpen(false)
-          setDiscardError('')
-        }}
-        onConfirm={async () => {
-          setDiscardBusy(true)
-          setDiscardError('')
-          const r = await window.api.invoke('git:discardAll', { path, includeUntracked: false })
-          setDiscardBusy(false)
-          if (!r.ok) {
-            setDiscardError(r.error ?? 'Falha')
-            return
-          }
-          setDiscardOpen(false)
-          fetchProject()
-          fetchStatus()
-        }}
-      />
     </div>
   )
 }
@@ -1979,13 +1672,11 @@ function RepoRow({
 function ProjectSwitcher({
   currentName,
   currentPath,
-  onSwitch,
-  onCloneRequest
+  onSwitch
 }: {
   currentName: string
   currentPath: string
   onSwitch: (path: string) => void
-  onCloneRequest: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [recents, setRecents] = useState<RecentEntry[]>([])
@@ -2006,57 +1697,17 @@ function ProjectSwitcher({
   useEffect(() => {
     if (!open) return
     function onClick(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current?.contains(e.target as Node)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
-  const [addOpen, setAddOpen] = useState(false)
-  const [addPos, setAddPos] = useState<{ left: number; top: number } | null>(null)
-  const addBtnRef = useRef<HTMLButtonElement>(null)
-  const addPopupRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!addOpen) return
-    const rect = addBtnRef.current?.getBoundingClientRect()
-    if (rect) {
-      const w = 220
-      const h = 122
-      setAddPos({
-        left: Math.min(window.innerWidth - w - 8, rect.right + 6),
-        top: Math.min(window.innerHeight - h - 8, Math.max(8, rect.top))
-      })
-    }
-    function onClick(e: MouseEvent): void {
-      const t = e.target as Node
-      if (addBtnRef.current?.contains(t) || addPopupRef.current?.contains(t)) return
-      setAddOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [addOpen])
-
   async function pickExisting(): Promise<void> {
-    setAddOpen(false)
     setOpen(false)
     const r = await window.api.invoke('workspace:pickFolder', undefined)
     if (r) onSwitch(r.path)
-  }
-
-  async function createNew(): Promise<void> {
-    setAddOpen(false)
-    const r = await window.api.invoke('repository:pickFolder', {
-      title: 'Pasta pra novo repositório'
-    })
-    if (!r) return
-    const init = await window.api.invoke('git:init', { dest: r.path })
-    if (!init.ok) {
-      window.alert(init.error ?? 'Falha ao inicializar repositório')
-      return
-    }
-    setOpen(false)
-    onSwitch(init.path ?? r.path)
   }
 
   const others = recents.filter((r) => r.path !== currentPath)
@@ -2119,54 +1770,16 @@ function ProjectSwitcher({
                 className="flex-1 min-w-0 bg-transparent text-[11px] focus:outline-none"
               />
             </div>
-            <Tooltip label="Adicionar repositório">
-              <button
-                ref={addBtnRef}
-                type="button"
-                onClick={() => setAddOpen((o) => !o)}
-                className="inline-flex items-center justify-center size-7 rounded-md border border-border/50 bg-card/60 hover:bg-accent/60 flex-shrink-0"
-              >
-                <Plus className="size-3.5" />
-              </button>
-            </Tooltip>
-          </div>
-          {addOpen && addPos && createPortal(
-            <div
-              ref={addPopupRef}
-              className="fixed rounded-lg border border-border bg-popover shadow-2xl overflow-hidden z-[2147483000]"
-              style={{ left: addPos.left, top: addPos.top, width: 220 }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setAddOpen(false)
-                  setOpen(false)
-                  onCloneRequest()
-                }}
-                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left"
-              >
-                <Download className="size-3.5 text-muted-foreground" />
-                Clonar repositório…
-              </button>
-              <button
-                type="button"
-                onClick={createNew}
-                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left border-t border-border/40"
-              >
-                <FolderPlus className="size-3.5 text-muted-foreground" />
-                Criar novo repositório…
-              </button>
+            <Tooltip label="Abrir outra pasta">
               <button
                 type="button"
                 onClick={pickExisting}
-                className="w-full px-3 py-2 flex items-center gap-2 text-[12px] hover:bg-accent transition-colors text-left border-t border-border/40"
+                className="inline-flex items-center justify-center size-7 rounded-md border border-border/50 bg-card/60 hover:bg-accent/60 flex-shrink-0"
               >
-                <FolderOpen className="size-3.5 text-muted-foreground" />
-                Adicionar existente…
+                <FolderPlus className="size-3.5" />
               </button>
-            </div>,
-            document.body
-          )}
+            </Tooltip>
+          </div>
           <div className="max-h-72 overflow-y-auto">
             {filtered.length > 0 ? (
               <>
@@ -2335,42 +1948,100 @@ function EmptyAnalysis({
 }) {
   if (!ready) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground h-full">
         <Loader2 className="size-3 animate-spin" /> carregando configurações...
       </div>
     )
   }
   if (!hasDiff) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
-          <Sparkles className="size-5 text-muted-foreground/40" />
+      <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-md mx-auto">
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+          <Sparkles className="size-6 text-primary/60" />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Sem alterações pra explicar.
+        <h3 className="text-sm font-semibold text-foreground mb-2">Sem alterações pra explicar</h3>
+        <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
+          Quando tu (ou tua IA) editar arquivos no projeto, eles vão aparecer aqui na sidebar.
+          Aí é só clicar em <span className="font-semibold text-foreground">Explicar</span> que
+          a IA quebra cada mudança pra ti.
         </p>
-        <p className="text-[11px] text-muted-foreground/50 mt-1">
-          Edita um arquivo e clica em Explicar.
-        </p>
+        <div className="flex flex-col gap-2 w-full text-[11px] text-muted-foreground/80">
+          <Step n={1} label="Edita arquivos no editor (ou deixa Cursor/Copilot fazer)" />
+          <Step n={2} label="Salva — eles aparecem na lista da esquerda" />
+          <Step n={3} label='Clica em "Explicar" no topo' />
+          <Step n={4} label="IA vai te ensinar o que mudou e por quê" />
+        </div>
       </div>
     )
   }
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-4">
-      <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
-        <Sparkles className="size-5 text-primary" />
+    <div className="flex flex-col items-center justify-center h-full text-center px-6 max-w-md mx-auto">
+      <div className="relative mb-5 ds-float w-20 h-20 flex items-center justify-center">
+        {/* Conic glow background */}
+        <span
+          className="absolute inset-0 rounded-full opacity-40 blur-md ds-conic-spin"
+          style={{
+            background:
+              'conic-gradient(from 0deg, color-mix(in srgb, var(--color-primary) 60%, transparent), transparent 35%, color-mix(in srgb, var(--color-primary) 40%, transparent) 65%, transparent)'
+          }}
+          aria-hidden
+        />
+
+        {/* Stacked halos */}
+        <span className="absolute inset-2 rounded-2xl bg-primary/25 ds-halo" aria-hidden />
+        <span className="absolute inset-2 rounded-2xl bg-primary/20 ds-halo-delay-1" aria-hidden />
+        <span className="absolute inset-2 rounded-2xl bg-primary/15 ds-halo-delay-2" aria-hidden />
+
+        {/* Icon container */}
+        <div className="relative w-14 h-14 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center shadow-lg shadow-primary/10 ds-inner-pulse">
+          <Sparkles className="size-6 text-primary ds-icon-drift" />
+        </div>
+
+        {/* Orbiting dots */}
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+          <span className="block size-1.5 rounded-full bg-primary/80 shadow-[0_0_6px_var(--color-primary)] ds-orbit-small" />
+        </span>
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+          <span className="block size-1 rounded-full bg-primary/60 shadow-[0_0_4px_var(--color-primary)] ds-orbit-small-rev" />
+        </span>
+
+        {/* Twinkle stars */}
+        <Sparkles className="absolute -top-1 -right-2 size-3 text-primary/80 ds-twinkle" aria-hidden />
+        <Sparkles className="absolute -bottom-2 -left-1 size-2.5 text-primary/70 ds-twinkle-d-1" aria-hidden />
+        <Sparkles className="absolute top-0 -left-3 size-2 text-primary/60 ds-twinkle-d-2" aria-hidden />
+
+        {/* Sparkle dust */}
+        <span className="ds-dust-1 absolute top-1 right-0 size-1 rounded-full bg-primary/80" aria-hidden />
+        <span className="ds-dust-2 absolute -top-1 left-3 size-1 rounded-full bg-primary/70" aria-hidden />
+        <span className="ds-dust-3 absolute bottom-0 -left-1 size-1 rounded-full bg-primary/80" aria-hidden />
+        <span className="ds-dust-4 absolute -bottom-1 right-2 size-1 rounded-full bg-primary/60" aria-hidden />
       </div>
-      <p className="text-xs text-foreground/80 mb-1">Pronto pra explicar.</p>
-      <p className="text-[11px] text-muted-foreground/60 mb-4">
-        Clica em Explicar quando quiser entender o que mudou.
+      <h3 className="text-sm font-semibold text-foreground mb-2">Pronto pra te ensinar</h3>
+      <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
+        Vou ler o diff inteiro, identificar conceitos novos, marcar trechos com comentários
+        inline e ajustar a profundidade pro teu nível.
       </p>
       <button
         onClick={onAnalyze}
-        className="flex items-center gap-1.5 text-xs rounded-md px-3 h-7 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        className="relative flex items-center gap-1.5 text-[13px] rounded-md px-4 h-9 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ds-cta-breathe ds-cta-sheen-wrap"
       >
-        <Sparkles className="size-3" />
-        Explicar agora
+        <Sparkles className="size-3.5 ds-icon-drift relative" />
+        <span className="relative">Explicar agora</span>
       </button>
+      <p className="text-[10px] text-muted-foreground/50 mt-3">
+        ou clica em <span className="font-mono text-muted-foreground/70">Explicar</span> no header
+      </p>
+    </div>
+  )
+}
+
+function Step({ n, label }: { n: number; label: string }): React.ReactElement {
+  return (
+    <div className="flex items-start gap-2 text-left">
+      <span className="size-4 rounded-full bg-primary/15 border border-primary/30 text-primary text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+        {n}
+      </span>
+      <span>{label}</span>
     </div>
   )
 }

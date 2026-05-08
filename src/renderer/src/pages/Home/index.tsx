@@ -8,15 +8,12 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  Monitor,
-  FlaskConical,
-  Download
+  Monitor
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
 import type { ThemeMode } from '@shared/settings'
 import { cn } from '@/lib/utils'
-import CloneDialog from '@/components/git/dialogs/CloneDialog'
 import Logo from '@/components/Logo'
 import Tooltip from '@/components/ui/Tooltip'
 
@@ -62,7 +59,6 @@ export default function Home() {
   const { value: name } = useSettings('user_name')
   const navigate = useNavigate()
   const [recents, setRecents] = useState<Recent[]>([])
-  const [cloneOpen, setCloneOpen] = useState(false)
 
   useEffect(() => {
     window.api.invoke('workspace:recent', undefined).then(setRecents)
@@ -80,7 +76,6 @@ export default function Home() {
       const a = event.action
       if (a === 'open-settings') navigate('/settings')
       else if (a === 'open-local') pick()
-      else if (a === 'clone-repo') setCloneOpen(true)
       else if (a === 'go-home') navigate('/home')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,14 +129,6 @@ export default function Home() {
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <ThemeIconToggle />
-          <Tooltip label="Testes IA">
-            <button
-              onClick={() => navigate('/tests')}
-              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <FlaskConical className="size-3.5" />
-            </button>
-          </Tooltip>
           <Tooltip label="Configurações">
             <button
               onClick={() => navigate('/settings')}
@@ -165,37 +152,31 @@ export default function Home() {
                 <span className="text-primary">{name || 'dev'}</span>
               </h1>
               <p className="text-base text-muted-foreground">
-                Seleciona um projeto pra o DevSenses começar a analisar os diffs.
+                Tu deixou IA escrever. Deixa o DevSenses te ensinar o que ela fez.
+              </p>
+              <p className="text-sm text-muted-foreground/70 mt-1.5 leading-relaxed">
+                Abre um repositório, edita arquivos (ou deixa Cursor/Copilot fazer), e a IA
+                explica cada diff no teu nível — com conceitos, comentários inline e glossário pessoal.
               </p>
             </div>
           </div>
 
-          {/* Open / Clone */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          {/* Open project */}
+          <div className="mb-6">
             <button
               onClick={pick}
-              className="group rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-card/50 hover:bg-primary/5 transition-all duration-200 p-8 flex flex-col items-center gap-3 cursor-pointer"
+              className="group w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/60 bg-card/50 hover:bg-primary/5 transition-all duration-200 p-8 flex items-center gap-5 cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <FolderOpen className="size-5 text-primary" />
+              <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200 flex-shrink-0">
+                <FolderOpen className="size-6 text-primary" />
               </div>
-              <div className="text-center">
-                <div className="font-semibold text-sm mb-1">Abrir projeto</div>
-                <div className="text-xs text-muted-foreground">Pasta raiz de um repo git</div>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-base mb-1">Abrir projeto</div>
+                <div className="text-xs text-muted-foreground">
+                  Escolhe a pasta raiz de qualquer repositório git
+                </div>
               </div>
-            </button>
-
-            <button
-              onClick={() => setCloneOpen(true)}
-              className="group rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-card/50 hover:bg-primary/5 transition-all duration-200 p-8 flex flex-col items-center gap-3 cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                <Download className="size-5 text-primary" />
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-sm mb-1">Clonar repo</div>
-                <div className="text-xs text-muted-foreground">URL → clone → abre</div>
-              </div>
+              <ChevronRight className="size-5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
             </button>
           </div>
 
@@ -232,11 +213,6 @@ export default function Home() {
         </div>
       </div>
 
-      <CloneDialog
-        open={cloneOpen}
-        onClose={() => setCloneOpen(false)}
-        onCloned={(p) => navigate(`/project?path=${encodeURIComponent(p)}`)}
-      />
     </div>
   )
 }
