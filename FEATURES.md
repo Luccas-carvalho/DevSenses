@@ -90,13 +90,16 @@ Pra cada item: tagline curta de marketing + nota técnica entre parênteses quan
 
 ---
 
-## 📦 Lançamento (backlog)
+## 📦 Lançamento
 
-- ⏳ **README com hero gif + quickstart** (Sprint 4)
-- ⏳ **Landing page** em `web/` (Next.js já scaffolded) (Sprint 4)
-- ⏳ **Code signing + notarization mac** (Sprint 4)
-- ⏳ **Build Windows + Linux** (Sprint 4)
-- ⏳ **Product Hunt + HN + Reddit launch** (Sprint 4)
+- ✅ **README hero + quickstart** — README reescrito com hero, features list, pitch, badges.
+- ✅ **Landing page polish** — `web/` Next.js com sections atualizadas (hero / features / pricing) refletindo product real, PT + EN sincronizados.
+- ✅ **Mac signing config** — `electron-builder.signed.yml` + `npm run build:mac:signed` env-driven, `SIGNING.md` com setup completo (local + GitHub Actions).
+- ✅ **Launch copy templates** — `LAUNCH.md` com PH / HN / Reddit / Twitter thread / LinkedIn / demo script / timeline.
+- ⏳ **Apple Developer Account + cert real** — pendente compra ($99/ano).
+- ⏳ **GitHub Action de release auto-assinado** — workflow yml pronto em SIGNING.md, falta secrets.
+- ⏳ **Build Windows + Linux** — scripts existem, falta testar.
+- ⏳ **Product Hunt + HN + Reddit launch** — copy pronta em LAUNCH.md, falta executar.
 - ⏳ **Multi-language UI (en, es)** (Pós-MVP)
 - ⏳ **Export histórico → markdown/PDF** (Pós-MVP)
 - ⏳ **Compartilhar explicação como link público anonimizado** (Pós-MVP)

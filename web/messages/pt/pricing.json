@@ -1,1 +1,35 @@
-{"title":"Pague uma vez. Use pra sempre.","subtitle":"Sem assinatura. Sem pegadinha.","plans":[{"id":"free","name":"Free Beta","badge":"Agora","price":"R$ 0","period":"tempo limitado","description":"Tudo liberado. Enquanto durar o beta.","features":["Diff Reviewer ilimitado","Quiz de senioridade","Suporte a 5 CLIs IA","Updates durante beta"],"cta":"Entrar na waitlist"},{"id":"early","name":"Lifetime Early Bird","badge":"Limitado","price":"R$ 97","period":"uma vez. pra sempre.","description":"Primeiros 100 devs. Acesso vitalício.","features":["Tudo do Free","Updates pra sempre","Acesso a features Pro","Suporte prioritário"],"cta":"Reservar vaga","limit":"{used} / 100 vagas restantes","highlight":true},{"id":"standard","name":"Lifetime","price":"R$ 297","period":"uma vez. pra sempre.","description":"Quando os 100 acabarem.","features":["Tudo do Early Bird","Sem limite de vagas"],"cta":"Em breve"}]}
+{
+  "title": "Open source. BYOK. Pra sempre.",
+  "subtitle": "Sem assinatura. Sem pegadinha. Tu paga IA, eu não.",
+  "plans": [
+    {
+      "id": "oss",
+      "name": "DevSenses",
+      "badge": "MIT",
+      "price": "R$ 0",
+      "period": "open source",
+      "description": "Tudo. Sem pegadinha, sem feature paga.",
+      "features": [
+        "Tudo da lista de features",
+        "Updates pra sempre",
+        "Roda 100% local",
+        "BYOK · Claude / Codex / Gemini / Aider / Ollama"
+      ],
+      "cta": "Baixar grátis",
+      "highlight": true
+    },
+    {
+      "id": "support",
+      "name": "Apoiar o projeto",
+      "price": "R$ 0+",
+      "period": "GitHub Sponsors",
+      "description": "Se DevSenses te ajudar a aprender, considera apoiar.",
+      "features": [
+        "Nome no README",
+        "Voto antecipado em features",
+        "Acesso ao Discord privado"
+      ],
+      "cta": "Sponsor"
+    }
+  ]
+}

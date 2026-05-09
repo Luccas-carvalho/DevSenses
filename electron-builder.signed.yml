@@ -1,0 +1,21 @@
+# Production signing/notarization config — extends electron-builder.yml
+# Active when running `npm run build:mac:signed` AND env vars set:
+#
+#   APPLE_ID=you@example.com
+#   APPLE_APP_SPECIFIC_PASSWORD=xxxx-xxxx-xxxx-xxxx
+#   APPLE_TEAM_ID=XXXXXXXXXX
+#   CSC_LINK=path/to/cert.p12       # OR auto-keychain via identity below
+#   CSC_KEY_PASSWORD=xxxxxxxx
+#
+# Without env vars, falls back to ad-hoc unsigned build.
+
+extends: electron-builder.yml
+
+mac:
+  hardenedRuntime: true
+  gatekeeperAssess: true
+  identity: ${env.APPLE_DEVELOPER_IDENTITY}
+  notarize:
+    teamId: ${env.APPLE_TEAM_ID}
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist

@@ -1,1 +1,7 @@
-{"headline":"What it feels like to be a real dev.","sub":"DevSenses reads your diff and shows you what changed — line by line, concept by concept.","cta_primary":"Join the waitlist","cta_secondary":"View on GitHub","tagline_top":"Educational AI desktop IDE"}
+{
+  "headline": "You let AI write your code. Let DevSenses teach you what it actually did.",
+  "sub": "Reads your repo's diff and explains it line by line — calibrated to your level, with quizzes that learn from your answers.",
+  "cta_primary": "Download free",
+  "cta_secondary": "View on GitHub",
+  "tagline_top": "AI tutor for code you (or your AI) just wrote"
+}

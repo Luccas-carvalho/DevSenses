@@ -1,1 +1,54 @@
-{"title":"Não é mais um copilot.","subtitle":"É um senpai.","items":[{"title":"Diff Reviewer","description":"Cada commit explicado no seu nível"},{"title":"Quiz de Senioridade","description":"8 perguntas. Descobre onde você trava de verdade"},{"title":"5 IAs, 1 lugar","description":"Claude, Codex, Gemini, Aider, Ollama. Sua escolha"},{"title":"Modo Educacional","description":"Não te dá resposta. Te dá perguntas"}]}
+{
+  "title": "Não é mais um copilot.",
+  "subtitle": "É um senpai que aprende com você.",
+  "items": [
+    {
+      "title": "Explicação no teu nível",
+      "description": "5 profundidades · do 'pra criança' ao 'trade-offs algorítmicos'"
+    },
+    {
+      "title": "5 personas de tutor",
+      "description": "Mentor amigo · Pragmático · Sarcástico · Acadêmico · Padrão"
+    },
+    {
+      "title": "Quiz adaptativo",
+      "description": "Mastery por conceito. Acertou 5 vezes? Some do quiz"
+    },
+    {
+      "title": "Modo Socrático",
+      "description": "IA pergunta antes de responder. Força tu a pensar"
+    },
+    {
+      "title": "⌘K Cheat Sheet",
+      "description": "Seleciona qualquer trecho. Sintaxe + gotchas + exemplos"
+    },
+    {
+      "title": "Big-O auto-detect",
+      "description": "Loops aninhados, find-in-loop, recursão sem memo. Flag automático"
+    },
+    {
+      "title": "What if?",
+      "description": "Compara approach atual com alternativa. Tabela de trade-offs"
+    },
+    {
+      "title": "Caça ao bug",
+      "description": "IA injeta erro sutil pra tu treinar code review"
+    },
+    {
+      "title": "Detecção autoria IA",
+      "description": "8 heurísticas, score 0-100. Saiba se aquele diff é IA-cheirado"
+    },
+    {
+      "title": "Glossário pessoal",
+      "description": "Termos clicáveis no markdown. Definição cacheada"
+    },
+    {
+      "title": "5 IAs, 1 lugar",
+      "description": "Claude · Codex · Gemini · Aider · Ollama. BYOK"
+    },
+    {
+      "title": "100% local",
+      "description": "Diff nunca sai do device. Sem subscription"
+    }
+  ]
+}
