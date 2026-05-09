@@ -383,6 +383,38 @@ export interface IpcContract {
     request: { term: string; contextSnippet?: string; regenerate?: boolean }
     response: { definition: string; example: string }
   }
+  'concepts:masteryBatch': {
+    request: { names: string[] }
+    response: Record<string, { level: number; correct: number; wrong: number } | null>
+  }
+  'concepts:seenSince': {
+    request: { since: number }
+    response: Array<{
+      name: string
+      firstSeenAt: number
+      timesSeen: number
+      masteryLevel: number
+    }>
+  }
+  'ai:cheatSheet': {
+    request: { selection: string; language?: string }
+    response: string
+  }
+  'ai:whatIf': {
+    request: { diff: string; alternative: string }
+    response: string
+  }
+  'ai:bugHunt': {
+    request: { snippet: string; language?: string }
+    response: {
+      buggyCode: string
+      language: string
+      hint: string
+      bugLine?: number
+      explanation: string
+      fixedCode: string
+    }
+  }
 
   'analyses:save': {
     request: {

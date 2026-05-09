@@ -134,6 +134,35 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
       ALTER TABLE concepts ADD COLUMN example TEXT;
       ALTER TABLE concepts ADD COLUMN updated_at INTEGER;
     `
+  },
+  {
+    version: 8,
+    name: 'concept_mastery',
+    sql: `
+      CREATE TABLE IF NOT EXISTS concept_mastery (
+        concept_id INTEGER PRIMARY KEY REFERENCES concepts(id) ON DELETE CASCADE,
+        correct_count INTEGER NOT NULL DEFAULT 0,
+        wrong_count INTEGER NOT NULL DEFAULT 0,
+        consecutive_correct INTEGER NOT NULL DEFAULT 0,
+        mastery_level INTEGER NOT NULL DEFAULT 0,
+        last_attempt_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS concept_mastery_level_idx
+        ON concept_mastery (mastery_level, last_attempt_at);
+    `
+  },
+  {
+    version: 9,
+    name: 'quiz_concepts',
+    sql: `
+      CREATE TABLE IF NOT EXISTS quiz_concepts (
+        quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+        concept_id INTEGER NOT NULL REFERENCES concepts(id) ON DELETE CASCADE,
+        PRIMARY KEY (quiz_id, concept_id)
+      );
+      CREATE INDEX IF NOT EXISTS quiz_concepts_concept_idx
+        ON quiz_concepts (concept_id);
+    `
   }
 ]
 

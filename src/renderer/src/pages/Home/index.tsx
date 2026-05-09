@@ -9,8 +9,10 @@ import {
   Sun,
   Moon,
   Monitor,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react'
+import RecapDialog from '@/components/RecapDialog'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
 import type { ThemeMode } from '@shared/settings'
@@ -56,13 +58,38 @@ function ThemeIconToggle() {
   )
 }
 
+const RECAP_LS_KEY = 'devsenses_recap_last_shown'
+
+function shouldAutoOpenRecap(): boolean {
+  const lastStr = localStorage.getItem(RECAP_LS_KEY)
+  const now = new Date()
+  const today = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
+  if (lastStr === today) return false
+  if (now.getHours() < 18) return false
+  return true
+}
+
 export default function Home() {
   const { value: name } = useSettings('user_name')
   const navigate = useNavigate()
   const [recents, setRecents] = useState<Recent[]>([])
+  const [recapOpen, setRecapOpen] = useState(false)
 
   useEffect(() => {
     window.api.invoke('workspace:recent', undefined).then(setRecents)
+  }, [])
+
+  useEffect(() => {
+    if (shouldAutoOpenRecap()) {
+      const t = setTimeout(() => {
+        setRecapOpen(true)
+        const now = new Date()
+        const today = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
+        localStorage.setItem(RECAP_LS_KEY, today)
+      }, 800)
+      return () => clearTimeout(t)
+    }
+    return undefined
   }, [])
 
   // Dock menu opens project
@@ -163,6 +190,14 @@ export default function Home() {
           className="flex items-center gap-2 px-3"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <Tooltip label="Recap do dia · conceitos vistos hoje">
+            <button
+              onClick={() => setRecapOpen(true)}
+              className="flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <BookOpen className="size-3.5" />
+            </button>
+          </Tooltip>
           <ThemeIconToggle />
           <Tooltip label="Configurações">
             <button
@@ -271,6 +306,7 @@ export default function Home() {
         </div>
       </div>
 
+      <RecapDialog open={recapOpen} onClose={() => setRecapOpen(false)} />
     </div>
   )
 }

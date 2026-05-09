@@ -59,16 +59,29 @@ REGRAS:
 - NÃO escreva introdução nem conclusão fora dos dois blocos.
 `
 
+const SOCRATIC_INSTRUCTION = `
+MODO SOCRÁTICO ATIVO: NÃO dê respostas diretas. Em vez disso, conduza o aluno por perguntas guiadas.
+
+REGRAS DO MODO SOCRÁTICO:
+- Para cada mudança relevante no diff, FAÇA uma pergunta ao usuário ANTES de explicar.
+- Após a pergunta, dê uma DICA curta (1 frase) e DEPOIS revele a resposta.
+- Use formato: "**🤔 Pergunta:** ... | **💡 Dica:** ... | **✓ Resposta:** ..."
+- O objetivo é fazer o user PENSAR, não passivamente ler.
+- Mantenha o formato "## Resumo" + "## Detalhes" mas dentro de cada bloco use o padrão Pergunta/Dica/Resposta.
+`
+
 export function buildDiffPrompt(
   diff: string,
   seniority: SeniorityLevel,
   depth: ExplanationDepth,
-  persona: PersonaId = 'default'
+  persona: PersonaId = 'default',
+  socratic = false
 ): string {
   const seniorityInstruction = LEVEL_INSTRUCTIONS[seniority]
   const depthInstruction = `MODO PROFUNDIDADE — ${DEPTH_LABELS[depth]}: ${DEPTH_DESCRIPTIONS[depth]}\n\n`
   const personaPrompt = PERSONAS[persona].prompt
   const personaInstruction = personaPrompt ? `PERSONA: ${personaPrompt}\n\n` : ''
+  const socraticInstruction = socratic ? `${SOCRATIC_INSTRUCTION}\n\n` : ''
 
-  return `${personaInstruction}${depthInstruction}${seniorityInstruction}${FORMAT_INSTRUCTION}\n\nDiff a analisar:\n\`\`\`diff\n${diff.slice(0, 12_000)}\n\`\`\``
+  return `${personaInstruction}${socraticInstruction}${depthInstruction}${seniorityInstruction}${FORMAT_INSTRUCTION}\n\nDiff a analisar:\n\`\`\`diff\n${diff.slice(0, 12_000)}\n\`\`\``
 }

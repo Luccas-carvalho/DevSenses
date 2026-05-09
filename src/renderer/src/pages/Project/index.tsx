@@ -2,8 +2,11 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  Bug,
   GitBranch,
   Home,
+  Lightbulb,
+  MessageCircleQuestion,
   RefreshCw,
   Loader2,
   AlertTriangle,
@@ -44,7 +47,14 @@ import DepthSlider from '@/components/analysis/DepthSlider'
 import PersonaPicker from '@/components/analysis/PersonaPicker'
 import Quiz from '@/components/analysis/Quiz'
 import TermLink from '@/components/analysis/TermLink'
+import MasteryDots from '@/components/analysis/MasteryDots'
+import ComplexityBadge from '@/components/analysis/ComplexityBadge'
+import AuthorshipBadge from '@/components/analysis/AuthorshipBadge'
+import CheatSheetDialog from '@/components/CheatSheetDialog'
+import WhatIfDialog from '@/components/WhatIfDialog'
+import BugHuntDialog from '@/components/BugHuntDialog'
 import { detectTerms } from '@/lib/termDetector'
+import { useConceptMastery } from '@/hooks/useConceptMastery'
 import { cn } from '@/lib/utils'
 import {
   Panel,
@@ -350,6 +360,7 @@ export default function Project() {
   const { value: providerModel } = useSettings('provider_model')
   const { value: explanationDepthSaved } = useSettings('explanation_depth')
   const { value: explanationPersonaSaved } = useSettings('explanation_persona')
+  const { value: socraticModeSaved } = useSettings('socratic_mode')
   const { value: diffModeSaved } = useSettings('diff_mode')
 
   const settingsReady = !seniorityLoading && !providerLoading && !!seniority && !!providerDefault
@@ -374,10 +385,20 @@ export default function Project() {
   const [analysisText, setAnalysisText] = useState('')
   const [explanationDepth, setExplanationDepth] = useState<ExplanationDepth>(3)
   const [explanationPersona, setExplanationPersona] = useState<PersonaId>('default')
+  const [socraticMode, setSocraticMode] = useState(false)
   const professorTurbo = explanationDepth >= 5
   const [historyOpen, setHistoryOpen] = useState(false)
   const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
   const [savedAnalysisId, setSavedAnalysisId] = useState<number | null>(null)
+  const [cheatSheet, setCheatSheet] = useState<{ open: boolean; selection: string }>({
+    open: false,
+    selection: ''
+  })
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
+  const [bugHunt, setBugHunt] = useState<{ open: boolean; snippet: string }>({
+    open: false,
+    snippet: ''
+  })
   const [error, setError] = useState('')
   const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -549,7 +570,8 @@ export default function Project() {
         diffText,
         seniority as SeniorityLevel,
         explanationDepth,
-        explanationPersona
+        explanationPersona,
+        socraticMode
       )
       await window.api.invoke('providers:invoke', {
         id: providerDefault as 'claude' | 'codex' | 'gemini' | 'aider' | 'ollama',
@@ -557,7 +579,7 @@ export default function Project() {
         streamId
       })
     },
-    [providerDefault, seniority, explanationDepth, explanationPersona]
+    [providerDefault, seniority, explanationDepth, explanationPersona, socraticMode]
   )
 
   const diffModeRef = useRef(diffMode)
@@ -698,6 +720,12 @@ export default function Project() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey && !e.altKey) {
         e.preventDefault()
         setSidebarCollapsed((c) => !c)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.shiftKey && !e.altKey) {
+        const sel = window.getSelection()?.toString().trim() ?? ''
+        if (sel.length >= 2) {
+          e.preventDefault()
+          setCheatSheet({ open: true, selection: sel })
+        }
       } else if (e.key === 'Escape' && searchOpen) {
         setSearchOpen(false)
       }
@@ -865,6 +893,10 @@ export default function Project() {
       setExplanationPersona(explanationPersonaSaved as PersonaId)
     }
   }, [explanationPersonaSaved])
+
+  useEffect(() => {
+    if (socraticModeSaved !== undefined) setSocraticMode(Boolean(socraticModeSaved))
+  }, [socraticModeSaved])
 
   useEffect(() => {
     return window.api.on('providers:stream', (event) => {
@@ -1112,6 +1144,60 @@ export default function Project() {
 
           <DepthSlider onChange={handleDepthChange} />
           <PersonaPicker onChange={handlePersonaChange} />
+
+          <Tooltip
+            label={
+              socraticMode
+                ? 'Modo Socrático ativo · IA pergunta antes de responder'
+                : 'Ativar modo Socrático · IA te ensina perguntando'
+            }
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const next = !socraticMode
+                setSocraticMode(next)
+                void window.api.invoke('settings:set', { key: 'socratic_mode', value: next })
+              }}
+              className={cn(
+                'flex items-center justify-center w-7 h-7 rounded-md border transition-colors',
+                socraticMode
+                  ? 'bg-primary/15 border-primary/40 text-primary'
+                  : 'border-border/40 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <MessageCircleQuestion className="size-3.5" />
+            </button>
+          </Tooltip>
+
+          <Tooltip label="What if? · comparar com abordagem alternativa">
+            <button
+              type="button"
+              onClick={() => setWhatIfOpen(true)}
+              disabled={!fullDiff || files.length === 0}
+              className="flex items-center justify-center w-7 h-7 rounded-md border border-border/40 bg-muted/40 text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Lightbulb className="size-3.5" />
+            </button>
+          </Tooltip>
+
+          <Tooltip label="Caça ao bug · IA injeta erro pra você achar">
+            <button
+              type="button"
+              onClick={() => {
+                if (!fullDiff) return
+                const sel = window.getSelection()?.toString().trim() ?? ''
+                setBugHunt({
+                  open: true,
+                  snippet: sel.length >= 30 ? sel : fullDiff.slice(0, 1500)
+                })
+              }}
+              disabled={!fullDiff || files.length === 0}
+              className="flex items-center justify-center w-7 h-7 rounded-md border border-border/40 bg-muted/40 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Bug className="size-3.5" />
+            </button>
+          </Tooltip>
 
           <Tooltip label="Histórico de explicações">
             <button
@@ -1447,9 +1533,12 @@ export default function Project() {
               </span>
             ) : (
               files.length > 0 && (
+                <>
                 <span className="text-[11px] text-muted-foreground/60">
                   {files.length} arquivo{files.length !== 1 ? 's' : ''} alterado{files.length !== 1 ? 's' : ''}
                 </span>
+                {fullDiff && <AuthorshipBadge diff={fullDiff} className="ml-1" />}
+                </>
               )
             )}
           </div>
@@ -1611,6 +1700,24 @@ export default function Project() {
         </Panel>
         </PanelGroup>
       </div>
+
+      <CheatSheetDialog
+        open={cheatSheet.open}
+        onClose={() => setCheatSheet({ open: false, selection: '' })}
+        selection={cheatSheet.selection}
+      />
+
+      <WhatIfDialog
+        open={whatIfOpen}
+        onClose={() => setWhatIfOpen(false)}
+        diff={fullDiff}
+      />
+
+      <BugHuntDialog
+        open={bugHunt.open}
+        onClose={() => setBugHunt({ open: false, snippet: '' })}
+        snippet={bugHunt.snippet}
+      />
 
       <HistoryDrawer
         open={historyOpen}
@@ -2266,6 +2373,18 @@ const DiffViewer = React.memo(function DiffViewer({
   const { variant: codeVariant } = useCodeTheme()
   const prismTheme = codeVariant.prism
 
+  // Per-file added content for complexity detection
+  const addedByFile = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of sections) {
+      if (s.kind === 'line' && s.type === 'add') {
+        const prev = map.get(s.file) ?? ''
+        map.set(s.file, prev + s.content + '\n')
+      }
+    }
+    return map
+  }, [sections])
+
   const matches = useMemo(() => {
     if (!searchQuery || searchQuery.length < 2) return []
     const q = searchQuery.toLowerCase()
@@ -2320,6 +2439,7 @@ const DiffViewer = React.memo(function DiffViewer({
               )}
               {dir && <span className="text-[11px] text-muted-foreground/60">{dir}</span>}
               <span className="text-[12px] font-medium text-foreground/90">{name}</span>
+              <ComplexityBadge snippet={addedByFile.get(s.path) ?? ''} className="ml-1" />
             </div>
           )
         }
@@ -2581,44 +2701,71 @@ function AnalysisTabs({
           </ul>
         )
       )}
-      {tab === 'concepts' && (
-        concepts.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">
-            Nenhum conceito identificado nessa explicação.
-          </p>
-        ) : (
-          <ul className="space-y-2.5">
-            {concepts.map((c, i) => (
-              <li
-                key={i}
-                className="rounded-lg border border-border/40 bg-card/50 p-3 flex flex-col gap-1"
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  {c.code && (
-                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono text-primary">
-                      {c.code}
-                    </code>
-                  )}
-                  <span className="text-[10px] text-muted-foreground/60">
-                    {c.refs.length === 1
-                      ? `linha ${c.refs[0]}`
-                      : `${c.refs.length} ocorrências`}
-                  </span>
-                  <AskAIInline
-                    context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
-                    contextLabel={c.code ?? c.text.slice(0, 40)}
-                    className="ml-auto"
-                  />
-                </div>
-                <span className="text-xs text-foreground/80 leading-relaxed">
-                  {renderInline(c.text)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
-      )}
+      {tab === 'concepts' && <ConceptsTabBody concepts={concepts} />}
     </div>
+  )
+}
+
+function ConceptsTabBody({
+  concepts
+}: {
+  concepts: { code?: string; text: string; refs: number[] }[]
+}) {
+  const names = useMemo(
+    () => concepts.map((c) => c.code).filter((s): s is string => !!s),
+    [concepts]
+  )
+  const masteryMap = useConceptMastery(names)
+
+  if (concepts.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground italic">
+        Nenhum conceito identificado nessa explicação.
+      </p>
+    )
+  }
+
+  return (
+    <ul className="space-y-2.5">
+      {concepts.map((c, i) => {
+        const mastery = c.code ? masteryMap[c.code] : null
+        return (
+          <li
+            key={i}
+            className="rounded-lg border border-border/40 bg-card/50 p-3 flex flex-col gap-1"
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              {c.code && (
+                <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono text-primary">
+                  {c.code}
+                </code>
+              )}
+              {mastery && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                  <MasteryDots level={mastery.level} />
+                  <span className="tabular-nums">
+                    {mastery.correct}/{mastery.correct + mastery.wrong}
+                  </span>
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground/60">
+                {c.refs.length === 1
+                  ? `linha ${c.refs[0]}`
+                  : `${c.refs.length} ocorrências`}
+              </span>
+              <AskAIInline
+                context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
+                contextLabel={c.code ?? c.text.slice(0, 40)}
+                className="ml-auto"
+              />
+            </div>
+            <span className="text-xs text-foreground/80 leading-relaxed">
+              {renderInline(c.text)}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

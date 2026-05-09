@@ -7,6 +7,7 @@ export interface QuizDraft {
   correctIdx: number
   explainCorrect: string
   explainWrong: string
+  concepts?: string[]
 }
 
 interface Args {
@@ -14,16 +15,31 @@ interface Args {
   seniority: string
   providerId: ProviderId
   count?: number
+  weakConcepts?: string[]
+  masteredConcepts?: string[]
 }
 
-const PROMPT_TEMPLATE = (analysis: string, seniority: string, n: number): string => `
+const PROMPT_TEMPLATE = (
+  analysis: string,
+  seniority: string,
+  n: number,
+  weak: string[],
+  mastered: string[]
+): string => {
+  const weakBlock = weak.length
+    ? `\nCONCEITOS QUE O USUÁRIO AINDA NÃO DOMINA (priorize testar estes):\n- ${weak.join('\n- ')}\n`
+    : ''
+  const masteredBlock = mastered.length
+    ? `\nCONCEITOS JÁ DOMINADOS (NÃO refaça questões sobre estes — só pergunte se aparecem em contexto novo):\n- ${mastered.join('\n- ')}\n`
+    : ''
+  return `
 Você é um tutor que acabou de explicar este diff de código pra um dev nível "${seniority}".
 
 EXPLICAÇÃO QUE FOI DADA:
 """
 ${analysis.slice(0, 4000)}
 """
-
+${weakBlock}${masteredBlock}
 Tarefa: gere ${n} perguntas múltipla-escolha que testam o conceito MAIS central da explicação acima.
 
 Regras:
@@ -32,6 +48,9 @@ Regras:
 - Distratores devem ser plausíveis (erros comuns), não absurdos.
 - Adapte vocabulário pro nível "${seniority}".
 - Evite perguntas triviais ("o que é uma variável?"). Foque no que aquele diff ensina.
+- Se houver conceitos não-dominados acima, PRIORIZE eles ao formular perguntas.
+- Evite testar conceitos já dominados a menos que o contexto novo exija.
+- "concepts": 1-3 nomes curtos dos conceitos centrais que essa pergunta testa (ex: ["useState", "closure"]). Use o nome canônico, snake_case ou camelCase apenas. Sem espaços a menos que essencial.
 - "explainCorrect": 1-2 frases reforçando POR QUE a correta está certa.
 - "explainWrong": 1 frase apontando o erro mais comum entre os distratores.
 
@@ -41,11 +60,13 @@ Output: apenas JSON válido, NADA mais. Schema:
     "question": "string",
     "options": ["string","string","string","string"],
     "correctIdx": 0,
+    "concepts": ["string"],
     "explainCorrect": "string",
     "explainWrong": "string"
   }
 ]
 `.trim()
+}
 
 function extractJsonArray(text: string): unknown {
   // Try fenced ```json block first
@@ -69,7 +90,7 @@ function extractJsonArray(text: string): unknown {
 function isValidDraft(x: unknown): x is QuizDraft {
   if (!x || typeof x !== 'object') return false
   const r = x as Record<string, unknown>
-  return (
+  const baseOk =
     typeof r.question === 'string' &&
     Array.isArray(r.options) &&
     r.options.length === 4 &&
@@ -79,7 +100,12 @@ function isValidDraft(x: unknown): x is QuizDraft {
     r.correctIdx < 4 &&
     typeof r.explainCorrect === 'string' &&
     typeof r.explainWrong === 'string'
-  )
+  if (!baseOk) return false
+  if (r.concepts != null) {
+    if (!Array.isArray(r.concepts)) return false
+    if (!r.concepts.every((c) => typeof c === 'string')) return false
+  }
+  return true
 }
 
 async function callProvider(providerId: ProviderId, prompt: string): Promise<string> {
@@ -110,7 +136,13 @@ async function callProvider(providerId: ProviderId, prompt: string): Promise<str
 
 export async function generateQuiz(args: Args): Promise<QuizDraft[]> {
   const n = args.count ?? (args.analysisText.length > 1500 ? 3 : 2)
-  const prompt = PROMPT_TEMPLATE(args.analysisText, args.seniority, n)
+  const prompt = PROMPT_TEMPLATE(
+    args.analysisText,
+    args.seniority,
+    n,
+    args.weakConcepts ?? [],
+    args.masteredConcepts ?? []
+  )
 
   let raw: string
   try {

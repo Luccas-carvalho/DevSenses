@@ -37,6 +37,21 @@ export function registerConceptsHandlers(): void {
     getRepo().updateNote(payload.id, payload.note)
   })
 
+  ipcMain.handle('concepts:seenSince', (_, payload: IpcContract['concepts:seenSince']['request']) => {
+    return getRepo().seenSince(payload.since)
+  })
+
+  ipcMain.handle(
+    'concepts:masteryBatch',
+    (_, payload: IpcContract['concepts:masteryBatch']['request']) => {
+      const out: Record<string, { level: number; correct: number; wrong: number } | null> = {}
+      for (const name of payload.names) {
+        out[name] = getRepo().getMastery(name)
+      }
+      return out
+    }
+  )
+
   ipcMain.handle(
     'concepts:explainTerm',
     async (_, payload: IpcContract['concepts:explainTerm']['request']) => {

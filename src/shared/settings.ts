@@ -27,6 +27,7 @@ export interface SettingsValueMap {
   professor_turbo: boolean
   explanation_depth: ExplanationDepth
   explanation_persona: ExplanationPersona
+  socratic_mode: boolean
   diff_mode: DiffMode
   editor_default: string
   terminal_default: string
@@ -52,6 +53,7 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   professor_turbo: false,
   explanation_depth: 3,
   explanation_persona: 'default',
+  socratic_mode: false,
   diff_mode: 'all',
   editor_default: '',
   terminal_default: '',

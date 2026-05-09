@@ -20,6 +20,7 @@ export interface QuizInsert {
   correctIdx: number
   explainCorrect: string
   explainWrong: string
+  conceptIds?: number[]
 }
 
 interface Row {
@@ -63,6 +64,9 @@ export class QuizzesRepository {
         @explainCorrect, @explainWrong, @createdAt
       )
     `)
+    const linkStmt = this.db.prepare(
+      `INSERT OR IGNORE INTO quiz_concepts (quiz_id, concept_id) VALUES (?, ?)`
+    )
     const ids: number[] = []
     const tx = this.db.transaction(() => {
       for (const it of items) {
@@ -75,11 +79,22 @@ export class QuizzesRepository {
           explainWrong: it.explainWrong,
           createdAt: Date.now()
         })
-        ids.push(Number(r.lastInsertRowid))
+        const quizId = Number(r.lastInsertRowid)
+        ids.push(quizId)
+        for (const cid of it.conceptIds ?? []) {
+          if (cid > 0) linkStmt.run(quizId, cid)
+        }
       }
     })
     tx()
     return this.byIds(ids)
+  }
+
+  conceptIdsFor(quizId: number): number[] {
+    const rows = this.db
+      .prepare('SELECT concept_id AS id FROM quiz_concepts WHERE quiz_id = ?')
+      .all(quizId) as { id: number }[]
+    return rows.map((r) => r.id)
   }
 
   byIds(ids: number[]): QuizRecord[] {
