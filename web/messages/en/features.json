@@ -1,54 +1,43 @@
 {
   "title": "Not another copilot.",
-  "subtitle": "A senpai that learns from you.",
-  "items": [
+  "subtitle": "A tutor that learns from you.",
+  "pillars": [
     {
-      "title": "Explanation at your level",
-      "description": "5 depths · from 'for a 10-year-old' to 'algorithmic trade-offs'"
+      "id": "adaptive",
+      "label": "Adaptive learning",
+      "title": "Calibrated to you, not the average.",
+      "description": "DevSenses tunes depth, tone, and quiz to your actual level — and skips topics you've already mastered.",
+      "items": [
+        { "icon": "Layers", "title": "5 depths", "description": "From 'for a 10-year-old' to 'algorithmic trade-offs'. Slider, instant switch." },
+        { "icon": "MessagesSquare", "title": "5 tutor personas", "description": "Friendly mentor, pragmatic, sarcastic, academic, or default." },
+        { "icon": "Brain", "title": "Adaptive quiz", "description": "Per-concept mastery. Right 5 times in a row? Skipped." },
+        { "icon": "HelpCircle", "title": "Socratic mode", "description": "AI asks before answering. Forces you to think." }
+      ]
     },
     {
-      "title": "5 tutor personas",
-      "description": "Friendly mentor · Pragmatic · Sarcastic · Academic · Default"
+      "id": "power",
+      "label": "Power tools over the diff",
+      "title": "Everything you need, without leaving the screen.",
+      "description": "Surgical shortcuts to understand any snippet — explanation, complexity, alternatives, hidden bugs.",
+      "items": [
+        { "icon": "Command", "title": "⌘K Cheat sheet", "description": "Select any code. Syntax, gotchas, examples." },
+        { "icon": "Activity", "title": "Auto Big-O detection", "description": "Nested loops, find-in-loop, unmemoized recursion. Flagged." },
+        { "icon": "GitCompare", "title": "What if?", "description": "Compare current vs alternative approach. Trade-off table." },
+        { "icon": "Bug", "title": "Bug hunt", "description": "AI injects subtle bug. You train code review." },
+        { "icon": "Bot", "title": "AI authorship detection", "description": "8 heuristics, 0-100 score. Spot AI-written diffs." },
+        { "icon": "BookMarked", "title": "Personal glossary", "description": "Clickable terms in markdown. Definitions cached forever." }
+      ]
     },
     {
-      "title": "Adaptive quiz",
-      "description": "Per-concept mastery. Right 5 times in a row? Skipped"
-    },
-    {
-      "title": "Socratic mode",
-      "description": "AI asks before answering. Forces you to think"
-    },
-    {
-      "title": "⌘K Cheat sheet",
-      "description": "Select any code. Syntax + gotchas + examples"
-    },
-    {
-      "title": "Auto Big-O detection",
-      "description": "Nested loops, find-in-loop, unmemoized recursion. Flagged"
-    },
-    {
-      "title": "What if?",
-      "description": "Compare current vs alternative approach. Trade-off table"
-    },
-    {
-      "title": "Bug hunt",
-      "description": "AI injects subtle bug. You train code review"
-    },
-    {
-      "title": "AI authorship detection",
-      "description": "8 heuristics, 0-100 score. Spot AI-written diffs"
-    },
-    {
-      "title": "Personal glossary",
-      "description": "Clickable terms in markdown. Cached definitions"
-    },
-    {
-      "title": "5 AIs, one place",
-      "description": "Claude · Codex · Gemini · Aider · Ollama. BYOK"
-    },
-    {
-      "title": "100% local",
-      "description": "Diff never leaves your device. No subscription"
+      "id": "foundation",
+      "label": "No catch",
+      "title": "Your key. Your disk. Your pace.",
+      "description": "Runs local, with the AI you already pay for. No subscription, no cloud, no vendor lock.",
+      "items": [
+        { "icon": "Cpu", "title": "5 AIs in one app", "description": "Claude · Codex · Gemini · Aider · Ollama. BYOK." },
+        { "icon": "ShieldCheck", "title": "100% local", "description": "Diff never leaves your device. No subscription, no telemetry." },
+        { "icon": "Code2", "title": "Open source · MIT", "description": "Open code. No vendor lock. Fork it if you want." }
+      ]
     }
   ]
 }

@@ -1,0 +1,31 @@
+{
+  "subtitle": "in the app",
+  "title": "Not vaporware. An app you install.",
+  "description": "See DevSenses in action — galactic onboarding, streaming diff explanation, adaptive quiz that learns from you.",
+  "items": [
+    {
+      "id": "onboarding",
+      "kicker": "Onboarding · 11 steps",
+      "title": "Calibrated to your level in 90 seconds",
+      "description": "Intern, junior, mid or senior. 5 depths. 5 personas. Ends with a 4.5s galaxy animation.",
+      "image": "/screenshots/onboarding-cosmic.png",
+      "alt": "DevSenses onboarding screen with cosmic purple backdrop"
+    },
+    {
+      "id": "diff",
+      "kicker": "Main analysis",
+      "title": "The diff you wrote, explained line by line",
+      "description": "Streaming markdown. Technical terms become clickable links. ⌘K opens cheat sheet for any snippet.",
+      "image": "/screenshots/project-diff.png",
+      "alt": "Side-by-side diff with streaming AI explanation"
+    },
+    {
+      "id": "quiz",
+      "kicker": "Adaptive learning",
+      "title": "Quiz that learns from you",
+      "description": "Per-concept mastery. 4 levels (Novice → Mastered). Right 5 times in a row? Out of the quiz forever.",
+      "image": "/screenshots/quiz-mastery.png",
+      "alt": "Post-explanation quiz with per-concept mastery indicators"
+    }
+  ]
+}

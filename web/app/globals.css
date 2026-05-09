@@ -160,3 +160,150 @@
   -webkit-text-fill-color: transparent;
   animation: shimmer 4s linear infinite;
 }
+
+/* ============================================
+   GALAXY BACKDROP — looped cosmic background
+   Adaptado da cosmic-transition do app, mas em loop e sutil.
+   Roda só no dark mode pra preservar legibilidade.
+   ============================================ */
+
+.ds-galaxy-star {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(216, 180, 254, 0.7);
+  animation: dsGalaxyTwinkle 4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.ds-galaxy-star.is-bright {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.7);
+}
+
+@keyframes dsGalaxyTwinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  50% { opacity: 0.95; transform: scale(1.2); }
+}
+
+.ds-galaxy-nebula {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.ds-galaxy-nebula-1 {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, hsl(262 80% 55% / 0.32) 0%, transparent 70%);
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, -10%);
+  animation: dsGalaxyNebulaDrift1 22s ease-in-out infinite;
+}
+
+.ds-galaxy-nebula-2 {
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, hsl(280 75% 60% / 0.25) 0%, transparent 70%);
+  top: 50%;
+  left: 18%;
+  animation: dsGalaxyNebulaDrift2 28s ease-in-out infinite;
+}
+
+.ds-galaxy-nebula-3 {
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, hsl(245 80% 65% / 0.22) 0%, transparent 70%);
+  top: 60%;
+  right: 8%;
+  animation: dsGalaxyNebulaDrift3 26s ease-in-out infinite;
+}
+
+@keyframes dsGalaxyNebulaDrift1 {
+  0%, 100% { transform: translate(-50%, -10%) scale(1); opacity: 0.85; }
+  50% { transform: translate(-45%, -5%) scale(1.12); opacity: 1; }
+}
+
+@keyframes dsGalaxyNebulaDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.75; }
+  50% { transform: translate(40px, -20px) scale(1.08); opacity: 1; }
+}
+
+@keyframes dsGalaxyNebulaDrift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(-30px, 30px) scale(1.1); opacity: 0.95; }
+}
+
+.ds-galaxy-orbit {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.ds-galaxy-orbit-1 {
+  width: 260px;
+  height: 260px;
+  border-color: hsl(262 70% 65% / 0.35);
+  animation: dsGalaxyOrbit 60s linear infinite;
+}
+
+.ds-galaxy-orbit-2 {
+  width: 460px;
+  height: 460px;
+  border-color: hsl(262 70% 65% / 0.2);
+  border-style: dashed;
+  animation: dsGalaxyOrbit 90s linear infinite reverse;
+}
+
+.ds-galaxy-orbit-3 {
+  width: 720px;
+  height: 720px;
+  border-color: hsl(262 70% 65% / 0.1);
+  animation: dsGalaxyOrbit 120s linear infinite;
+}
+
+@keyframes dsGalaxyOrbit {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.ds-galaxy-rays {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 720px;
+  height: 720px;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    hsl(262 70% 65% / 0.06) 30deg,
+    transparent 60deg,
+    transparent 120deg,
+    hsl(262 70% 65% / 0.05) 150deg,
+    transparent 180deg,
+    transparent 240deg,
+    hsl(262 70% 65% / 0.06) 270deg,
+    transparent 300deg
+  );
+  filter: blur(8px);
+  animation: dsGalaxyOrbit 80s linear infinite;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-galaxy-star,
+  .ds-galaxy-nebula,
+  .ds-galaxy-orbit,
+  .ds-galaxy-rays {
+    animation: none !important;
+  }
+  .ds-galaxy-star { opacity: 0.6; }
+}

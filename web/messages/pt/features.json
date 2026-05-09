@@ -1,54 +1,43 @@
 {
   "title": "Não é mais um copilot.",
-  "subtitle": "É um senpai que aprende com você.",
-  "items": [
+  "subtitle": "É um tutor que aprende com você.",
+  "pillars": [
     {
-      "title": "Explicação no teu nível",
-      "description": "5 profundidades · do 'pra criança' ao 'trade-offs algorítmicos'"
+      "id": "adaptive",
+      "label": "Aprendizado adaptativo",
+      "title": "Calibrado pra ti, não pra média.",
+      "description": "DevSenses ajusta profundidade, tom e quiz ao teu nível real — e some com tópicos que você já dominou.",
+      "items": [
+        { "icon": "Layers", "title": "5 profundidades", "description": "Do 'pra criança' ao 'trade-offs algorítmicos'. Slider, troca instantânea." },
+        { "icon": "MessagesSquare", "title": "5 personas de tutor", "description": "Mentor amigo, pragmático, sarcástico, acadêmico ou padrão." },
+        { "icon": "Brain", "title": "Quiz adaptativo", "description": "Mastery por conceito. Acertou 5 vezes? Some do quiz." },
+        { "icon": "HelpCircle", "title": "Modo Socrático", "description": "IA pergunta antes de responder. Te força a pensar." }
+      ]
     },
     {
-      "title": "5 personas de tutor",
-      "description": "Mentor amigo · Pragmático · Sarcástico · Acadêmico · Padrão"
+      "id": "power",
+      "label": "Power tools sobre o diff",
+      "title": "Tudo que tu precisa, sem sair da tela.",
+      "description": "Atalhos cirúrgicos pra entender qualquer trecho — explicação, complexidade, alternativas, bugs ocultos.",
+      "items": [
+        { "icon": "Command", "title": "⌘K Cheat Sheet", "description": "Seleciona qualquer trecho. Sintaxe, gotchas, exemplos." },
+        { "icon": "Activity", "title": "Big-O auto-detect", "description": "Loops aninhados, find-in-loop, recursão sem memo. Flag automático." },
+        { "icon": "GitCompare", "title": "What if?", "description": "Compara approach atual com alternativa. Tabela de trade-offs." },
+        { "icon": "Bug", "title": "Caça ao bug", "description": "IA injeta erro sutil pra tu treinar code review." },
+        { "icon": "Bot", "title": "Detecção autoria IA", "description": "8 heurísticas, score 0-100. Saiba se aquele diff é IA-cheirado." },
+        { "icon": "BookMarked", "title": "Glossário pessoal", "description": "Termos clicáveis no markdown. Definição cacheada pra sempre." }
+      ]
     },
     {
-      "title": "Quiz adaptativo",
-      "description": "Mastery por conceito. Acertou 5 vezes? Some do quiz"
-    },
-    {
-      "title": "Modo Socrático",
-      "description": "IA pergunta antes de responder. Força tu a pensar"
-    },
-    {
-      "title": "⌘K Cheat Sheet",
-      "description": "Seleciona qualquer trecho. Sintaxe + gotchas + exemplos"
-    },
-    {
-      "title": "Big-O auto-detect",
-      "description": "Loops aninhados, find-in-loop, recursão sem memo. Flag automático"
-    },
-    {
-      "title": "What if?",
-      "description": "Compara approach atual com alternativa. Tabela de trade-offs"
-    },
-    {
-      "title": "Caça ao bug",
-      "description": "IA injeta erro sutil pra tu treinar code review"
-    },
-    {
-      "title": "Detecção autoria IA",
-      "description": "8 heurísticas, score 0-100. Saiba se aquele diff é IA-cheirado"
-    },
-    {
-      "title": "Glossário pessoal",
-      "description": "Termos clicáveis no markdown. Definição cacheada"
-    },
-    {
-      "title": "5 IAs, 1 lugar",
-      "description": "Claude · Codex · Gemini · Aider · Ollama. BYOK"
-    },
-    {
-      "title": "100% local",
-      "description": "Diff nunca sai do device. Sem subscription"
+      "id": "foundation",
+      "label": "Sem pegadinha",
+      "title": "Tua chave. Teu disco. Teu ritmo.",
+      "description": "Roda local, com a IA que tu já paga. Sem subscription, sem nuvem, sem vendor lock.",
+      "items": [
+        { "icon": "Cpu", "title": "5 IAs num só app", "description": "Claude · Codex · Gemini · Aider · Ollama. BYOK." },
+        { "icon": "ShieldCheck", "title": "100% local", "description": "Diff nunca sai do device. Sem subscription, sem telemetria." },
+        { "icon": "Code2", "title": "Open source · MIT", "description": "Código aberto. Sem vendor lock. Forka se quiser." }
+      ]
     }
   ]
 }

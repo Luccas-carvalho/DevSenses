@@ -1,7 +1,7 @@
 {
-  "headline": "You let AI write your code. Let DevSenses teach you what it actually did.",
-  "sub": "Reads your repo's diff and explains it line by line — calibrated to your level, with quizzes that learn from your answers.",
-  "cta_primary": "Download free",
-  "cta_secondary": "View on GitHub",
-  "tagline_top": "AI tutor for code you (or your AI) just wrote"
+  "headline": "Become a dev. Not an operator.",
+  "sub": "DevSenses reads the diff you (or your AI) wrote, explains it line by line at your level, and proves you got it with adaptive quizzes.",
+  "cta_primary": "View on GitHub",
+  "cta_secondary": "See features",
+  "tagline_top": "Coming soon · Local AI tutor for your code"
 }

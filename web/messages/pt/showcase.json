@@ -1,0 +1,31 @@
+{
+  "subtitle": "no app",
+  "title": "Não é vaporware. É um app que tu instala.",
+  "description": "Veja o DevSenses rodando — onboarding galáctico, diff explicado em streaming, quiz adaptativo que aprende contigo.",
+  "items": [
+    {
+      "id": "onboarding",
+      "kicker": "Onboarding · 11 passos",
+      "title": "Calibra ao teu nível em 90 segundos",
+      "description": "Estagiário, junior, mid ou senior. 5 profundidades. 5 personas. Termina numa animação de galáxia 4.5s.",
+      "image": "/screenshots/onboarding-cosmic.png",
+      "alt": "Tela de onboarding do DevSenses com fundo cósmico roxo"
+    },
+    {
+      "id": "diff",
+      "kicker": "Análise principal",
+      "title": "O diff que tu escreveu, explicado linha por linha",
+      "description": "Streaming em markdown. Termos técnicos viram links clicáveis. ⌘K abre cheat sheet de qualquer trecho.",
+      "image": "/screenshots/project-diff.png",
+      "alt": "Diff lado a lado com explicação streaming da IA"
+    },
+    {
+      "id": "quiz",
+      "kicker": "Aprendizado adaptativo",
+      "title": "Quiz que aprende contigo",
+      "description": "Mastery por conceito. 4 níveis (Novato → Dominado). Acertou 5 vezes? Some do quiz pra sempre.",
+      "image": "/screenshots/quiz-mastery.png",
+      "alt": "Quiz pós-explicação com indicadores de mastery por conceito"
+    }
+  ]
+}

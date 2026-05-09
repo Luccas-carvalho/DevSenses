@@ -1,7 +1,7 @@
 {
-  "headline": "Tu deixou IA escrever. Deixa o DevSenses te ensinar o que ela fez.",
-  "sub": "Lê o diff do teu repo e explica linha por linha — calibrado pelo teu nível, com quiz que aprende com tuas respostas.",
-  "cta_primary": "Baixar grátis",
-  "cta_secondary": "Ver no GitHub",
-  "tagline_top": "Tutor IA pra entender código que tu (ou tua IA) escreveu"
+  "headline": "Vire dev. Não operador.",
+  "sub": "DevSenses lê o diff que tu (ou tua IA) escreveu, explica linha por linha no teu nível, e prova com quiz que tu entendeu.",
+  "cta_primary": "Ver no GitHub",
+  "cta_secondary": "Ver features",
+  "tagline_top": "Em breve · Tutor IA local pro teu código"
 }

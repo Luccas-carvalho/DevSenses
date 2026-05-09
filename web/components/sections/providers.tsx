@@ -10,7 +10,7 @@ export async function Providers() {
     <section className="relative px-6 py-28 border-t border-border">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-12">
-          <FadeIn><SectionLabel number="05" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel number="06" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
           <FadeIn delay={0.1}><h2 className="text-4xl md:text-5xl font-bold tracking-[-0.03em] text-balance bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-1">{t('title')}</h2></FadeIn>
         </div>
         <FadeIn delay={0.2}>

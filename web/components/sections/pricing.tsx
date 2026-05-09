@@ -11,7 +11,7 @@ export async function Pricing() {
       <div className="absolute inset-0 bg-grid opacity-[0.15] [mask-image:radial-gradient(ellipse_at_top,black_20%,transparent_70%)] pointer-events-none" />
       <div className="relative max-w-6xl mx-auto">
         <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-16">
-          <FadeIn><SectionLabel number="06" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel number="07" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
           <FadeIn delay={0.1}><h2 className="text-4xl md:text-5xl font-bold tracking-[-0.03em] text-balance bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-1">{t('title')}</h2></FadeIn>
         </div>
         <div className="grid md:grid-cols-3 gap-5">

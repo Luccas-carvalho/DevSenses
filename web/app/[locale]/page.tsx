@@ -4,6 +4,7 @@ import { Hero } from '@/components/sections/hero'
 import { Marquee } from '@/components/animations/marquee'
 import { Pain } from '@/components/sections/pain'
 import { Solution } from '@/components/sections/solution'
+import { Showcase } from '@/components/sections/showcase'
 import { Features } from '@/components/sections/features'
 import { HowItWorks } from '@/components/sections/how-it-works'
 import { Providers } from '@/components/sections/providers'
@@ -19,9 +20,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <Header />
       <main>
         <Hero />
-        <Marquee items={['useState', 'useEffect', 'git diff', 'TanStack Query', 'Server Components', 'TypeScript', 'Zod', 'Suspense', 'Edge Runtime', 'Tailwind', 'GraphQL', 'Drizzle', 'tRPC', 'WASM']} />
+        <Marquee items={['Resumo', 'Detalhes', 'Conceitos', 'Quiz adaptativo', '⌘K Cheat Sheet', 'Modo Socrático', 'What if?', 'Caça ao bug', 'Big-O auto-detect', 'Detecção autoria IA', 'Glossário pessoal', '5 IAs · BYOK', '100% local']} />
         <Pain />
         <Solution />
+        <Showcase />
         <Features />
         <HowItWorks />
         <Providers />
