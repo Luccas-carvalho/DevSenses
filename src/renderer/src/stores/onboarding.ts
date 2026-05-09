@@ -10,7 +10,6 @@ export type OnboardingStep =
   | 'seniority'
   | 'depth'
   | 'persona'
-  | 'theme'
   | 'workspace'
   | 'summary'
 
@@ -23,7 +22,6 @@ export const STEP_ORDER: OnboardingStep[] = [
   'seniority',
   'depth',
   'persona',
-  'theme',
   'workspace',
   'summary'
 ]

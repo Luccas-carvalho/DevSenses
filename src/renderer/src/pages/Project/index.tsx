@@ -396,6 +396,25 @@ export default function Project() {
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
+  const [analysisTab, setAnalysisTab] = useState<AnalysisTab>('summary')
+  const conceptsCount = useMemo(() => {
+    const seen = new Set<string>()
+    for (const c of lineComments) {
+      for (const concept of c.concepts ?? []) {
+        seen.add((concept.code ?? '') + '|' + concept.text)
+      }
+    }
+    return seen.size
+  }, [lineComments])
+  // Auto-pick details when summary is empty but details exist
+  useEffect(() => {
+    if (!analysisText) return
+    const hasSummary = /##\s+Resumo/i.test(analysisText)
+    if (!hasSummary && lineComments.length > 0 && analysisTab === 'summary') {
+      setAnalysisTab('details')
+    }
+  }, [analysisText, lineComments, analysisTab])
+
   // Persist concepts + save analysis to history when analysis finishes
   const persistedAnalysisRef = useRef<string>('')
   const [historyVersion, setHistoryVersion] = useState(0)
@@ -1554,6 +1573,15 @@ export default function Project() {
             {analysisState === 'done' && <span className="text-xs text-green-500">✓ pronto</span>}
           </div>
 
+          {analysisText && analysisState !== 'loading' && (
+            <AnalysisTabsBar
+              tab={analysisTab}
+              setTab={setAnalysisTab}
+              detailsCount={lineComments.length}
+              conceptsCount={conceptsCount}
+            />
+          )}
+
           <div ref={analysisRef} className="flex-1 overflow-auto px-4 py-4 min-h-0">
             {error ? (
               <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
@@ -1564,7 +1592,7 @@ export default function Project() {
               <AnalysisSkeleton />
             ) : analysisText ? (
               <>
-                <AnalysisTabs text={analysisText} lineComments={lineComments} />
+                <AnalysisTabs tab={analysisTab} text={analysisText} lineComments={lineComments} />
                 {analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null && (
                   <div className="mt-5">
                     <Quiz analysisId={(viewingAnalysisId ?? savedAnalysisId) as number} />
@@ -2452,14 +2480,9 @@ function splitAnalysis(text: string): { summary: string; details: string } {
   return { summary, details }
 }
 
-function AnalysisTabs({
-  text,
-  lineComments
-}: {
-  text: string
-  lineComments: LineComment[]
-}) {
-  const [tab, setTab] = useState<'summary' | 'details' | 'concepts'>('summary')
+type AnalysisTab = 'summary' | 'details' | 'concepts'
+
+function useAnalysisData(text: string, lineComments: LineComment[]) {
   const { summary, details } = useMemo(() => splitAnalysis(text), [text])
   const concepts = useMemo(() => {
     const map = new Map<string, { code?: string; text: string; refs: number[] }>()
@@ -2473,109 +2496,128 @@ function AnalysisTabs({
     }
     return [...map.values()]
   }, [lineComments])
+  return { summary, details, concepts }
+}
 
-  // auto-pick first non-empty tab
-  useEffect(() => {
-    if (tab === 'summary' && !summary && details) setTab('details')
-  }, [summary, details, tab])
-
-  const TABS: { id: typeof tab; label: string; count?: number }[] = [
+function AnalysisTabsBar({
+  tab,
+  setTab,
+  detailsCount,
+  conceptsCount
+}: {
+  tab: AnalysisTab
+  setTab: (t: AnalysisTab) => void
+  detailsCount: number
+  conceptsCount: number
+}) {
+  const TABS: { id: AnalysisTab; label: string; count?: number }[] = [
     { id: 'summary', label: 'Resumo' },
-    { id: 'details', label: 'Detalhes', count: lineComments.length || undefined },
-    { id: 'concepts', label: 'Conceitos', count: concepts.length || undefined }
+    { id: 'details', label: 'Detalhes', count: detailsCount || undefined },
+    { id: 'concepts', label: 'Conceitos', count: conceptsCount || undefined }
   ]
+  return (
+    <div className="flex gap-0.5 px-3 py-1.5 border-b border-border/30 bg-background/95 backdrop-blur-sm flex-shrink-0">
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => setTab(t.id)}
+          className={cn(
+            'px-3 h-7 text-xs rounded-md transition-colors flex items-center gap-1.5',
+            tab === t.id
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+          )}
+        >
+          {t.label}
+          {t.count != null && (
+            <span
+              className={cn(
+                'text-[10px] rounded-full px-1.5 leading-tight',
+                tab === t.id ? 'bg-primary/20' : 'bg-muted'
+              )}
+            >
+              {t.count}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function AnalysisTabs({
+  tab,
+  text,
+  lineComments
+}: {
+  tab: AnalysisTab
+  text: string
+  lineComments: LineComment[]
+}) {
+  const { summary, concepts } = useAnalysisData(text, lineComments)
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex gap-0.5 -mt-1 mb-3 sticky top-0 bg-background/90 backdrop-blur z-10">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'px-3 h-7 text-xs rounded-md transition-colors flex items-center gap-1.5',
-              tab === t.id
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-            )}
-          >
-            {t.label}
-            {t.count != null && (
-              <span
-                className={cn(
-                  'text-[10px] rounded-full px-1.5 leading-tight',
-                  tab === t.id ? 'bg-primary/20' : 'bg-muted'
-                )}
+    <div>
+      {tab === 'summary' && (
+        summary ? (
+          <AnalysisText text={summary} />
+        ) : (
+          <p className="text-xs text-muted-foreground italic">
+            Resumo ainda não disponível.
+          </p>
+        )
+      )}
+      {tab === 'details' && (
+        lineComments.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">
+            Sem detalhes por linha.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {lineComments.map((c, i) => (
+              <CollapsibleComment key={i} comment={c} />
+            ))}
+          </ul>
+        )
+      )}
+      {tab === 'concepts' && (
+        concepts.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">
+            Nenhum conceito identificado nessa explicação.
+          </p>
+        ) : (
+          <ul className="space-y-2.5">
+            {concepts.map((c, i) => (
+              <li
+                key={i}
+                className="rounded-lg border border-border/40 bg-card/50 p-3 flex flex-col gap-1"
               >
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 min-h-0">
-        {tab === 'summary' && (
-          summary ? (
-            <AnalysisText text={summary} />
-          ) : (
-            <p className="text-xs text-muted-foreground italic">
-              Resumo ainda não disponível.
-            </p>
-          )
-        )}
-        {tab === 'details' && (
-          lineComments.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">
-              Sem detalhes por linha.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {lineComments.map((c, i) => (
-                <CollapsibleComment key={i} comment={c} />
-              ))}
-            </ul>
-          )
-        )}
-        {tab === 'concepts' && (
-          concepts.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">
-              Nenhum conceito identificado nessa explicação.
-            </p>
-          ) : (
-            <ul className="space-y-2.5">
-              {concepts.map((c, i) => (
-                <li
-                  key={i}
-                  className="rounded-lg border border-border/40 bg-card/50 p-3 flex flex-col gap-1"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {c.code && (
-                      <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono text-primary">
-                        {c.code}
-                      </code>
-                    )}
-                    <span className="text-[10px] text-muted-foreground/60">
-                      {c.refs.length === 1
-                        ? `linha ${c.refs[0]}`
-                        : `${c.refs.length} ocorrências`}
-                    </span>
-                    <AskAIInline
-                      context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
-                      contextLabel={c.code ?? c.text.slice(0, 40)}
-                      className="ml-auto"
-                    />
-                  </div>
-                  <span className="text-xs text-foreground/80 leading-relaxed">
-                    {renderInline(c.text)}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {c.code && (
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono text-primary">
+                      {c.code}
+                    </code>
+                  )}
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {c.refs.length === 1
+                      ? `linha ${c.refs[0]}`
+                      : `${c.refs.length} ocorrências`}
                   </span>
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-      </div>
+                  <AskAIInline
+                    context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
+                    contextLabel={c.code ?? c.text.slice(0, 40)}
+                    className="ml-auto"
+                  />
+                </div>
+                <span className="text-xs text-foreground/80 leading-relaxed">
+                  {renderInline(c.text)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
     </div>
   )
 }
