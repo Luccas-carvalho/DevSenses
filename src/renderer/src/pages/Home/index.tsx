@@ -80,16 +80,19 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    if (shouldAutoOpenRecap()) {
-      const t = setTimeout(() => {
+    if (!shouldAutoOpenRecap()) return undefined
+    const t = setTimeout(() => {
+      const d = new Date()
+      d.setHours(0, 0, 0, 0)
+      window.api.invoke('concepts:seenSince', { since: d.getTime() }).then((concepts) => {
+        if (!concepts || concepts.length === 0) return
         setRecapOpen(true)
         const now = new Date()
         const today = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
         localStorage.setItem(RECAP_LS_KEY, today)
-      }, 800)
-      return () => clearTimeout(t)
-    }
-    return undefined
+      })
+    }, 800)
+    return () => clearTimeout(t)
   }, [])
 
   // Dock menu opens project
