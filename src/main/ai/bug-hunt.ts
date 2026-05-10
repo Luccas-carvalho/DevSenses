@@ -66,7 +66,7 @@ function extractJson(text: string): unknown {
 async function callProvider(providerId: ProviderId, prompt: string): Promise<string> {
   const provider = PROVIDERS[providerId]
   const ac = new AbortController()
-  const TIMEOUT = 60_000
+  const TIMEOUT = 120_000
   const timer = setTimeout(() => ac.abort(), TIMEOUT)
   return new Promise<string>((resolve, reject) => {
     let buf = ''
