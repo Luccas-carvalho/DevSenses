@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
     default: 'DevSenses',
     template: '%s — DevSenses',
   },
-  description: 'Vire dev. Não operador.',
+  description: 'DevSenses reads your diff and teaches you what changed — line by line, at your level.',
 }
 
 export default function RootLayout({
@@ -27,11 +26,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html suppressHydrationWarning>
+    <html suppressHydrationWarning lang="pt">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   )

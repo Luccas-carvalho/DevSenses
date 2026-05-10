@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BookOpen, CheckCircle2, Search, Sparkles } from 'lucide-react'
+import { BookOpen, CheckCircle2, Search, Sparkles, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Tooltip from '@/components/ui/Tooltip'
 
@@ -25,6 +25,32 @@ function relative(ts: number): string {
   if (Math.abs(diffH) < 24) return RELATIVE_FORMATTER.format(diffH, 'hour')
   const diffD = Math.round(diffH / 24)
   return RELATIVE_FORMATTER.format(diffD, 'day')
+}
+
+function downloadFile(filename: string, content: string, mime: string): void {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportJSON(items: SeenConcept[]): void {
+  const data = items.map(({ name, category, language, framework, timesSeen, markedLearned, lastNote }) => ({
+    name, category, language, framework, timesSeen, markedLearned, note: lastNote
+  }))
+  downloadFile('glossario-devsenses.json', JSON.stringify(data, null, 2), 'application/json')
+}
+
+function exportCSV(items: SeenConcept[]): void {
+  const header = 'nome,categoria,linguagem,framework,vezes_visto,aprendido,nota'
+  const rows = items.map((c) =>
+    [c.name, c.category, c.language ?? '', c.framework ?? '', c.timesSeen, c.markedLearned ? 'sim' : 'nao', (c.lastNote ?? '').replace(/,/g, ';')]
+      .join(',')
+  )
+  downloadFile('glossario-devsenses.csv', [header, ...rows].join('\n'), 'text/csv')
 }
 
 export default function Glossary() {
@@ -85,12 +111,36 @@ export default function Glossary() {
         <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
           <BookOpen className="size-4 text-primary" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold">Glossário</h2>
           <p className="text-[11px] text-muted-foreground">
             Conceitos que a IA já te ensinou nas análises de diff
           </p>
         </div>
+        {items.length > 0 && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Tooltip label="Exportar como JSON">
+              <button
+                type="button"
+                onClick={() => exportJSON(items)}
+                className="flex items-center gap-1.5 text-[11px] rounded-md px-2.5 h-7 border border-border/50 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+              >
+                <Download className="size-3" />
+                JSON
+              </button>
+            </Tooltip>
+            <Tooltip label="Exportar como CSV">
+              <button
+                type="button"
+                onClick={() => exportCSV(items)}
+                className="flex items-center gap-1.5 text-[11px] rounded-md px-2.5 h-7 border border-border/50 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors"
+              >
+                <Download className="size-3" />
+                CSV
+              </button>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
       {/* Stats pills */}

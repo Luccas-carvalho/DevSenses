@@ -202,7 +202,7 @@ export default function AskAIInline({ context, contextLabel, className, iconClas
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     void send()
                   }
@@ -216,13 +216,12 @@ export default function AskAIInline({ context, contextLabel, className, iconClas
                 type="button"
                 onClick={() => void send()}
                 disabled={busy || !question.trim() || !providerDefault}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 h-[58px] text-[11px] font-semibold disabled:opacity-40 hover:bg-primary/90 active:scale-95 transition-all flex-col justify-center"
+                className="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-3 h-[58px] w-10 disabled:opacity-40 hover:bg-primary/90 active:scale-95 transition-all flex-shrink-0"
               >
                 {busy
                   ? <Loader2 className="size-3.5 animate-spin" />
                   : <Send className="size-3.5" />
                 }
-                <span>{busy ? '...' : '⌘↵'}</span>
               </button>
             </div>
 

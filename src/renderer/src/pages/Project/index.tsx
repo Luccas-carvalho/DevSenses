@@ -34,7 +34,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Star
+  Star,
+  CheckCircle2
 } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
@@ -1659,7 +1660,12 @@ export default function Project() {
                 escrevendo...
               </div>
             )}
-            {analysisState === 'done' && <span className="text-xs text-green-500">✓ pronto</span>}
+            {analysisState === 'done' && (
+              <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">
+                <CheckCircle2 className="size-3" />
+                pronto
+              </span>
+            )}
           </div>
 
           {analysisText && analysisState !== 'loading' && (
