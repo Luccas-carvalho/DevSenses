@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Trash2, ChevronDown } from 'lucide-react'
+import { Camera, Trash2, ChevronDown, RotateCcw, AlertTriangle, Sprout, Rocket, Zap, Flame } from 'lucide-react'
 import { useSettings } from '@/hooks/useSettings'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +11,13 @@ import Tooltip from '@/components/ui/Tooltip'
 
 const ORDER: SeniorityLevel[] = ['intern', 'junior', 'mid', 'senior']
 const MAX_AVATAR_BYTES = 1024 * 1024 // 1MB
+
+const SENIORITY_META: Record<SeniorityLevel, { icon: React.ReactElement; desc: string }> = {
+  intern:  { icon: <Sprout className="size-4" />, desc: 'Estágio' },
+  junior:  { icon: <Rocket className="size-4" />, desc: 'Júnior' },
+  mid:     { icon: <Zap className="size-4" />, desc: 'Pleno' },
+  senior:  { icon: <Flame className="size-4" />, desc: 'Sênior' }
+}
 
 export default function Profile() {
   const { value: name, setValue: setName } = useSettings('user_name')
@@ -49,14 +56,16 @@ export default function Profile() {
   }
 
   const initial = (name || 'D').slice(0, 1).toUpperCase()
+  const currentSeniority = seniority as SeniorityLevel
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold mb-6">Perfil</h1>
+    <div className="w-full ds-fade-up">
 
-      <div className="flex items-center gap-5 mb-6">
-        <div className="relative">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-2xl font-bold text-primary-foreground overflow-hidden">
+      {/* ── Avatar hero card ── */}
+      <div className="rounded-xl border border-border/60 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent backdrop-blur-sm mb-5 p-5 flex items-center gap-5">
+        {/* Avatar */}
+        <div className="relative flex-shrink-0">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/40 flex items-center justify-center text-2xl font-bold text-primary-foreground overflow-hidden ring-2 ring-primary/20 ring-offset-2 ring-offset-transparent">
             {avatar ? (
               <img src={avatar} alt="avatar" className="w-full h-full object-cover" />
             ) : (
@@ -67,15 +76,23 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-accent transition-colors"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background border-2 border-border flex items-center justify-center hover:bg-accent transition-colors shadow-sm"
             >
               <Camera className="size-3.5 text-muted-foreground" />
             </button>
           </Tooltip>
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium mb-1">{name || 'Sem nome'}</p>
-          <p className="text-xs text-muted-foreground mb-2">Avatar opcional, máx 1MB.</p>
+
+        {/* Name + seniority info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-semibold truncate">{name || 'Sem nome'}</p>
+          {currentSeniority && (
+            <div className="flex items-center gap-1.5 mt-1 mb-3">
+              <span className="rounded-full bg-primary/15 border border-primary/25 px-2.5 py-0.5 text-[11px] text-primary font-medium inline-flex items-center gap-1">
+                {SENIORITY_META[currentSeniority]?.icon} {SENIORITY_LABELS[currentSeniority]}
+              </span>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               type="button"
@@ -83,17 +100,19 @@ export default function Profile() {
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
             >
-              <Camera className="size-3.5 mr-1" />
-              Escolher imagem
+              <Camera className="size-3.5 mr-1.5" />
+              Trocar foto
             </Button>
             {avatar && (
               <Button type="button" size="sm" variant="ghost" onClick={clearAvatar}>
-                <Trash2 className="size-3.5 mr-1" />
+                <Trash2 className="size-3.5 mr-1.5" />
                 Remover
               </Button>
             )}
           </div>
+          <p className="text-[10px] text-muted-foreground/60 mt-1.5">Avatar opcional · máx 1 MB</p>
         </div>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -103,24 +122,95 @@ export default function Profile() {
         />
       </div>
 
-      <div className="space-y-2 mb-5">
-        <Label htmlFor="name">Nome</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+      {/* ── Nome ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
+            <span className="text-sm font-bold text-primary">N</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Identificação</p>
+            <p className="text-[11px] text-muted-foreground">Como a IA vai te chamar</p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Nome</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Seu nome..."
+          />
+        </div>
       </div>
 
-      <div className="space-y-2 mb-8">
-        <Label>Senioridade</Label>
-        <SeniorityDropdown
-          value={seniority as SeniorityLevel}
-          onChange={(v) => setSeniority(v)}
-        />
+      {/* ── Seniority selector ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
+            <Zap className="size-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Senioridade</p>
+            <p className="text-[11px] text-muted-foreground">A IA adapta as explicações ao seu nível</p>
+          </div>
+        </div>
+
+        {/* Visual 4-card seniority picker */}
+        <div className="grid grid-cols-4 gap-2">
+          {ORDER.map((lvl) => {
+            const isSelected = currentSeniority === lvl
+            const meta = SENIORITY_META[lvl]
+            return (
+              <button
+                key={lvl}
+                type="button"
+                onClick={() => setSeniority(lvl)}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border transition-all text-center',
+                  isSelected
+                    ? 'border-primary/60 bg-primary/10 shadow-[0_0_12px_-4px_hsl(var(--primary)/0.3)]'
+                    : 'border-border/50 bg-muted/20 hover:border-border hover:bg-muted/40'
+                )}
+              >
+                <span className={cn('transition-colors', isSelected ? 'text-primary' : 'text-muted-foreground')}>{meta.icon}</span>
+                <span
+                  className={cn(
+                    'text-[11px] font-medium leading-tight',
+                    isSelected ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                >
+                  {meta.desc}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Hidden dropdown kept for logic compatibility */}
+        <div className="sr-only">
+          <SeniorityDropdown
+            value={currentSeniority}
+            onChange={(v) => setSeniority(v)}
+          />
+        </div>
       </div>
 
-      <div className="rounded-lg bg-muted/30 px-4 py-3 flex items-center justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          Quer refazer todo o onboarding (incluindo o quiz)?
-        </span>
-        <Button size="sm" variant="outline" onClick={refazerCompleto}>
+      {/* ── Zona de reset ── */}
+      <div className="rounded-xl border border-destructive/20 bg-destructive/5 backdrop-blur-sm p-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="size-4 text-destructive/70" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground">Zona de reset</p>
+            <p className="text-[11px] text-muted-foreground">
+              Refaz o onboarding completo (quiz + preferências)
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={refazerCompleto} className="flex-shrink-0 border-destructive/30 hover:border-destructive/60 hover:bg-destructive/10 text-destructive/80 hover:text-destructive">
+          <RotateCcw className="size-3.5 mr-1.5" />
           Refazer onboarding
         </Button>
       </div>

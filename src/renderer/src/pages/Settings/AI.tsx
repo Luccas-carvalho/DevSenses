@@ -8,7 +8,7 @@ import {
   PROVIDER_META
 } from '@shared/providers'
 import { Button } from '@/components/ui/button'
-import { Loader2, RefreshCw, ChevronDown } from 'lucide-react'
+import { Loader2, RefreshCw, ChevronDown, Bot, Zap } from 'lucide-react'
 import { PROVIDER_MODELS, DEFAULT_MODEL } from '@/lib/providerModels'
 import { cn } from '@/lib/utils'
 
@@ -76,108 +76,144 @@ export default function AI() {
     }
   }
 
+  const installedCount = status
+    ? PROVIDER_IDS.filter((id) => status[id]?.installed).length
+    : null
+
   return (
-    <div className="max-w-xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">IA</h1>
-        <Button variant="ghost" size="sm" onClick={detect} disabled={loading}>
+    <div className="w-full ds-fade-up">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
+            <Bot className="size-4 text-primary" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold">Inteligência Artificial</h1>
+              {installedCount !== null && (
+                <span className="rounded-full bg-muted/60 px-2.5 py-0.5 text-[11px] text-muted-foreground font-medium">
+                  {installedCount} instalado{installedCount !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Providers detectados automaticamente no PATH
+            </p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={detect} disabled={loading} className="flex-shrink-0">
           {loading ? (
-            <Loader2 className="size-3.5 animate-spin mr-1" />
+            <Loader2 className="size-3.5 animate-spin mr-1.5" />
           ) : (
-            <RefreshCw className="size-3.5 mr-1" />
+            <RefreshCw className="size-3.5 mr-1.5" />
           )}
           Reescanear
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">
-        CLI padrão usada pelo Diff Reviewer. Clica numa instalada pra setar como padrão.
-      </p>
+      {/* Subtitle hint */}
+      <div className="rounded-xl border border-border/40 bg-gradient-to-br from-primary/8 to-transparent p-3 mb-5 flex items-center gap-2.5">
+        <Zap className="size-3.5 text-primary/70 flex-shrink-0" />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          CLI padrão usada pelo Diff Reviewer. Selecione um instalado para definir como padrão.
+        </p>
+      </div>
 
-      <div className="grid gap-2">
+      {/* Provider list */}
+      <div className="grid gap-3">
         {PROVIDER_IDS.map((id) => {
           const isSelected = defaultId === id
           const isInstalled = status?.[id]?.installed
           const showModelDropdown = isSelected && isInstalled && selectedModels.length > 0
+
           return (
-            <div key={id} className="flex items-start gap-2">
-              <div className="flex-1">
-                <ProviderCard
-                  id={id}
-                  status={status?.[id]}
-                  loading={loading}
-                  selected={isSelected}
-                  onSelect={() => handleSelectProvider(id)}
-                >
-                  {showModelDropdown && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setModelOpen((o) => !o)}
-                        className={cn(
-                          'w-full flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors px-3 h-9 text-sm'
-                        )}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider flex-shrink-0">
-                            modelo
-                          </span>
-                          <span className="font-medium truncate">{currentModelLabel}</span>
-                        </div>
-                        <ChevronDown
-                          className={cn(
-                            'size-3.5 text-muted-foreground transition-transform flex-shrink-0',
-                            modelOpen && 'rotate-180'
-                          )}
-                        />
-                      </button>
-                      {modelOpen && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setModelOpen(false)}
-                            aria-hidden
-                          />
-                          <div className="absolute left-0 right-0 mt-1 z-50 rounded-md border border-border bg-popover shadow-xl overflow-hidden">
-                            {selectedModels.map((m) => (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => {
-                                  setModel(m.id)
-                                  setModelOpen(false)
-                                }}
-                                className={cn(
-                                  'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-accent transition-colors',
-                                  m.id === model && 'bg-primary/10 text-primary'
-                                )}
-                              >
-                                <span className="truncate">{m.label}</span>
-                                {m.tag && (
-                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex-shrink-0">
-                                    {m.tag}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </ProviderCard>
-              </div>
-              {isInstalled && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => retest(id)}
-                  disabled={testing !== null}
-                >
-                  {testing === id ? <Loader2 className="size-3 animate-spin" /> : 'Testar'}
-                </Button>
+            <div
+              key={id}
+              className={cn(
+                'rounded-xl transition-all',
+                isSelected && 'shadow-[0_0_16px_-6px_hsl(var(--primary)/0.25)]'
               )}
+            >
+              <ProviderCard
+                id={id}
+                status={status?.[id]}
+                loading={loading}
+                selected={isSelected}
+                onSelect={() => handleSelectProvider(id)}
+                action={isInstalled ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => void retest(id)}
+                    disabled={testing !== null}
+                  >
+                    {testing === id ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      'Testar'
+                    )}
+                  </Button>
+                ) : undefined}
+              >
+                {showModelDropdown && (
+                  <div className="relative mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setModelOpen((o) => !o)}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors px-3 h-9 text-sm'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider flex-shrink-0">
+                          modelo
+                        </span>
+                        <span className="font-medium truncate">{currentModelLabel}</span>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'size-3.5 text-muted-foreground transition-transform flex-shrink-0',
+                          modelOpen && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                    {modelOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setModelOpen(false)}
+                          aria-hidden
+                        />
+                        <div className="absolute left-0 right-0 mt-1 z-50 rounded-lg border border-border bg-popover shadow-xl overflow-hidden">
+                          {selectedModels.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setModel(m.id)
+                                setModelOpen(false)
+                              }}
+                              className={cn(
+                                'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-accent transition-colors',
+                                m.id === model && 'bg-primary/10 text-primary'
+                              )}
+                            >
+                              <span className="truncate">{m.label}</span>
+                              {m.tag && (
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex-shrink-0">
+                                  {m.tag}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </ProviderCard>
             </div>
           )
         })}

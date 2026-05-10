@@ -53,12 +53,12 @@ function ThemePreview({
         'group relative text-left rounded-xl overflow-hidden transition-all',
         'border-2',
         selected
-          ? 'border-primary ring-2 ring-primary/30 shadow-lg'
+          ? 'border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10'
           : 'border-border/60 hover:border-border hover:shadow-md'
       )}
     >
       {selected && (
-        <div className="absolute top-2 right-2 z-10 size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+        <div className="absolute top-2 right-2 z-10 size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
           <Check className="size-3" strokeWidth={3} />
         </div>
       )}
@@ -146,12 +146,14 @@ export default function Appearance(): React.ReactElement {
   }, [])
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full ds-fade-up">
+      {/* Header row with mode selector */}
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <h1 className="text-2xl font-semibold">Aparência</h1>
+        <h1 className="text-lg font-semibold">Aparência</h1>
 
+        {/* Theme mode pill selector */}
         <div
-          className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-card p-0.5"
+          className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-card/80 backdrop-blur-sm p-0.5 shadow-sm"
           role="radiogroup"
           aria-label="Modo de tema"
         >
@@ -163,7 +165,7 @@ export default function Appearance(): React.ReactElement {
               role="radio"
               aria-checked={themeMode === opt}
               className={cn(
-                'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[12px] transition-colors',
+                'inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-[12px] transition-all',
                 themeMode === opt
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
@@ -176,12 +178,14 @@ export default function Appearance(): React.ReactElement {
         </div>
       </div>
 
+      {/* Code theme section */}
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Tema de código</h2>
             <p className="text-xs text-muted-foreground">
-              Cores aplicadas ao diff e blocos de código. Preview adapta ao modo {resolved === 'dark' ? 'escuro' : 'claro'}.
+              Cores aplicadas ao diff e blocos de código. Preview adapta ao modo{' '}
+              {resolved === 'dark' ? 'escuro' : 'claro'}.
             </p>
           </div>
         </div>

@@ -11,6 +11,7 @@ interface Props {
   onSelect?: () => void
   disabled?: boolean
   children?: React.ReactNode
+  action?: React.ReactNode
 }
 
 export function ProviderCard({
@@ -20,7 +21,8 @@ export function ProviderCard({
   selected,
   onSelect,
   disabled,
-  children
+  children,
+  action
 }: Props) {
   const meta = PROVIDER_META[id]
   const installed = status?.installed
@@ -84,6 +86,15 @@ export function ProviderCard({
             </a>
           )}
         </div>
+        {action && (
+          <div
+            className="flex-shrink-0 self-center"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {action}
+          </div>
+        )}
       </div>
       {children && (
         <div

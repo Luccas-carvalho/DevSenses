@@ -43,43 +43,69 @@ export default function Settings() {
       </header>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
-        <aside className="w-56 flex flex-col flex-shrink-0 bg-black/[0.08] dark:bg-black/[0.20]">
-          <div className="px-3 pt-2 pb-3 flex items-center gap-2">
-            <Logo size={24} className="flex-shrink-0 rounded-md" />
-            <span className="text-sm font-semibold text-foreground">DevSenses</span>
-          </div>
-          <div className="p-3 border-b border-border/40">
+        {/* Sidebar */}
+        <aside className="w-56 flex flex-col flex-shrink-0 bg-black/[0.08] dark:bg-black/[0.20] border-r border-border/30 relative">
+          {/* Subtle top gradient accent */}
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+
+          {/* Back button */}
+          <div className="px-3 pt-3 pb-2 relative">
             <button
               onClick={() => {
                 if (window.history.length > 1) navigate(-1)
                 else navigate('/home')
               }}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors group"
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-all group w-full px-2 py-1.5 rounded-md hover:bg-accent/40"
             >
-              <ArrowLeft className="size-3 group-hover:-translate-x-0.5 transition-transform" />
-              voltar
+              <ArrowLeft className="size-3 group-hover:-translate-x-0.5 transition-transform flex-shrink-0" />
+              Voltar
             </button>
           </div>
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-                  tab === t.id
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-accent/50'
-                )}
-              >
-                <t.icon className="size-4" />
-                {t.label}
-              </button>
-            ))}
+
+          <div className="px-3 pb-2">
+            <div className="h-px bg-border/30" />
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto relative">
+            {TABS.map((t) => {
+              const isActive = tab === t.id
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all relative',
+                    isActive
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  )}
+                >
+                  {/* Left border accent on active */}
+                  {isActive && (
+                    <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary" />
+                  )}
+                  <t.icon
+                    className={cn(
+                      'size-4 flex-shrink-0 transition-colors',
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  />
+                  {t.label}
+                </button>
+              )
+            })}
           </nav>
+
+          {/* Version footer */}
+          <div className="px-4 py-3 border-t border-border/30">
+            <p className="text-[10px] text-muted-foreground/40">DevSenses Settings</p>
+          </div>
         </aside>
-        <main className="flex-1 overflow-auto px-10 py-8">
-          <Active />
+
+        {/* Main content — key triggers remount + ds-fade-up on tab change */}
+        <main className="flex-1 overflow-auto px-8 py-7">
+          <Active key={tab} />
         </main>
       </div>
     </div>
