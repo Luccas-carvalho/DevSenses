@@ -10,6 +10,7 @@ const ORDER: SeniorityLevel[] = ['intern', 'junior', 'mid', 'senior']
 export default function Seniority() {
   const setDraft = useOnboarding((s) => s.setDraft)
   const draft = useOnboarding((s) => s.draft)
+  const goNext = useOnboarding((s) => s.goNext)
   const [mode, setMode] = useState<'choose' | 'manual' | 'quiz'>('choose')
 
   if (mode === 'quiz') {
@@ -18,7 +19,7 @@ export default function Seniority() {
         onResult={(level) => {
           setDraft('seniority', level)
           setDraft('seniority_source', 'quiz')
-          setMode('manual')
+          goNext()
         }}
         onCancel={() => setMode('choose')}
       />

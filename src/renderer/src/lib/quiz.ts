@@ -3,6 +3,7 @@ import type { SeniorityLevel } from '@shared/seniority'
 export interface QuizQuestion {
   id: string
   question: string
+  correctIdx: number
   options: { label: string; weight: Record<SeniorityLevel, number> }[]
 }
 
@@ -10,88 +11,94 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 'closure',
     question: 'O que é uma closure em JavaScript?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei', weight: { intern: 3, junior: 0, mid: 0, senior: 0 } },
-      { label: 'Função dentro de outra função', weight: { intern: 0, junior: 2, mid: 0, senior: 0 } },
+      { label: 'Qualquer função declarada dentro de outra', weight: { intern: 0, junior: 2, mid: 0, senior: 0 } },
       {
-        label: 'Função que captura variáveis do escopo onde foi criada',
+        label: 'Função que captura (e mantém vivas) as variáveis do escopo onde foi criada',
         weight: { intern: 0, junior: 1, mid: 3, senior: 3 }
       },
-      { label: 'Mesma coisa que IIFE', weight: { intern: 0, junior: 1, mid: 0, senior: 0 } }
+      { label: 'Sinônimo de IIFE', weight: { intern: 0, junior: 1, mid: 0, senior: 0 } }
     ]
   },
   {
     id: 'react-render',
     question: 'Quando um componente React re-renderiza?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei', weight: { intern: 3, junior: 0, mid: 0, senior: 0 } },
       {
-        label: 'Sempre que algo na página muda',
+        label: 'Sempre que qualquer coisa muda na página',
         weight: { intern: 1, junior: 1, mid: 0, senior: 0 }
       },
       {
-        label: 'Quando state ou props mudam, ou o pai re-renderiza',
-        weight: { intern: 0, junior: 2, mid: 3, senior: 2 }
+        label: 'Quando o próprio state/props muda OU o componente pai re-renderiza',
+        weight: { intern: 0, junior: 2, mid: 3, senior: 3 }
       },
       {
-        label: 'Só quando setState é chamado e o React decide via fiber reconciler',
-        weight: { intern: 0, junior: 0, mid: 2, senior: 3 }
+        label: 'Só quando `setState` é chamado',
+        weight: { intern: 1, junior: 1, mid: 0, senior: 0 }
       }
     ]
   },
   {
     id: 'use-effect-deps',
-    question: 'Qual o efeito de `[]` como dependências do useEffect?',
+    question: 'Qual o efeito de passar `[]` como array de dependências do `useEffect`?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei o que é useEffect', weight: { intern: 3, junior: 0, mid: 0, senior: 0 } },
       {
-        label: 'Roda toda vez que o componente renderiza',
+        label: 'Roda em todo render (igual a não passar dependências)',
         weight: { intern: 1, junior: 1, mid: 0, senior: 0 }
       },
       {
-        label: 'Roda só na montagem (e cleanup na desmontagem)',
+        label: 'Roda só na montagem; cleanup só na desmontagem',
         weight: { intern: 0, junior: 3, mid: 3, senior: 3 }
       },
-      { label: 'Roda só uma vez no app inteiro', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
+      { label: 'Desabilita o effect totalmente', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
     ]
   },
   {
     id: 'async-await',
-    question: '`async function` retorna…',
+    question: 'O que uma `async function` retorna?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei', weight: { intern: 3, junior: 0, mid: 0, senior: 0 } },
-      { label: 'O valor que dei no `return`', weight: { intern: 1, junior: 0, mid: 0, senior: 0 } },
+      { label: 'Exatamente o valor do `return`', weight: { intern: 1, junior: 0, mid: 0, senior: 0 } },
       {
-        label: 'Uma Promise que resolve com o valor do return',
+        label: 'Uma `Promise` que resolve com o valor do `return`',
         weight: { intern: 0, junior: 2, mid: 3, senior: 3 }
       },
-      { label: 'Um observable', weight: { intern: 0, junior: 0, mid: 0, senior: 0 } }
+      { label: 'Um Observable / stream', weight: { intern: 0, junior: 1, mid: 0, senior: 0 } }
     ]
   },
   {
     id: 'memoization',
-    question: '`useMemo` serve pra…',
+    question: 'Qual o propósito principal do `useMemo`?',
+    correctIdx: 1,
     options: [
       { label: 'Não conheço', weight: { intern: 3, junior: 1, mid: 0, senior: 0 } },
       {
-        label: 'Memorizar valores entre renders pra evitar recomputar',
-        weight: { intern: 0, junior: 2, mid: 3, senior: 2 }
+        label: 'Cachear o resultado de uma computação cara entre renders',
+        weight: { intern: 0, junior: 2, mid: 3, senior: 3 }
       },
-      { label: 'Substituir `useState`', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } },
+      { label: 'Substituir `useState` para valores derivados', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } },
       {
-        label: 'Memoizar quando o cost-benefit faz sentido — geralmente é over-used',
-        weight: { intern: 0, junior: 0, mid: 2, senior: 3 }
+        label: 'Forçar o componente a re-renderizar imediatamente',
+        weight: { intern: 1, junior: 1, mid: 0, senior: 0 }
       }
     ]
   },
   {
     id: 'typescript-generics',
-    question: 'O que faz `function foo<T>(arg: T): T`?',
+    question: 'O que `function foo<T>(arg: T): T` faz?',
+    correctIdx: 2,
     options: [
-      { label: 'Não trabalho com TS', weight: { intern: 2, junior: 1, mid: 0, senior: 0 } },
+      { label: 'Não trabalho com TypeScript', weight: { intern: 2, junior: 1, mid: 0, senior: 0 } },
       { label: 'Não entendi a sintaxe', weight: { intern: 3, junior: 1, mid: 0, senior: 0 } },
       {
-        label: 'Recebe e devolve algo do mesmo tipo, preservando o tipo',
+        label: 'Recebe um valor e devolve um valor do mesmo tipo, preservando o tipo de quem chama',
         weight: { intern: 0, junior: 2, mid: 3, senior: 3 }
       },
       { label: 'Aceita só strings', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
@@ -99,36 +106,40 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
   {
     id: 'race-condition',
-    question: 'Em um componente que faz fetch quando o `id` muda, qual o risco principal?',
+    question: 'Em um componente que faz fetch quando `id` muda, qual é o risco principal sem cancelar requisições?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei', weight: { intern: 3, junior: 1, mid: 0, senior: 0 } },
-      { label: 'Lentidão', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } },
+      { label: 'A página fica lenta', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } },
       {
-        label: 'Race condition: resposta antiga sobrescrever a nova',
+        label: 'Race condition: a resposta de um fetch antigo sobrescrever a do novo',
         weight: { intern: 0, junior: 1, mid: 3, senior: 3 }
       },
-      { label: 'Memory leak', weight: { intern: 0, junior: 1, mid: 1, senior: 1 } }
+      { label: 'Memory leak no servidor', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
     ]
   },
   {
     id: 'sql-injection',
-    question: 'Qual a melhor proteção contra SQL injection?',
+    question: 'Qual é a melhor proteção contra SQL injection?',
+    correctIdx: 2,
     options: [
       { label: 'Não sei', weight: { intern: 3, junior: 0, mid: 0, senior: 0 } },
       {
-        label: 'Escapar aspas com replace',
+        label: 'Escapar aspas com `replace` antes de concatenar',
         weight: { intern: 1, junior: 1, mid: 0, senior: 0 }
       },
       {
-        label: 'Prepared statements / parameterized queries',
+        label: 'Prepared statements / queries parametrizadas',
         weight: { intern: 0, junior: 2, mid: 3, senior: 3 }
       },
-      { label: 'Usar HTTPS', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
+      { label: 'Habilitar HTTPS no servidor', weight: { intern: 1, junior: 1, mid: 0, senior: 0 } }
     ]
   }
 ]
 
 export function scoreQuiz(answers: Record<string, number>): SeniorityLevel {
+  if (countCorrect(answers) === QUIZ_QUESTIONS.length) return 'senior'
+
   const totals: Record<SeniorityLevel, number> = { intern: 0, junior: 0, mid: 0, senior: 0 }
   for (const [qId, optionIdx] of Object.entries(answers)) {
     const q = QUIZ_QUESTIONS.find((x) => x.id === qId)
@@ -139,4 +150,13 @@ export function scoreQuiz(answers: Record<string, number>): SeniorityLevel {
     }
   }
   return Object.entries(totals).sort((a, b) => b[1] - a[1])[0][0] as SeniorityLevel
+}
+
+export function countCorrect(answers: Record<string, number>): number {
+  let n = 0
+  for (const [qId, optionIdx] of Object.entries(answers)) {
+    const q = QUIZ_QUESTIONS.find((x) => x.id === qId)
+    if (q && q.correctIdx === optionIdx) n++
+  }
+  return n
 }

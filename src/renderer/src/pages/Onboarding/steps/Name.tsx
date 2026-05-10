@@ -17,11 +17,18 @@ export default function Name() {
           className="glass-input"
           value={value}
           onChange={(e) => setDraft('user_name', e.target.value)}
-          placeholder="Ex.: Luccas"
+          placeholder="Digite seu nome"
           autoFocus
           maxLength={40}
         />
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', marginTop: 10, textAlign: 'center' }}>
+        <p
+          style={{
+            fontSize: 13,
+            color: 'rgba(255,255,255,0.3)',
+            marginTop: 10,
+            textAlign: 'center'
+          }}
+        >
           Pode ser primeiro nome, apelido — o que preferir.
         </p>
       </div>

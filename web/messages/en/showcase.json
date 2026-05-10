@@ -1,31 +1,31 @@
 {
   "subtitle": "in the app",
   "title": "Not vaporware. An app you install.",
-  "description": "See DevSenses in action — galactic onboarding, streaming diff explanation, adaptive quiz that learns from you.",
+  "description": "See DevSenses in action — galaxy loading, streaming diff explanation, adaptive quiz that learns from you.",
   "items": [
     {
-      "id": "onboarding",
-      "kicker": "Onboarding · 11 steps",
-      "title": "Calibrated to your level in 90 seconds",
-      "description": "Intern, junior, mid or senior. 5 depths. 5 personas. Ends with a 4.5s galaxy animation.",
-      "image": "/screenshots/onboarding-cosmic.png",
-      "alt": "DevSenses onboarding screen with cosmic purple backdrop"
+      "id": "loading",
+      "kicker": "Analysis in progress",
+      "title": "Galaxy loading while AI thinks",
+      "description": "120 stars, 4 orbits, 3 nebulae drifting. AI processing your diff becomes cosmic spectacle.",
+      "image": "/screenshots/galaxy-loading.png",
+      "alt": "DevSenses screen with galaxy animation while AI tokenizes the diff"
     },
     {
       "id": "diff",
       "kicker": "Main analysis",
-      "title": "The diff you wrote, explained line by line",
-      "description": "Streaming markdown. Technical terms become clickable links. ⌘K opens cheat sheet for any snippet.",
+      "title": "The diff explained line by line",
+      "description": "Streaming markdown, inline comments anchored to hunks, tabs Summary / Details / Concepts.",
       "image": "/screenshots/project-diff.png",
-      "alt": "Side-by-side diff with streaming AI explanation"
+      "alt": "Side-by-side diff with streaming AI explanation and anchored comment"
     },
     {
       "id": "quiz",
       "kicker": "Adaptive learning",
       "title": "Quiz that learns from you",
-      "description": "Per-concept mastery. 4 levels (Novice → Mastered). Right 5 times in a row? Out of the quiz forever.",
+      "description": "Post-explanation. Per-concept mastery. 4 levels (Novice → Mastered). Right 5 times? Skipped.",
       "image": "/screenshots/quiz-mastery.png",
-      "alt": "Post-explanation quiz with per-concept mastery indicators"
+      "alt": "Post-explanation quiz with multiple-choice questions"
     }
   ]
 }

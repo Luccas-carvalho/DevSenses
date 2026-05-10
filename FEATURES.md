@@ -14,7 +14,7 @@ Pra cada item: tagline curta de marketing + nota técnica entre parênteses quan
 - ✅ **Modal de skip customizado** — confirmação bonitona, sem janela nativa do macOS feia.
 - ✅ **Detecção automática de IA local** — varre PATH, encontra Claude Code / Codex / Gemini / Aider / Ollama instalados, testa conectividade.
 - ✅ **Calibração por senioridade** — Estagiário / Junior / Mid / Senior. Influencia profundidade automática + vocabulário.
-- ✅ **Quiz de senioridade opcional** — alguns prompts curtos pra estimar nível se o user não souber decidir.
+- ✅ **Quiz de senioridade opcional** — 8 perguntas com gabarito explícito + distratores limpos. Resposta lockada no clique, reveal verde/vermelho na hora. Tela final com contador animado de acertos, %, dots por questão e badge de nível sugerido.
 - ✅ **Seleção de profundidade no onboarding** — 5 níveis (Pra criança / Resumido / Equilibrado / Detalhado / Profundo), default sugerido pela seniority.
 - ✅ **Seleção de persona do tutor** — 5 tons (Padrão / Mentor amigo / Pragmático / Sarcástico / Acadêmico).
 - ✅ **Workspace inicial opcional** — escolhe pasta git, ou pula e configura depois.
