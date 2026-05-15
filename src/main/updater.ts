@@ -13,10 +13,12 @@ export function installAutoUpdater(): void {
 
   autoUpdater.on('error', (err) => {
     console.error('[updater] error', err?.message ?? err)
+    notifyRenderer({ type: 'error', message: err?.message ?? String(err) })
   })
 
   autoUpdater.on('checking-for-update', () => {
     console.log('[updater] checking…')
+    notifyRenderer({ type: 'checking' })
   })
 
   autoUpdater.on('update-available', (info) => {
@@ -26,6 +28,7 @@ export function installAutoUpdater(): void {
 
   autoUpdater.on('update-not-available', () => {
     console.log('[updater] up to date')
+    notifyRenderer({ type: 'not-available' })
   })
 
   autoUpdater.on('download-progress', (p) => {

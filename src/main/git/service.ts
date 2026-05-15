@@ -227,26 +227,36 @@ async function resolveDiffRefs(
 ): Promise<ResolvedRefs> {
   if (mode === 'uncommitted') return { kind: 'workingTree' }
 
-  // Prefer merge-base with base branch (main/master/develop) — only commits
-  // ahead of base are counted, matching GitHub Desktop semantics.
-  const base = await resolveBaseRef(repoPath)
-  if (base) {
-    return mode === 'committed'
-      ? { kind: 'commitsOnly', fromHash: base }
-      : { kind: 'commitsAndWT', fromHash: base }
-  }
-
-  // Fallback: no base branch detected (e.g., on main itself).
-  // For 'committed'/'all' use a small commit depth as last resort.
   const countStr = await git(repoPath, ['rev-list', '--count', 'HEAD'])
   const commitCount = parseInt(countStr || '0', 10)
   if (commitCount <= 1) return { kind: 'workingTree' }
 
   const useDepth = Math.min(depth, commitCount - 1)
-  const fromHash = `HEAD~${useDepth}`
+  const depthHash = `HEAD~${useDepth}`
+
+  // Prefer merge-base with base branch (main/master/develop) — shows only commits
+  // ahead of base, matching GitHub Desktop semantics.
+  const base = await resolveBaseRef(repoPath)
+  if (base) {
+    const commitsAhead = parseInt(
+      await git(repoPath, ['rev-list', '--count', `${base}..HEAD`]),
+      10
+    )
+    if (commitsAhead > 0) {
+      return mode === 'committed'
+        ? { kind: 'commitsOnly', fromHash: base }
+        : { kind: 'commitsAndWT', fromHash: base }
+    }
+    // Branch has no new commits vs base — nothing to show as "committed".
+    // For 'all' fall through to working tree only; for 'committed' return empty range.
+    if (mode === 'committed') return { kind: 'commitsOnly', fromHash: 'HEAD' }
+    return { kind: 'workingTree' }
+  }
+
+  // No base branch detected at all — fall back to recent-commits heuristic.
   return mode === 'committed'
-    ? { kind: 'commitsOnly', fromHash }
-    : { kind: 'commitsAndWT', fromHash }
+    ? { kind: 'commitsOnly', fromHash: depthHash }
+    : { kind: 'commitsAndWT', fromHash: depthHash }
 }
 
 function parseNameStatus(out: string): Record<string, DiffFile['status']> {

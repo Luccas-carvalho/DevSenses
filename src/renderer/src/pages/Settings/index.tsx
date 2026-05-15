@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Bot, Palette, Folder, BookOpen, Shield } from 'lucide-react'
+import { ArrowLeft, User, Bot, Palette, Folder, BookOpen, Shield, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Profile from './Profile'
 import AI from './AI'
@@ -8,6 +8,7 @@ import Appearance from './Appearance'
 import Workspace from './Workspace'
 import Glossary from './Glossary'
 import Privacy from './Privacy'
+import About from './About'
 import Logo from '@/components/Logo'
 
 const TABS = [
@@ -16,7 +17,8 @@ const TABS = [
   { id: 'appearance', label: 'Aparência', icon: Palette, component: Appearance },
   { id: 'workspace', label: 'Workspace', icon: Folder, component: Workspace },
   { id: 'glossary', label: 'Glossário', icon: BookOpen, component: Glossary },
-  { id: 'privacy', label: 'Privacidade', icon: Shield, component: Privacy }
+  { id: 'privacy', label: 'Privacidade', icon: Shield, component: Privacy },
+  { id: 'about', label: 'Sobre', icon: Info, component: About }
 ] as const
 
 export default function Settings() {
@@ -98,9 +100,7 @@ export default function Settings() {
           </nav>
 
           {/* Version footer */}
-          <div className="px-4 py-3 border-t border-border/30">
-            <p className="text-[10px] text-muted-foreground/40">DevSenses Settings</p>
-          </div>
+          <VersionFooter />
         </aside>
 
         {/* Main content — key triggers remount + ds-fade-up on tab change */}
@@ -111,3 +111,21 @@ export default function Settings() {
     </div>
   )
 }
+
+function VersionFooter(): React.ReactElement {
+  const [version, setVersion] = useState<string | null>(null)
+  useEffect(() => {
+    window.api
+      .invoke('app:getVersion', undefined)
+      .then((r) => setVersion(r.version))
+      .catch(() => setVersion(null))
+  }, [])
+  return (
+    <div className="px-4 py-3 border-t border-border/30">
+      <p className="text-[10px] text-muted-foreground/50 font-mono">
+        DevSenses {version ? `v${version}` : ''}
+      </p>
+    </div>
+  )
+}
+

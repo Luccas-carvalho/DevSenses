@@ -11,8 +11,10 @@ import { registerTestsHandlers } from './tests'
 import { registerGitHandlers } from './git-ops'
 import { registerRepositoryHandlers } from './repository'
 import { registerTelemetryHandlers } from './telemetry'
+import { registerAppHandlers } from './app'
 
 export function registerIpcHandlers(): void {
+  registerAppHandlers()
   registerSettingsHandlers()
   registerProviderHandlers()
   registerWorkspaceHandlers()

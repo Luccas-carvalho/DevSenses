@@ -40,6 +40,7 @@ import {
 import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
 import { buildDiffPrompt } from '@/lib/diffPrompt'
+import { parseDiffFiles, extractFileDiff } from '@/lib/parseDiff'
 import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode, ExplanationDepth } from '@shared/settings'
@@ -921,6 +922,12 @@ export default function Project() {
 
   async function selectFile(filePath: string): Promise<void> {
     setSelectedFile(filePath)
+    // Viewing a saved analysis — slice diff from the stored fullDiff, don't hit git.
+    if (viewingAnalysisId !== null) {
+      setDiff(extractFileDiff(fullDiff, filePath))
+      setDiffSwitching(false)
+      return
+    }
     if (getMediaKind(filePath)) {
       setDiff('')
       setDiffSwitching(false)
@@ -1674,6 +1681,7 @@ export default function Project() {
               setTab={setAnalysisTab}
               detailsCount={lineComments.length}
               conceptsCount={conceptsCount}
+              showQuiz={analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null}
             />
           )}
 
@@ -1686,14 +1694,14 @@ export default function Project() {
             ) : analysisState === 'loading' ? (
               <AnalysisSkeleton />
             ) : analysisText ? (
-              <>
-                <AnalysisTabs tab={analysisTab} text={analysisText} lineComments={lineComments} />
-                {analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null && (
-                  <div className="mt-5">
-                    <Quiz analysisId={(viewingAnalysisId ?? savedAnalysisId) as number} />
-                  </div>
-                )}
-              </>
+              <AnalysisTabs
+                tab={analysisTab}
+                text={analysisText}
+                lineComments={lineComments}
+                quizAnalysisId={
+                  analysisState === 'done' ? (viewingAnalysisId ?? savedAnalysisId) : null
+                }
+              />
             ) : (
               <EmptyAnalysis
                 ready={!!settingsReady}
@@ -1740,6 +1748,8 @@ export default function Project() {
           setAnalysisText(record.analysis)
           setFullDiff(record.diff)
           setDiff(record.diff)
+          setFiles(parseDiffFiles(record.diff))
+          if (record.branch) setBranch(record.branch)
           setSelectedFile(null)
           setAnalysisState('done')
           expandAnalysisPanel()
@@ -2606,7 +2616,7 @@ function splitAnalysis(text: string): { summary: string; details: string } {
   return { summary, details }
 }
 
-type AnalysisTab = 'summary' | 'details' | 'concepts'
+type AnalysisTab = 'summary' | 'details' | 'concepts' | 'quiz'
 
 function useAnalysisData(text: string, lineComments: LineComment[]) {
   const { summary, details } = useMemo(() => splitAnalysis(text), [text])
@@ -2629,17 +2639,20 @@ function AnalysisTabsBar({
   tab,
   setTab,
   detailsCount,
-  conceptsCount
+  conceptsCount,
+  showQuiz
 }: {
   tab: AnalysisTab
   setTab: (t: AnalysisTab) => void
   detailsCount: number
   conceptsCount: number
+  showQuiz: boolean
 }) {
   const TABS: { id: AnalysisTab; label: string; count?: number }[] = [
     { id: 'summary', label: 'Resumo' },
     { id: 'details', label: 'Detalhes', count: detailsCount || undefined },
-    { id: 'concepts', label: 'Conceitos', count: conceptsCount || undefined }
+    { id: 'concepts', label: 'Conceitos', count: conceptsCount || undefined },
+    ...(showQuiz ? [{ id: 'quiz' as AnalysisTab, label: 'Quiz' }] : [])
   ]
   return (
     <div className="flex gap-0.5 px-3 py-1.5 border-b border-border/30 bg-background/95 backdrop-blur-sm flex-shrink-0">
@@ -2675,11 +2688,13 @@ function AnalysisTabsBar({
 function AnalysisTabs({
   tab,
   text,
-  lineComments
+  lineComments,
+  quizAnalysisId
 }: {
   tab: AnalysisTab
   text: string
   lineComments: LineComment[]
+  quizAnalysisId: number | null
 }) {
   const { summary, concepts } = useAnalysisData(text, lineComments)
 
@@ -2708,6 +2723,15 @@ function AnalysisTabs({
         )
       )}
       {tab === 'concepts' && <ConceptsTabBody concepts={concepts} />}
+      {tab === 'quiz' && (
+        quizAnalysisId != null ? (
+          <Quiz analysisId={quizAnalysisId} />
+        ) : (
+          <p className="text-xs text-muted-foreground italic">
+            Quiz indisponível para esta análise.
+          </p>
+        )
+      )}
     </div>
   )
 }

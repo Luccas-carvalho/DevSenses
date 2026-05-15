@@ -1,7 +1,7 @@
 {
   "name": "devsenses",
   "productName": "DevSenses",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "DevSenses — IDE com IA educacional",
   "main": "./out/main/index.js",
   "workspaces": [

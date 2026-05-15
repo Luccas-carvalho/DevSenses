@@ -320,6 +320,19 @@ export interface IpcContract {
     response: void
   }
 
+  'app:getVersion': {
+    request: void
+    response: { version: string; name: string }
+  }
+  'app:checkForUpdates': {
+    request: void
+    response: { ok: boolean; error?: string }
+  }
+  'app:openExternal': {
+    request: { url: string }
+    response: { ok: boolean; error?: string }
+  }
+
   'menu:setState': {
     request: {
       hasProject: boolean
@@ -661,6 +674,13 @@ export interface IpcEvents {
   'workspace:changed': { path: string }
   'app:open-project': { path: string }
   'menu:action': { action: string }
+  'updater:event':
+    | { type: 'checking' }
+    | { type: 'available'; version: string }
+    | { type: 'not-available' }
+    | { type: 'progress'; percent: number }
+    | { type: 'downloaded'; version: string }
+    | { type: 'error'; message: string }
   'tests:agentEvent':
     | { runId: string; type: 'snapshot'; step: number; url: string; title: string; elementsCount: number }
     | { runId: string; type: 'thinking'; step: number }
