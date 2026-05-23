@@ -1,1 +1,19 @@
-{"title":"Toda alteração vira aula.","sub":"DevSenses lê seu git diff. Explica o que mudou no SEU nível. Ensina o conceito por trás. Te força a entender.","demo_label":"git diff explicado:","demo_diff":"+ const [count, setCount] = useState(0)\n+ useEffect(() => {\n+   document.title = `Count: ${count}`\n+ }, [count])","demo_explanation":["useState cria estado local. count guarda valor, setCount atualiza.","useEffect roda código após render. Aqui sincroniza o title do documento.","Array [count] é dependência: effect roda quando count muda.","Sem dependência = roda todo render. Com [] = roda 1x. Detalhe importa."]}
+{
+  "pain_eyebrow": "Você commita. Mas entende?",
+  "pain_bullets": [
+    "Cola código da IA sem ler o diff.",
+    "Aceita sugestão sem saber o porquê.",
+    "Trava no próximo bug porque não entendeu o anterior.",
+    "Vibe coder produtivo, dev no escuro."
+  ],
+  "title": "Toda alteração vira aula.",
+  "sub": "DevSenses lê seu git diff. Explica o que mudou no SEU nível. Ensina o conceito por trás. Te força a entender.",
+  "demo_label": "git diff explicado:",
+  "demo_diff": "+ const [count, setCount] = useState(0)\n+ useEffect(() => {\n+   document.title = `Count: ${count}`\n+ }, [count])",
+  "demo_explanation": [
+    "useState cria estado local. count guarda valor, setCount atualiza.",
+    "useEffect roda código após render. Aqui sincroniza o title do documento.",
+    "Array [count] é dependência: effect roda quando count muda.",
+    "Sem dependência = roda todo render. Com [] = roda 1x."
+  ]
+}

@@ -1,7 +1,11 @@
 {
-  "headline": "Become a dev. Not an operator.",
-  "sub": "DevSenses reads the diff you (or your AI) wrote, explains it line by line at your level, and proves you got it with adaptive quizzes.",
-  "cta_primary": "View on GitHub",
+  "headline": "Understand the code your AI wrote.",
+  "sub": "DevSenses reads your diff, explains line by line at your level, and proves with a quiz that you got it.",
+  "cta_primary": "Star on GitHub",
   "cta_secondary": "See features",
-  "tagline_top": "Coming soon · Local AI tutor for your code"
+  "cta_download": "Download for",
+  "tagline_top": "Open source · MIT",
+  "metrics_label_stars": "stars",
+  "metrics_label_release": "latest release",
+  "metrics_label_license": "MIT License"
 }

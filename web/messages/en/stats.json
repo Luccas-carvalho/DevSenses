@@ -1,0 +1,11 @@
+{
+  "subtitle": "Open Source Stats",
+  "title": "Real, verifiable, in code.",
+  "cards": {
+    "stars": "Stars",
+    "forks": "Forks",
+    "contributors": "Contributors",
+    "releases": "Releases"
+  },
+  "see_on_github": "See on GitHub"
+}

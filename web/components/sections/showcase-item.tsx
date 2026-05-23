@@ -29,16 +29,12 @@ export function ShowcaseItem({ item, flipped }: { item: Item; flipped: boolean }
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className={`relative ${flipped ? 'lg:order-1' : ''}`}
       >
-        <div aria-hidden className="absolute -inset-6 rounded-3xl bg-primary/15 blur-3xl pointer-events-none" />
-
-        <div className="relative rounded-2xl border border-border/70 bg-card/95 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden backdrop-blur-xl">
-          <img
-            src={item.image}
-            alt={item.alt}
-            loading="lazy"
-            className="block w-full h-auto"
-          />
-        </div>
+        <img
+          src={item.image}
+          alt={item.alt}
+          loading="lazy"
+          className="block w-full h-auto"
+        />
       </motion.div>
     </div>
   )

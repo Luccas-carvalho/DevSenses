@@ -1,1 +1,19 @@
-{"title":"Every change becomes a lesson.","sub":"DevSenses reads your git diff. Explains what changed at YOUR level. Teaches the concept behind it. Forces you to understand.","demo_label":"git diff explained:","demo_diff":"+ const [count, setCount] = useState(0)\n+ useEffect(() => {\n+   document.title = `Count: ${count}`\n+ }, [count])","demo_explanation":["useState creates local state. count holds value, setCount updates it.","useEffect runs code after render. Here it syncs the document title.","Array [count] is dependency: effect runs when count changes.","No deps = every render. Empty [] = once. The detail matters."]}
+{
+  "pain_eyebrow": "You commit. But do you understand?",
+  "pain_bullets": [
+    "Pasting AI code without reading the diff.",
+    "Accepting suggestions without knowing why.",
+    "Stuck on the next bug because you missed the last one.",
+    "Productive vibe coder, dev in the dark."
+  ],
+  "title": "Every change becomes a lesson.",
+  "sub": "DevSenses reads your git diff. Explains what changed at YOUR level. Teaches the concept behind it. Forces you to understand.",
+  "demo_label": "git diff explained:",
+  "demo_diff": "+ const [count, setCount] = useState(0)\n+ useEffect(() => {\n+   document.title = `Count: ${count}`\n+ }, [count])",
+  "demo_explanation": [
+    "useState creates local state. count holds the value, setCount updates it.",
+    "useEffect runs after render. Here it syncs the document title.",
+    "[count] array is the dependency: effect runs when count changes.",
+    "No deps = runs every render. [] = runs once."
+  ]
+}

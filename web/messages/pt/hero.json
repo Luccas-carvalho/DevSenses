@@ -1,7 +1,11 @@
 {
-  "headline": "Vire dev. Não operador.",
-  "sub": "DevSenses lê o diff que tu (ou tua IA) escreveu, explica linha por linha no teu nível, e prova com quiz que tu entendeu.",
-  "cta_primary": "Ver no GitHub",
+  "headline": "Entenda o código que sua IA escreveu.",
+  "sub": "DevSenses lê seu diff, explica linha por linha no seu nível, e prova com quiz que você entendeu.",
+  "cta_primary": "Star no GitHub",
   "cta_secondary": "Ver features",
-  "tagline_top": "Em breve · Tutor IA local pro teu código"
+  "cta_download": "Baixar pra",
+  "tagline_top": "Open source · MIT",
+  "metrics_label_stars": "stars",
+  "metrics_label_release": "última release",
+  "metrics_label_license": "MIT License"
 }
