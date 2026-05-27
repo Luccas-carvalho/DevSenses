@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/ThemeProvider'
 import CodeThemeApplicator from './components/CodeThemeApplicator'
 import { router } from './routes'
+import './lib/prismLanguages'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface EBState {

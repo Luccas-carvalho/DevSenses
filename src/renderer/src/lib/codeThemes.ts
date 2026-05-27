@@ -414,6 +414,46 @@ const SOLARIZED_LIGHT_APP: AppPalette = {
   ring: '#268bd2'
 }
 
+// Fills in JSX/TS tokens that base prism themes commonly skip
+// (attr-name, parameter, property-access, regex, builtin, etc).
+// Derives colors from existing styles so each theme keeps its identity.
+function enrichPrism(base: PrismTheme): PrismTheme {
+  const colorFor = (...types: string[]): string | undefined => {
+    for (const t of types) {
+      const found = base.styles.find((s) => s.types.includes(t))
+      const c = found?.style?.color
+      if (typeof c === 'string') return c
+    }
+    return undefined
+  }
+
+  const stringCol = colorFor('string', 'attr-value')
+  const fnCol = colorFor('function')
+  const classCol = colorFor('class-name')
+  const propCol = colorFor('property', 'variable')
+  const numCol = colorFor('number')
+  const keyCol = colorFor('keyword')
+  const tagCol = colorFor('tag')
+
+  const extras: PrismTheme['styles'] = [
+    { types: ['attr-name'], style: { color: fnCol ?? keyCol ?? base.plain.color, fontStyle: 'italic' } },
+    { types: ['parameter'], style: { color: propCol ?? base.plain.color, fontStyle: 'italic' } },
+    { types: ['property-access'], style: { color: propCol ?? base.plain.color } },
+    { types: ['regex'], style: { color: stringCol ?? base.plain.color } },
+    { types: ['important'], style: { color: keyCol ?? base.plain.color, fontWeight: 'bold' } },
+    { types: ['selector'], style: { color: tagCol ?? base.plain.color } },
+    { types: ['tag-name'], style: { color: classCol ?? tagCol ?? base.plain.color } },
+    { types: ['constant'], style: { color: numCol ?? base.plain.color } },
+    { types: ['builtin'], style: { color: classCol ?? fnCol ?? base.plain.color } }
+  ]
+
+  const seen = new Set<string>()
+  for (const s of base.styles) for (const t of s.types) seen.add(t)
+  const additions = extras.filter((e) => !e.types.some((t) => seen.has(t)))
+
+  return { plain: base.plain, styles: [...base.styles, ...additions] }
+}
+
 const draculaDarkPrism: PrismTheme = {
   plain: { color: '#f8f8f2', backgroundColor: '#282a36' },
   styles: [
@@ -663,52 +703,60 @@ function lightColorsFromPrism(prism: PrismTheme, overrides: Partial<CodeThemeCol
 
 export const CODE_THEMES: CodeThemePreset[] = [
   {
+    // 'default' now ships with Tokyo Night dark — much richer per-token colors out of the box.
+    // VS Code's vsDark/vsLight is still available as id 'classic' for the previous look.
     id: 'default',
     label: 'Default',
-    light: { prism: prismThemes.vsLight, colors: lightColorsFromPrism(prismThemes.vsLight), app: null },
-    dark: { prism: prismThemes.vsDark, colors: colorsFromPrism(prismThemes.vsDark), app: null }
+    light: { prism: enrichPrism(tokyoDayPrism), colors: lightColorsFromPrism(tokyoDayPrism), app: TOKYO_DAY_APP },
+    dark: { prism: enrichPrism(tokyoNightPrism), colors: colorsFromPrism(tokyoNightPrism), app: TOKYO_NIGHT_APP }
+  },
+  {
+    id: 'classic',
+    label: 'Classic (VS Code)',
+    light: { prism: enrichPrism(prismThemes.vsLight), colors: lightColorsFromPrism(prismThemes.vsLight), app: null },
+    dark: { prism: enrichPrism(prismThemes.vsDark), colors: colorsFromPrism(prismThemes.vsDark), app: null }
   },
   {
     id: 'dracula',
     label: 'Dracula',
-    light: { prism: draculaLightPrism, colors: lightColorsFromPrism(draculaLightPrism), app: DRACULA_LIGHT_APP },
-    dark: { prism: draculaDarkPrism, colors: colorsFromPrism(draculaDarkPrism), app: DRACULA_DARK_APP }
+    light: { prism: enrichPrism(draculaLightPrism), colors: lightColorsFromPrism(draculaLightPrism), app: DRACULA_LIGHT_APP },
+    dark: { prism: enrichPrism(draculaDarkPrism), colors: colorsFromPrism(draculaDarkPrism), app: DRACULA_DARK_APP }
   },
   {
     id: 'monokai',
     label: 'Monokai',
-    light: { prism: monokaiLightPrism, colors: lightColorsFromPrism(monokaiLightPrism), app: MONOKAI_LIGHT_APP },
-    dark: { prism: monokaiDarkPrism, colors: colorsFromPrism(monokaiDarkPrism), app: MONOKAI_DARK_APP }
+    light: { prism: enrichPrism(monokaiLightPrism), colors: lightColorsFromPrism(monokaiLightPrism), app: MONOKAI_LIGHT_APP },
+    dark: { prism: enrichPrism(monokaiDarkPrism), colors: colorsFromPrism(monokaiDarkPrism), app: MONOKAI_DARK_APP }
   },
   {
     id: 'oneDark',
     label: 'One Dark',
-    light: { prism: oneLightPrism, colors: lightColorsFromPrism(oneLightPrism), app: ONE_LIGHT_APP },
-    dark: { prism: oneDarkPrism, colors: colorsFromPrism(oneDarkPrism), app: ONE_DARK_APP }
+    light: { prism: enrichPrism(oneLightPrism), colors: lightColorsFromPrism(oneLightPrism), app: ONE_LIGHT_APP },
+    dark: { prism: enrichPrism(oneDarkPrism), colors: colorsFromPrism(oneDarkPrism), app: ONE_DARK_APP }
   },
   {
     id: 'tokyoNight',
     label: 'Tokyo Night',
-    light: { prism: tokyoDayPrism, colors: lightColorsFromPrism(tokyoDayPrism), app: TOKYO_DAY_APP },
-    dark: { prism: tokyoNightPrism, colors: colorsFromPrism(tokyoNightPrism), app: TOKYO_NIGHT_APP }
+    light: { prism: enrichPrism(tokyoDayPrism), colors: lightColorsFromPrism(tokyoDayPrism), app: TOKYO_DAY_APP },
+    dark: { prism: enrichPrism(tokyoNightPrism), colors: colorsFromPrism(tokyoNightPrism), app: TOKYO_NIGHT_APP }
   },
   {
     id: 'nord',
     label: 'Nord',
-    light: { prism: nordLightPrism, colors: lightColorsFromPrism(nordLightPrism), app: NORD_LIGHT_APP },
-    dark: { prism: nordPrism, colors: colorsFromPrism(nordPrism), app: NORD_DARK_APP }
+    light: { prism: enrichPrism(nordLightPrism), colors: lightColorsFromPrism(nordLightPrism), app: NORD_LIGHT_APP },
+    dark: { prism: enrichPrism(nordPrism), colors: colorsFromPrism(nordPrism), app: NORD_DARK_APP }
   },
   {
     id: 'github',
     label: 'GitHub',
-    light: { prism: githubLightPrism, colors: lightColorsFromPrism(githubLightPrism), app: GITHUB_LIGHT_APP },
-    dark: { prism: githubDarkPrism, colors: colorsFromPrism(githubDarkPrism), app: GITHUB_DARK_APP }
+    light: { prism: enrichPrism(githubLightPrism), colors: lightColorsFromPrism(githubLightPrism), app: GITHUB_LIGHT_APP },
+    dark: { prism: enrichPrism(githubDarkPrism), colors: colorsFromPrism(githubDarkPrism), app: GITHUB_DARK_APP }
   },
   {
     id: 'solarized',
     label: 'Solarized',
-    light: { prism: solarizedLightPrism, colors: lightColorsFromPrism(solarizedLightPrism), app: SOLARIZED_LIGHT_APP },
-    dark: { prism: solarizedDarkPrism, colors: colorsFromPrism(solarizedDarkPrism), app: SOLARIZED_DARK_APP }
+    light: { prism: enrichPrism(solarizedLightPrism), colors: lightColorsFromPrism(solarizedLightPrism), app: SOLARIZED_LIGHT_APP },
+    dark: { prism: enrichPrism(solarizedDarkPrism), colors: colorsFromPrism(solarizedDarkPrism), app: SOLARIZED_DARK_APP }
   }
 ]
 

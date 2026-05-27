@@ -45,6 +45,8 @@ import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode, ExplanationDepth } from '@shared/settings'
 import type { PersonaId } from '@shared/personas'
+import { useProjectSession } from '@/stores/projectSession'
+import type { AnalysisTab } from './types'
 import DepthSlider from '@/components/analysis/DepthSlider'
 import PersonaPicker from '@/components/analysis/PersonaPicker'
 import Quiz from '@/components/analysis/Quiz'
@@ -53,6 +55,7 @@ import MasteryDots from '@/components/analysis/MasteryDots'
 import ComplexityBadge from '@/components/analysis/ComplexityBadge'
 import AuthorshipBadge from '@/components/analysis/AuthorshipBadge'
 import CheatSheetDialog from '@/components/CheatSheetDialog'
+import HighlightedBlock from '@/components/HighlightedBlock'
 import WhatIfDialog from '@/components/WhatIfDialog'
 import BugHuntDialog from '@/components/BugHuntDialog'
 import { detectTerms } from '@/lib/termDetector'
@@ -66,6 +69,7 @@ import {
 } from 'react-resizable-panels'
 import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
+import { VirtualList } from 'react-anchorlist'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
 import DiffSearchBar from '@/components/git/DiffSearchBar'
@@ -99,29 +103,87 @@ function detectLanguage(file: string): string {
   return EXT_TO_LANG[ext] ?? 'tsx'
 }
 
+const PILL_TYPES = new Set([
+  'function',
+  'method',
+  'class-name',
+  'tag',
+  'tag-name',
+  'attr-name',
+  'property',
+  'property-access',
+  'keyword',
+  'control',
+  'operator',
+  'string',
+  'attr-value',
+  'number',
+  'boolean',
+  'variable',
+  'parameter',
+  'comment'
+])
+
+function pillClassFor(types: string[]): string {
+  const matched = types.filter((t) => PILL_TYPES.has(t)).map((t) => `pl-${t}`)
+  return matched.length > 0 ? `pl-token ${matched.join(' ')}` : ''
+}
+
 function HighlightedCode({
   code,
   language,
-  prismTheme
+  prismTheme,
+  highlightTerm
 }: {
   code: string
   language: string
   prismTheme: PrismTheme
+  highlightTerm?: string
 }): React.ReactElement {
+  const term = highlightTerm && highlightTerm.length >= 2 ? highlightTerm.toLowerCase() : null
   return (
     <Highlight code={code} language={language} theme={prismTheme}>
       {({ tokens, getTokenProps }) => (
         <>
-          {tokens[0]?.map((token, i) => (
-            <span key={i} {...getTokenProps({ token })} />
-          ))}
+          {tokens[0]?.map((token, i) => {
+            const props = getTokenProps({ token })
+            const pill = pillClassFor(token.types ?? [])
+            const baseClass = pill ? `${props.className ?? ''} ${pill}`.trim() : props.className
+            const text = token.content
+            if (!term || !text.toLowerCase().includes(term)) {
+              return <span key={i} {...props} className={baseClass} />
+            }
+            const lc = text.toLowerCase()
+            const parts: React.ReactNode[] = []
+            let last = 0
+            let idx = lc.indexOf(term)
+            let mk = 0
+            while (idx !== -1) {
+              if (idx > last) parts.push(text.slice(last, idx))
+              parts.push(
+                <mark
+                  key={`m${mk++}`}
+                  className="bg-yellow-400/40 text-inherit rounded-sm px-[1px]"
+                  style={{ color: 'inherit' }}
+                >
+                  {text.slice(idx, idx + term.length)}
+                </mark>
+              )
+              last = idx + term.length
+              idx = lc.indexOf(term, last)
+            }
+            if (last < text.length) parts.push(text.slice(last))
+            return (
+              <span key={i} {...props} className={baseClass}>
+                {parts}
+              </span>
+            )
+          })}
         </>
       )}
     </Highlight>
   )
 }
-
-type AnalysisState = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
 type ParsedSection =
   | { kind: 'fileHeader'; path: string; status?: 'new' | 'deleted' | 'renamed' }
@@ -367,13 +429,21 @@ export default function Project() {
 
   const settingsReady = !seniorityLoading && !providerLoading && !!seniority && !!providerDefault
 
+  // Reset session-scoped state if the workspace changed since last mount.
+  // Done synchronously so the first render sees the right values.
+  if (useProjectSession.getState().path !== path) {
+    useProjectSession.getState().ensureWorkspace(path)
+  }
+
   const [branch, setBranch] = useState('')
   const [branches, setBranches] = useState<string[]>([])
   const [checkingOut, setCheckingOut] = useState(false)
   const [files, setFiles] = useState<DiffFile[]>([])
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const selectedFile = useProjectSession((s) => s.selectedFile)
+  const setSelectedFile = useProjectSession((s) => s.setSelectedFile)
   const [diff, setDiff] = useState('')
-  const [fullDiff, setFullDiff] = useState('')
+  const fullDiff = useProjectSession((s) => s.fullDiff)
+  const setFullDiff = useProjectSession((s) => s.setFullDiff)
   const [diffLoading, setDiffLoading] = useState(true)
   const [diffSwitching, setDiffSwitching] = useState(false)
   const [diffMode, setDiffMode] = useState<DiffMode>('all')
@@ -383,33 +453,79 @@ export default function Project() {
     if (diffModeSaved) setDiffMode(diffModeSaved as DiffMode)
   }, [diffModeSaved])
 
-  const [analysisState, setAnalysisState] = useState<AnalysisState>('idle')
-  const [analysisText, setAnalysisText] = useState('')
+  // Coerce transient analysis states on mount — streaming/loading/error can't resume after route change.
+  useEffect(() => {
+    const live = useProjectSession.getState().analysisState
+    if (live === 'streaming' || live === 'loading' || live === 'error') {
+      useProjectSession.getState().setAnalysisState(
+        useProjectSession.getState().analysisText ? 'done' : 'idle'
+      )
+    }
+    // Restore scroll position after paint (analysisText hydrated from store at this point).
+    const saved = useProjectSession.getState().analysisScrollTop
+    if (saved > 0) {
+      requestAnimationFrame(() => {
+        if (analysisRef.current) analysisRef.current.scrollTop = saved
+      })
+    }
+    // Abort any in-flight stream when leaving the project page (route change / workspace switch).
+    return () => {
+      const sid = streamIdRef.current
+      if (sid) {
+        void window.api.invoke('providers:abort', { streamId: sid })
+        streamIdRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const analysisState = useProjectSession((s) => s.analysisState)
+  const setAnalysisState = useProjectSession((s) => s.setAnalysisState)
+  const analysisText = useProjectSession((s) => s.analysisText)
+  const setAnalysisText = useProjectSession((s) => s.setAnalysisText)
   const [explanationDepth, setExplanationDepth] = useState<ExplanationDepth>(3)
   const [explanationPersona, setExplanationPersona] = useState<PersonaId>('default')
   const [socraticMode, setSocraticMode] = useState(false)
   const professorTurbo = explanationDepth >= 5
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
-  const [savedAnalysisId, setSavedAnalysisId] = useState<number | null>(null)
-  const [cheatSheet, setCheatSheet] = useState<{ open: boolean; selection: string }>({
-    open: false,
-    selection: ''
-  })
-  const [whatIfOpen, setWhatIfOpen] = useState(false)
-  const [bugHunt, setBugHunt] = useState<{ open: boolean; snippet: string }>({
-    open: false,
-    snippet: ''
-  })
+  const historyOpen = useProjectSession((s) => s.historyOpen)
+  const setHistoryOpen = useProjectSession((s) => s.setHistoryOpen)
+  const viewingAnalysisId = useProjectSession((s) => s.viewingAnalysisId)
+  const setViewingAnalysisId = useProjectSession((s) => s.setViewingAnalysisId)
+  const savedAnalysisId = useProjectSession((s) => s.savedAnalysisId)
+  const setSavedAnalysisId = useProjectSession((s) => s.setSavedAnalysisId)
+  const cheatSheetOpen = useProjectSession((s) => s.cheatSheetOpen)
+  const cheatSheetSelection = useProjectSession((s) => s.cheatSheetSelection)
+  const setCheatSheetStore = useProjectSession((s) => s.setCheatSheet)
+  const cheatSheet = useMemo(
+    () => ({ open: cheatSheetOpen, selection: cheatSheetSelection }),
+    [cheatSheetOpen, cheatSheetSelection]
+  )
+  const setCheatSheet = setCheatSheetStore
+  const whatIfOpen = useProjectSession((s) => s.whatIfOpen)
+  const setWhatIfOpen = useProjectSession((s) => s.setWhatIfOpen)
+  const bugHuntOpen = useProjectSession((s) => s.bugHuntOpen)
+  const bugHuntSnippet = useProjectSession((s) => s.bugHuntSnippet)
+  const setBugHuntStore = useProjectSession((s) => s.setBugHunt)
+  const bugHunt = useMemo(
+    () => ({ open: bugHuntOpen, snippet: bugHuntSnippet }),
+    [bugHuntOpen, bugHuntSnippet]
+  )
+  const setBugHunt = setBugHuntStore
   const [error, setError] = useState('')
   const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchIndex, setSearchIndex] = useState(0)
+  const searchOpen = useProjectSession((s) => s.searchOpen)
+  const setSearchOpen = useProjectSession((s) => s.setSearchOpen)
+  const searchQuery = useProjectSession((s) => s.searchQuery)
+  const setSearchQuery = useProjectSession((s) => s.setSearchQuery)
+  const searchIndex = useProjectSession((s) => s.searchIndex)
+  const setSearchIndex = useProjectSession((s) => s.setSearchIndex)
   const [diffMatches, setDiffMatches] = useState<Array<{ lineIdx: number }>>([])
-  const [sidebarTab, setSidebarTab] = useState<'changes' | 'history'>('changes')
-  const [viewingCommitHash, setViewingCommitHash] = useState<string | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const sidebarTab = useProjectSession((s) => s.sidebarTab)
+  const setSidebarTab = useProjectSession((s) => s.setSidebarTab)
+  const viewingCommitHash = useProjectSession((s) => s.viewingCommitHash)
+  const setViewingCommitHash = useProjectSession((s) => s.setViewingCommitHash)
+  const sidebarCollapsed = useProjectSession((s) => s.sidebarCollapsed)
+  const setSidebarCollapsed = useProjectSession((s) => s.setSidebarCollapsed)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
   const [repoMenuPos, setRepoMenuPos] = useState<{ left: number; top: number; width: number } | null>(null)
@@ -419,7 +535,8 @@ export default function Project() {
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
-  const [analysisTab, setAnalysisTab] = useState<AnalysisTab>('summary')
+  const analysisTab = useProjectSession((s) => s.analysisTab)
+  const setAnalysisTab = useProjectSession((s) => s.setAnalysisTab)
   const conceptsCount = useMemo(() => {
     const seen = new Set<string>()
     for (const c of lineComments) {
@@ -715,13 +832,16 @@ export default function Project() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        setHistoryOpen(true)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
         e.preventDefault()
         setSearchOpen(true)
         setSearchIndex(0)
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey && !e.altKey) {
         e.preventDefault()
-        setSidebarCollapsed((c) => !c)
+        setSidebarCollapsed(!useProjectSession.getState().sidebarCollapsed)
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.shiftKey && !e.altKey) {
         const sel = window.getSelection()?.toString().trim() ?? ''
         if (sel.length >= 2) {
@@ -1563,25 +1683,33 @@ export default function Project() {
             ) : (
             <>
             {searchOpen && (
-              <DiffSearchBar
-                query={searchQuery}
-                onQueryChange={(q) => {
-                  setSearchQuery(q)
-                  setSearchIndex(0)
-                }}
-                matchCount={diffMatches.length}
-                currentIndex={searchIndex}
-                onPrev={() =>
-                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i - 1 + diffMatches.length) % diffMatches.length))
-                }
-                onNext={() =>
-                  setSearchIndex((i) => (diffMatches.length === 0 ? 0 : (i + 1) % diffMatches.length))
-                }
-                onClose={() => {
-                  setSearchOpen(false)
-                  setSearchQuery('')
-                }}
-              />
+              <div className="sticky top-2 z-30 flex justify-end pr-3 pointer-events-none">
+                <div className="pointer-events-auto">
+                  <DiffSearchBar
+                    query={searchQuery}
+                    onQueryChange={(q) => {
+                      setSearchQuery(q)
+                      setSearchIndex(0)
+                    }}
+                    matchCount={diffMatches.length}
+                    currentIndex={searchIndex}
+                    onPrev={() => {
+                      if (diffMatches.length === 0) return setSearchIndex(0)
+                      setSearchIndex(
+                        (searchIndex - 1 + diffMatches.length) % diffMatches.length
+                      )
+                    }}
+                    onNext={() => {
+                      if (diffMatches.length === 0) return setSearchIndex(0)
+                      setSearchIndex((searchIndex + 1) % diffMatches.length)
+                    }}
+                    onClose={() => {
+                      setSearchOpen(false)
+                      setSearchQuery('')
+                    }}
+                  />
+                </div>
+              </div>
             )}
             {diffLoading ? (
               <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
@@ -1685,7 +1813,14 @@ export default function Project() {
             />
           )}
 
-          <div ref={analysisRef} className="flex-1 overflow-auto px-4 py-4 min-h-0">
+          <div
+            ref={analysisRef}
+            onScroll={(e) => {
+              const top = (e.target as HTMLDivElement).scrollTop
+              useProjectSession.getState().setAnalysisScrollTop(top)
+            }}
+            className="flex-1 overflow-auto px-4 py-4 min-h-0"
+          >
             {error ? (
               <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
                 <AlertTriangle className="size-3.5 flex-shrink-0 mt-0.5" />
@@ -2421,26 +2556,27 @@ const DiffViewer = React.memo(function DiffViewer({
     matches.length > 0 ? matches[searchCurrentIndex % matches.length]?.lineIdx ?? -1 : -1
 
   const matchRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const virtualize = sections.length > 600
   useEffect(() => {
-    if (currentMatchLineIdx >= 0) {
-      const el = matchRefs.current.get(currentMatchLineIdx)
-      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }
-  }, [currentMatchLineIdx])
+    if (currentMatchLineIdx < 0 || virtualize) return
+    const el = matchRefs.current.get(currentMatchLineIdx)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [currentMatchLineIdx, virtualize])
 
-  return (
-    <div className="text-xs font-mono leading-5 select-text">
-      {sections.map((s, i) => {
-        if (s.kind === 'fileHeader') {
-          if (hideFileHeaders) return null
-          const parts = s.path.split('/')
-          const name = parts.pop() ?? s.path
-          const dir = parts.length > 0 ? parts.join('/') + '/' : ''
-          return (
-            <div
-              key={i}
-              className="px-4 py-2 mt-3 first:mt-0 flex items-center gap-2 bg-muted/30 border-y border-border/30 sticky top-0 z-10 backdrop-blur-sm"
-            >
+  const renderSection = (s: ParsedSection, i: number): React.ReactNode => {
+    if (s.kind === 'fileHeader') {
+      if (hideFileHeaders) return null
+      const parts = s.path.split('/')
+      const name = parts.pop() ?? s.path
+      const dir = parts.length > 0 ? parts.join('/') + '/' : ''
+      return (
+        <div
+          key={i}
+          className={cn(
+            'px-4 py-2 mt-3 first:mt-0 flex items-center gap-2 bg-muted/30 border-y border-border/30 backdrop-blur-sm',
+            !virtualize && 'sticky top-0 z-10'
+          )}
+        >
               {s.status && (
                 <span
                   className={cn(
@@ -2527,6 +2663,7 @@ const DiffViewer = React.memo(function DiffViewer({
                     code={s.content}
                     language={detectLanguage(s.file)}
                     prismTheme={prismTheme}
+                    highlightTerm={searchQuery}
                   />
                 ) : (
                   '\u00A0'
@@ -2539,7 +2676,26 @@ const DiffViewer = React.memo(function DiffViewer({
             {comment && <InlineBalloon comment={comment} />}
           </React.Fragment>
         )
-      })}
+  }
+
+  if (virtualize) {
+    return (
+      <div className="text-xs font-mono leading-5 select-text h-full">
+        <VirtualList
+          data={sections}
+          computeItemKey={(idx) => idx}
+          itemContent={(idx, s) => renderSection(s, idx)}
+          estimatedItemSize={20}
+          overscan={40}
+          style={{ height: '100%' }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="text-xs font-mono leading-5 select-text">
+      {sections.map((s, i) => renderSection(s, i))}
     </div>
   )
 })
@@ -2616,7 +2772,7 @@ function splitAnalysis(text: string): { summary: string; details: string } {
   return { summary, details }
 }
 
-type AnalysisTab = 'summary' | 'details' | 'concepts' | 'quiz'
+// AnalysisTab moved to ./types
 
 function useAnalysisData(text: string, lineComments: LineComment[]) {
   const { summary, details } = useMemo(() => splitAnalysis(text), [text])
@@ -3023,6 +3179,9 @@ function buildCommentContext(c: LineComment): string {
 }
 
 function CollapsibleComment({ comment }: { comment: LineComment }) {
+  const { variant: codeVariant } = useCodeTheme()
+  const prismTheme = codeVariant.prism
+  const lang = detectLanguage(comment.file)
   const [open, setOpen] = useState(false)
   return (
     <li className="rounded-lg border border-border/40 bg-card/40 overflow-hidden">
@@ -3065,9 +3224,7 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
                 Antes
               </div>
-              <pre className="bg-muted/40 border border-border/40 rounded-md px-2.5 py-1.5 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85">
-                {comment.before}
-              </pre>
+              <HighlightedBlock code={comment.before} language={lang} prismTheme={prismTheme} />
             </div>
           )}
           {comment.after && (
@@ -3075,9 +3232,7 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
                 Depois
               </div>
-              <pre className="bg-muted/40 border border-border/40 rounded-md px-2.5 py-1.5 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85">
-                {comment.after}
-              </pre>
+              <HighlightedBlock code={comment.after} language={lang} prismTheme={prismTheme} />
             </div>
           )}
           {comment.why && (
@@ -3117,9 +3272,12 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
 }
 
 function AnalysisText({ text }: { text: string }) {
+  const { variant: codeVariant } = useCodeTheme()
+  const prismTheme = codeVariant.prism
   const lines = text.split('\n')
   const blocks: React.ReactNode[] = []
   let codeBuffer: string[] | null = null
+  let codeLang = 'tsx'
   let codeKey = 0
 
   lines.forEach((line, i) => {
@@ -3127,16 +3285,19 @@ function AnalysisText({ text }: { text: string }) {
     if (line.startsWith('```')) {
       if (codeBuffer === null) {
         codeBuffer = []
+        const fenceLang = line.slice(3).trim().toLowerCase()
+        codeLang = fenceLang.length > 0 ? fenceLang : 'tsx'
       } else {
         blocks.push(
-          <pre
+          <HighlightedBlock
             key={`code-${codeKey++}`}
-            className="bg-muted/40 border border-border/40 rounded-md px-3 py-2 my-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85"
-          >
-            {codeBuffer.join('\n')}
-          </pre>
+            code={codeBuffer.join('\n')}
+            language={codeLang}
+            prismTheme={prismTheme}
+          />
         )
         codeBuffer = null
+        codeLang = 'tsx'
       }
       return
     }
@@ -3188,12 +3349,12 @@ function AnalysisText({ text }: { text: string }) {
   const trailingBuffer = codeBuffer as string[] | null
   if (trailingBuffer !== null) {
     blocks.push(
-      <pre
+      <HighlightedBlock
         key={`code-${codeKey++}`}
-        className="bg-muted/40 border border-border/40 rounded-md px-3 py-2 my-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85"
-      >
-        {trailingBuffer.join('\n')}
-      </pre>
+        code={trailingBuffer.join('\n')}
+        language={codeLang}
+        prismTheme={prismTheme}
+      />
     )
   }
 

@@ -2,6 +2,28 @@ import { useEffect, useState, useCallback } from 'react'
 import { Brain, Check, X, RefreshCw, Loader2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Splits a string by inline ``backticks`` and renders code spans with mono + colored bg.
+// Keeps everything else as plain text. No block code, no other markdown.
+function InlineMd({ text }: { text: string }): React.ReactElement {
+  const parts = text.split(/(`[^`\n]+`)/g)
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.startsWith('`') && p.endsWith('`') && p.length > 2 ? (
+          <code
+            key={i}
+            className="inline px-1.5 py-px rounded text-[0.9em] font-mono bg-muted/70 text-rose-300 border border-border/40"
+          >
+            {p.slice(1, -1)}
+          </code>
+        ) : (
+          <span key={i}>{p}</span>
+        )
+      )}
+    </>
+  )
+}
+
 interface QuizItem {
   id: number
   analysisId: number
@@ -164,7 +186,9 @@ function QuestionCard({
         <span className="text-[10px] font-bold text-muted-foreground/60 mt-0.5 w-5">
           {String(index + 1).padStart(2, '0')}
         </span>
-        <p className="text-[13px] font-medium text-foreground leading-snug">{quiz.question}</p>
+        <p className="text-[13px] font-medium text-foreground leading-snug">
+          <InlineMd text={quiz.question} />
+        </p>
       </div>
       <div className="flex flex-col gap-1.5 ml-7">
         {quiz.options.map((opt, idx) => {
@@ -207,7 +231,9 @@ function QuestionCard({
                   String.fromCharCode(65 + idx)
                 )}
               </span>
-              <span className="flex-1">{opt}</span>
+              <span className="flex-1">
+                <InlineMd text={opt} />
+              </span>
             </button>
           )
         })}
@@ -225,11 +251,13 @@ function QuestionCard({
           <strong className="font-semibold">
             {isCorrect ? '✓ Correto. ' : '✗ Não foi dessa. '}
           </strong>
-          {isCorrect ? quiz.explainCorrect : quiz.explainWrong}
+          <InlineMd text={isCorrect ? quiz.explainCorrect : quiz.explainWrong} />
           {!isCorrect && (
             <div className="mt-1.5 text-foreground/70">
               <span className="text-emerald-400 font-semibold">Resposta: </span>
-              {quiz.options[quiz.correctIdx]}. {quiz.explainCorrect}
+              <InlineMd
+                text={`${quiz.options[quiz.correctIdx]}. ${quiz.explainCorrect}`}
+              />
             </div>
           )}
         </div>

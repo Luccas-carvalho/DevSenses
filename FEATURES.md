@@ -84,6 +84,13 @@ Pra cada item: tagline curta de marketing + nota técnica entre parênteses quan
 - ✅ **API key do user** — DevSenses não paga IA por usuário. Roda com a tua chave.
 - ✅ **Tema dark/light/auto** — segue OS por padrão, persistido.
 - ✅ **8 themes de syntax highlighting** — Default / Dracula / Monokai / GitHub / One Dark / Tokyo Night / Nord / Solarized.
+- ✅ **Cobertura ampla de linguagens no highlight** — PHP, Ruby, Java, C#, Bash, Docker, SCSS, LESS, TOML registrados no Prism além das defaults (TS/JS/Python/Go/Rust/Swift/Kotlin/YAML/SQL/GraphQL/Markdown). Diff em PHP, Ruby etc agora colore correto.
+- ✅ **Caça ao bug com syntax highlight tematizado** — código do desafio + código corrigido seguem o code theme escolhido (não mais texto branco cru), linha do bug ganha gutter ➜ + background rose.
+- ✅ **Persistência de sessão por workspace** — análise atual, aba, sidebar, file/commit em view, Caça ao bug, Cheat Sheet, What-if, histórico, search (query+index) e scroll do painel da análise sobrevivem ida-e-volta pra Configurações via Zustand store. Reseta quando troca de pasta.
+- ✅ **Cancel automático de stream IA** — sair do projeto (route change) aborta requisição IA em-stream pelo `providers:abort`. Evita chunks órfãos e consumo de quota.
+- ✅ **Cmd+Shift+F histórico** — atalho global no projeto abre HistoryDialog.
+- ✅ **Virtualização de diff grande** — diff com > 600 sections usa `react-anchorlist` (`VirtualList`). UI não trava em PRs longos. Pequenos seguem render direto com sticky file headers.
+- ✅ **Janela com nome correto no Windows** — title HTML + `BrowserWindow({title:'DevSenses'})` alinhados com `productName`. Taskbar/Alt-Tab mostram DevSenses, não Electron.
 - ✅ **Tailwind v4** — design tokens via CSS vars, dark mode via `[data-theme]`.
 - ✅ **Telemetria opt-in** — desligada por padrão. User decide.
 - ✅ **PT-BR first** — interface em português, mensagens IA em PT.

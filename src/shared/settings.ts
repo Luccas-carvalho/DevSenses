@@ -4,6 +4,7 @@ export type ExplanationDepth = 1 | 2 | 3 | 4 | 5
 export type ExplanationPersona = 'default' | 'sarcastic' | 'pragmatic' | 'academic' | 'mentor'
 export type CodeThemeId =
   | 'default'
+  | 'classic'
   | 'dracula'
   | 'monokai'
   | 'github'

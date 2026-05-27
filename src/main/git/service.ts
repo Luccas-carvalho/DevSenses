@@ -19,8 +19,10 @@ export type DiffMode = 'all' | 'uncommitted' | 'committed'
 const DEFAULT_COMMIT_DEPTH = 10
 
 const MAX_BUFFER = 20 * 1024 * 1024
-const MAX_DIFF_LINES = 800
-const MAX_UNTRACKED_BYTES = 200_000
+// Visual cap. Render keeps up via VirtualList in the renderer; AI prompt is bounded separately
+// by a char slice in buildDiffPrompt (12k chars).
+const MAX_DIFF_LINES = 50_000
+const MAX_UNTRACKED_BYTES = 2_000_000
 const GIT_TIMEOUT_MS = 15_000
 
 const execFileP = promisify(execFile)
