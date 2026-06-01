@@ -1,10 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
   /* Light — neutral gray, AA contrast, opacity-tolerant */
-  --color-background: hsl(0 0% 96%);            /* grayer base so white cards distinguish */
+  --color-background: hsl(0 0% 96%); /* grayer base so white cards distinguish */
   --color-foreground: hsl(0 0% 11%);
   --color-card: hsl(0 0% 100%);
   --color-card-foreground: hsl(0 0% 11%);
@@ -15,32 +15,32 @@
   --color-secondary: hsl(0 0% 92%);
   --color-secondary-foreground: hsl(0 0% 14%);
   --color-muted: hsl(0 0% 92%);
-  --color-muted-foreground: hsl(0 0% 35%);      /* readable at 70% opacity too */
+  --color-muted-foreground: hsl(0 0% 35%); /* readable at 70% opacity too */
   --color-accent: hsl(0 0% 88%);
   --color-accent-foreground: hsl(0 0% 14%);
   --color-destructive: hsl(0 72% 46%);
   --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(0 0% 82%);                /* strong enough to survive /30 opacity */
+  --color-border: hsl(0 0% 82%); /* strong enough to survive /30 opacity */
   --color-input: hsl(0 0% 82%);
   --color-ring: hsl(258 58% 48%);
   --radius: 0.625rem;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Dark — true neutral gray (hsl saturation=0%, no warm/cool tint) */
-  --color-background: hsl(0 0% 13%);          /* #212121 */
+  --color-background: hsl(0 0% 13%); /* #212121 */
   --color-foreground: hsl(0 0% 95%);
-  --color-card: hsl(0 0% 16%);                /* #292929 */
+  --color-card: hsl(0 0% 16%); /* #292929 */
   --color-card-foreground: hsl(0 0% 95%);
-  --color-popover: hsl(0 0% 17%);             /* #2b2b2b */
+  --color-popover: hsl(0 0% 17%); /* #2b2b2b */
   --color-popover-foreground: hsl(0 0% 95%);
   --color-primary: hsl(258 55% 70%);
   --color-primary-foreground: hsl(0 0% 12%);
-  --color-secondary: hsl(0 0% 19%);           /* #303030 */
+  --color-secondary: hsl(0 0% 19%); /* #303030 */
   --color-secondary-foreground: hsl(0 0% 95%);
   --color-muted: hsl(0 0% 19%);
   --color-muted-foreground: hsl(0 0% 68%);
-  --color-accent: hsl(0 0% 22%);              /* #383838 */
+  --color-accent: hsl(0 0% 22%); /* #383838 */
   --color-accent-foreground: hsl(0 0% 95%);
   --color-destructive: hsl(0 70% 60%);
   --color-destructive-foreground: hsl(0 0% 99%);
@@ -50,24 +50,48 @@
 }
 
 @keyframes ds-orbit {
-  from { transform: rotate(0deg) translateX(36px) rotate(0deg); }
-  to   { transform: rotate(360deg) translateX(36px) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translateX(36px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(36px) rotate(-360deg);
+  }
 }
 @keyframes ds-orbit-rev {
-  from { transform: rotate(0deg) translateX(48px) rotate(0deg); }
-  to   { transform: rotate(-360deg) translateX(48px) rotate(360deg); }
+  from {
+    transform: rotate(0deg) translateX(48px) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translateX(48px) rotate(360deg);
+  }
 }
 @keyframes ds-fade-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes ds-shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
-.ds-orbit       { animation: ds-orbit 4s linear infinite; }
-.ds-orbit-rev   { animation: ds-orbit-rev 6s linear infinite; }
-.ds-fade-up     { animation: ds-fade-up 0.4s ease-out; }
+.ds-orbit {
+  animation: ds-orbit 4s linear infinite;
+}
+.ds-orbit-rev {
+  animation: ds-orbit-rev 6s linear infinite;
+}
+.ds-fade-up {
+  animation: ds-fade-up 0.4s ease-out;
+}
 .ds-shimmer {
   background: linear-gradient(
     90deg,
@@ -80,8 +104,12 @@
 }
 
 @keyframes ds-nn-trace {
-  0%   { stroke-dashoffset: 70; }
-  100% { stroke-dashoffset: 0;  }
+  0% {
+    stroke-dashoffset: 70;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
 }
 .ds-nn-trace {
   stroke-dashoffset: 70;
@@ -89,7 +117,8 @@
 }
 
 @keyframes ds-nn-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-primary) 50%, transparent));
   }
@@ -105,17 +134,25 @@
 }
 
 @keyframes ds-token-stream {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
-.ds-token-stream { position: relative; }
+.ds-token-stream {
+  position: relative;
+}
 .ds-token-row {
   display: inline-block;
   white-space: nowrap;
   animation: ds-token-stream 14s linear infinite;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
 }
@@ -123,8 +160,8 @@ html, body, #root {
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
-  font-feature-settings: "cv11", "ss01";
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
 }
 
@@ -155,9 +192,26 @@ body {
   scrollbar-width: thin;
 }
 
+/* Scrollbar horizontal fina — aparece só quando há overflow (ex: barra de abas).
+   Serve de indicador visual de que há mais conteúdo pro lado. */
+.ds-scrollbar-x-thin {
+  scrollbar-width: thin;
+}
+.ds-scrollbar-x-thin::-webkit-scrollbar {
+  height: 5px;
+}
+.ds-scrollbar-x-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.ds-scrollbar-x-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
 /* Subtle breathing glow for primary CTAs awaiting interaction */
 @keyframes ds-cta-breathe {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow:
       0 4px 12px -3px color-mix(in srgb, var(--color-primary) 35%, transparent),
       0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent) inset;
@@ -174,10 +228,20 @@ body {
 
 /* Sheen sweep — light pass over button surface */
 @keyframes ds-cta-sheen {
-  0%   { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
-  20%  { opacity: 0.7; }
-  60%  { opacity: 0.7; }
-  100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  60% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(220%) skewX(-20deg);
+    opacity: 0;
+  }
 }
 .ds-cta-sheen-wrap {
   position: relative;
@@ -201,9 +265,16 @@ body {
 
 /* Slow icon drift — sparkles wiggle gently */
 @keyframes ds-icon-drift {
-  0%, 100% { transform: rotate(0deg); }
-  25%      { transform: rotate(-8deg); }
-  75%      { transform: rotate(8deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
 }
 .ds-icon-drift {
   animation: ds-icon-drift 4s ease-in-out infinite;
@@ -212,8 +283,13 @@ body {
 
 /* Floating halo — gentle Y bob for the icon container in empty state */
 @keyframes ds-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-4px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 .ds-float {
   animation: ds-float 3.2s ease-in-out infinite;
@@ -221,19 +297,35 @@ body {
 
 /* Halo expanding ring (slower than ping, fades cleaner) */
 @keyframes ds-halo {
-  0%   { transform: scale(0.85); opacity: 0.5; }
-  100% { transform: scale(1.6);  opacity: 0;   }
+  0% {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
 .ds-halo {
   animation: ds-halo 2.8s ease-out infinite;
 }
-.ds-halo-delay-1 { animation: ds-halo 2.8s ease-out infinite; animation-delay: 0.9s; }
-.ds-halo-delay-2 { animation: ds-halo 2.8s ease-out infinite; animation-delay: 1.8s; }
+.ds-halo-delay-1 {
+  animation: ds-halo 2.8s ease-out infinite;
+  animation-delay: 0.9s;
+}
+.ds-halo-delay-2 {
+  animation: ds-halo 2.8s ease-out infinite;
+  animation-delay: 1.8s;
+}
 
 /* Conic gradient rotating behind icon */
 @keyframes ds-conic-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .ds-conic-spin {
   animation: ds-conic-spin 6s linear infinite;
@@ -241,8 +333,15 @@ body {
 
 /* Inner pulse — scale + opacity on icon container */
 @keyframes ds-inner-pulse {
-  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   color-mix(in srgb, var(--color-primary) 0%, transparent); }
-  50%      { transform: scale(1.05); box-shadow: 0 0 24px 4px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 24px 4px color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
 }
 .ds-inner-pulse {
   animation: ds-inner-pulse 2.4s ease-in-out infinite;
@@ -250,56 +349,125 @@ body {
 
 /* Orbiting dot — rotates around icon */
 @keyframes ds-orbit-small {
-  from { transform: rotate(0deg)   translateX(28px) rotate(0deg); }
-  to   { transform: rotate(360deg) translateX(28px) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translateX(28px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(28px) rotate(-360deg);
+  }
 }
 @keyframes ds-orbit-small-rev {
-  from { transform: rotate(0deg)   translateX(34px) rotate(0deg); }
-  to   { transform: rotate(-360deg) translateX(34px) rotate(360deg); }
+  from {
+    transform: rotate(0deg) translateX(34px) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translateX(34px) rotate(360deg);
+  }
 }
-.ds-orbit-small      { animation: ds-orbit-small      3.6s linear infinite; }
-.ds-orbit-small-rev  { animation: ds-orbit-small-rev  5.2s linear infinite; }
+.ds-orbit-small {
+  animation: ds-orbit-small 3.6s linear infinite;
+}
+.ds-orbit-small-rev {
+  animation: ds-orbit-small-rev 5.2s linear infinite;
+}
 
 /* Sparkle dust — tiny dots floating around icon */
 @keyframes ds-dust-1 {
-  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
-  50%      { transform: translate(12px, -14px) scale(1); opacity: 0.9; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(12px, -14px) scale(1);
+    opacity: 0.9;
+  }
 }
 @keyframes ds-dust-2 {
-  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
-  50%      { transform: translate(-14px, -8px) scale(1); opacity: 0.9; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-14px, -8px) scale(1);
+    opacity: 0.9;
+  }
 }
 @keyframes ds-dust-3 {
-  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
-  50%      { transform: translate(10px, 12px) scale(1); opacity: 0.9; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(10px, 12px) scale(1);
+    opacity: 0.9;
+  }
 }
 @keyframes ds-dust-4 {
-  0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
-  50%      { transform: translate(-8px, 14px) scale(1); opacity: 0.9; }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-8px, 14px) scale(1);
+    opacity: 0.9;
+  }
 }
-.ds-dust-1 { animation: ds-dust-1 2.4s ease-in-out infinite; animation-delay: 0s; }
-.ds-dust-2 { animation: ds-dust-2 2.4s ease-in-out infinite; animation-delay: 0.6s; }
-.ds-dust-3 { animation: ds-dust-3 2.4s ease-in-out infinite; animation-delay: 1.2s; }
-.ds-dust-4 { animation: ds-dust-4 2.4s ease-in-out infinite; animation-delay: 1.8s; }
+.ds-dust-1 {
+  animation: ds-dust-1 2.4s ease-in-out infinite;
+  animation-delay: 0s;
+}
+.ds-dust-2 {
+  animation: ds-dust-2 2.4s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+.ds-dust-3 {
+  animation: ds-dust-3 2.4s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+.ds-dust-4 {
+  animation: ds-dust-4 2.4s ease-in-out infinite;
+  animation-delay: 1.8s;
+}
 
 /* Twinkle — small star scale/opacity flash */
 @keyframes ds-twinkle {
-  0%, 100% { transform: scale(0.5) rotate(0deg);   opacity: 0.2; }
-  50%      { transform: scale(1.2) rotate(180deg); opacity: 1;   }
+  0%,
+  100% {
+    transform: scale(0.5) rotate(0deg);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 1;
+  }
 }
-.ds-twinkle      { animation: ds-twinkle 1.8s ease-in-out infinite; }
-.ds-twinkle-d-1  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 0.5s; }
-.ds-twinkle-d-2  { animation: ds-twinkle 1.8s ease-in-out infinite; animation-delay: 1.0s; }
+.ds-twinkle {
+  animation: ds-twinkle 1.8s ease-in-out infinite;
+}
+.ds-twinkle-d-1 {
+  animation: ds-twinkle 1.8s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+.ds-twinkle-d-2 {
+  animation: ds-twinkle 1.8s ease-in-out infinite;
+  animation-delay: 1s;
+}
 
 /* ─── Home cosmic backdrop ────────────────── */
 .ds-home-root {
   background: var(--color-background);
 }
-[data-theme="dark"] .ds-home-root {
+[data-theme='dark'] .ds-home-root {
   background:
-    radial-gradient(ellipse 90% 60% at 50% 0%,
+    radial-gradient(
+      ellipse 90% 60% at 50% 0%,
       color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
-      transparent 60%),
+      transparent 60%
+    ),
     linear-gradient(180deg, hsl(258 30% 8%) 0%, hsl(258 25% 7%) 50%, var(--color-background) 100%);
 }
 .ds-home-bg {
@@ -319,7 +487,11 @@ body {
   height: 380px;
   left: -10%;
   top: -10%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 26%, transparent), transparent 70%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary) 26%, transparent),
+    transparent 70%
+  );
   animation: ds-home-aurora-drift 24s ease-in-out infinite alternate;
 }
 .ds-home-aurora-2 {
@@ -339,11 +511,17 @@ body {
   animation: ds-home-aurora-drift 22s ease-in-out 8s infinite alternate;
 }
 @keyframes ds-home-aurora-drift {
-  from { transform: translate(0, 0) scale(1); opacity: 0.6; }
-  to   { transform: translate(40px, -30px) scale(1.15); opacity: 1; }
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: translate(40px, -30px) scale(1.15);
+    opacity: 1;
+  }
 }
-[data-theme="light"] .ds-home-aurora,
-:root:not([data-theme="dark"]) .ds-home-aurora {
+[data-theme='light'] .ds-home-aurora,
+:root:not([data-theme='dark']) .ds-home-aurora {
   opacity: 0.4;
 }
 .ds-home-stars {
@@ -351,8 +529,8 @@ body {
   inset: 0;
   pointer-events: none;
 }
-[data-theme="light"] .ds-home-stars,
-:root:not([data-theme="dark"]) .ds-home-stars {
+[data-theme='light'] .ds-home-stars,
+:root:not([data-theme='dark']) .ds-home-stars {
   display: none;
 }
 
@@ -368,12 +546,12 @@ body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 60% 80% at 50% 40%,
+    radial-gradient(
+      ellipse 60% 80% at 50% 40%,
       color-mix(in srgb, var(--color-primary) 8%, transparent) 0%,
-      transparent 60%),
-    radial-gradient(circle at 50% 50%,
-      rgba(20, 12, 40, 0.4) 0%,
-      transparent 70%);
+      transparent 60%
+    ),
+    radial-gradient(circle at 50% 50%, rgba(20, 12, 40, 0.4) 0%, transparent 70%);
 }
 
 .ds-galaxy-nebula {
@@ -387,7 +565,11 @@ body {
   height: 220px;
   left: 15%;
   top: 25%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 70%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary) 30%, transparent),
+    transparent 70%
+  );
   animation: ds-galaxy-nebula-drift 18s ease-in-out infinite alternate;
 }
 .ds-galaxy-nebula-2 {
@@ -408,8 +590,14 @@ body {
   animation: ds-galaxy-nebula-drift 14s ease-in-out 2s infinite alternate;
 }
 @keyframes ds-galaxy-nebula-drift {
-  from { transform: translate(0, 0) scale(1); opacity: 0.55; }
-  to   { transform: translate(20px, -16px) scale(1.12); opacity: 0.85; }
+  from {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate(20px, -16px) scale(1.12);
+    opacity: 0.85;
+  }
 }
 
 .ds-galaxy-stars {
@@ -428,8 +616,15 @@ body {
   box-shadow: 0 0 4px rgba(168, 85, 247, 0.6);
 }
 @keyframes ds-galaxy-twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(1); }
-  50%      { opacity: 1;   transform: scale(1.4); }
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
 }
 
 /* Galaxy core (orbits + center) */
@@ -465,8 +660,12 @@ body {
   animation-duration: 7s;
 }
 @keyframes ds-galaxy-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ds-galaxy-dot {
@@ -476,52 +675,77 @@ body {
   box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 70%, transparent);
 }
 .ds-galaxy-dot-1 {
-  width: 6px; height: 6px;
-  top: 50%; left: 50%;
+  width: 6px;
+  height: 6px;
+  top: 50%;
+  left: 50%;
   transform-origin: 0 0;
   animation: ds-galaxy-orbit-1 9s linear infinite;
 }
 .ds-galaxy-dot-2 {
-  width: 5px; height: 5px;
-  top: 50%; left: 50%;
+  width: 5px;
+  height: 5px;
+  top: 50%;
+  left: 50%;
   transform-origin: 0 0;
   animation: ds-galaxy-orbit-2 6s linear infinite;
 }
 .ds-galaxy-dot-3 {
-  width: 4px; height: 4px;
-  top: 50%; left: 50%;
+  width: 4px;
+  height: 4px;
+  top: 50%;
+  left: 50%;
   transform-origin: 0 0;
   animation: ds-galaxy-orbit-3 4s linear infinite;
 }
 .ds-galaxy-dot-4 {
-  width: 3px; height: 3px;
-  top: 50%; left: 50%;
+  width: 3px;
+  height: 3px;
+  top: 50%;
+  left: 50%;
   transform-origin: 0 0;
-  background: rgba(255,255,255,0.95);
-  box-shadow: 0 0 6px rgba(255,255,255,0.7);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
   animation: ds-galaxy-orbit-4 3s linear infinite;
 }
 @keyframes ds-galaxy-orbit-1 {
-  from { transform: rotate(0deg) translate(110px, 0) rotate(0deg); }
-  to   { transform: rotate(360deg) translate(110px, 0) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translate(110px, 0) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translate(110px, 0) rotate(-360deg);
+  }
 }
 @keyframes ds-galaxy-orbit-2 {
-  from { transform: rotate(0deg) translate(85px, 0) rotate(0deg); }
-  to   { transform: rotate(-360deg) translate(85px, 0) rotate(360deg); }
+  from {
+    transform: rotate(0deg) translate(85px, 0) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translate(85px, 0) rotate(360deg);
+  }
 }
 @keyframes ds-galaxy-orbit-3 {
-  from { transform: rotate(0deg) translate(60px, 0) rotate(0deg); }
-  to   { transform: rotate(360deg) translate(60px, 0) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translate(60px, 0) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translate(60px, 0) rotate(-360deg);
+  }
 }
 @keyframes ds-galaxy-orbit-4 {
-  from { transform: rotate(0deg) translate(36px, 0) rotate(0deg); }
-  to   { transform: rotate(-360deg) translate(36px, 0) rotate(360deg); }
+  from {
+    transform: rotate(0deg) translate(36px, 0) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translate(36px, 0) rotate(360deg);
+  }
 }
 
 /* Pulse ring around center */
 .ds-galaxy-pulse {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -530,29 +754,44 @@ body {
   animation: ds-galaxy-pulse-ring 2.4s ease-out infinite;
 }
 @keyframes ds-galaxy-pulse-ring {
-  0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
-  100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0;   }
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.5);
+    opacity: 0;
+  }
 }
 
 .ds-galaxy-center {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   width: 40px;
   height: 40px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  display: grid; place-items: center;
-  background: radial-gradient(circle,
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    circle,
     color-mix(in srgb, var(--color-primary) 35%, transparent) 0%,
     color-mix(in srgb, var(--color-primary) 18%, transparent) 60%,
-    transparent 100%);
+    transparent 100%
+  );
   border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
   box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 50%, transparent);
   animation: ds-galaxy-center-pulse 2.4s ease-in-out infinite;
 }
 @keyframes ds-galaxy-center-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50%      { transform: translate(-50%, -50%) scale(1.12); }
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+  }
 }
 
 /* Smooth slide-in/out for analysis panel toggle */

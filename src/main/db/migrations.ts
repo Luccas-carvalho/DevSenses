@@ -163,6 +163,13 @@ export const EMBEDDED_MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS quiz_concepts_concept_idx
         ON quiz_concepts (concept_id);
     `
+  },
+  {
+    version: 10,
+    name: 'analyses_code_review',
+    sql: `
+      ALTER TABLE analyses ADD COLUMN review TEXT;
+    `
   }
 ]
 
@@ -189,7 +196,10 @@ function runFromList(db: Database.Database, list: Migration[]): number[] {
   `)
 
   const applied = new Set(
-    db.prepare('SELECT version FROM schema_version').all().map((r) => (r as { version: number }).version)
+    db
+      .prepare('SELECT version FROM schema_version')
+      .all()
+      .map((r) => (r as { version: number }).version)
   )
 
   const ranNow: number[] = []
@@ -198,7 +208,10 @@ function runFromList(db: Database.Database, list: Migration[]): number[] {
     if (applied.has(m.version)) continue
     const tx = db.transaction(() => {
       db.exec(m.sql)
-      db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(m.version, Date.now())
+      db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(
+        m.version,
+        Date.now()
+      )
     })
     tx()
     ranNow.push(m.version)

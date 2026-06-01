@@ -33,11 +33,7 @@ export default function Settings() {
         className="h-10 flex items-stretch border-b border-border/40 bg-background/80 backdrop-blur-xl flex-shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div
-          className="flex-1 pl-20 flex items-center gap-2"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          aria-hidden
-        >
+        <div className="flex-1 pl-20 flex items-center gap-2" aria-hidden>
           <Logo size={20} className="rounded-md flex-shrink-0" />
           <span className="text-[12px] font-semibold">DevSenses</span>
           <span className="text-[11px] text-muted-foreground">· Configurações</span>

@@ -1,5 +1,6 @@
 import type { ProviderId, ProviderStatus } from './providers'
 import type { SettingsKey, SettingsValueMap } from './settings'
+import type { CodeReview } from './codeReview'
 import type {
   CommitInfo,
   CommitInfoExtended,
@@ -224,7 +225,13 @@ export interface IpcContract {
   }
   'git:remoteUrl': {
     request: { path: string; remote?: string }
-    response: { url: string | null; webUrl: string | null; owner: string | null; repo: string | null; host: string | null }
+    response: {
+      url: string | null
+      webUrl: string | null
+      owner: string | null
+      repo: string | null
+      host: string | null
+    }
   }
   'git:prPreview': {
     request: { path: string; base: string; head: string }
@@ -429,6 +436,16 @@ export interface IpcContract {
     }
   }
 
+  'ai:codeReview': {
+    request: { diff: string }
+    response: CodeReview
+  }
+
+  'analyses:updateReview': {
+    request: { id: number; review: CodeReview }
+    response: void
+  }
+
   'analyses:save': {
     request: {
       projectPath: string
@@ -481,6 +498,7 @@ export interface IpcContract {
       professorTurbo: boolean
       title: string | null
       createdAt: number
+      review: CodeReview | null
     } | null
   }
   'analyses:delete': {
@@ -682,9 +700,24 @@ export interface IpcEvents {
     | { type: 'downloaded'; version: string }
     | { type: 'error'; message: string }
   'tests:agentEvent':
-    | { runId: string; type: 'snapshot'; step: number; url: string; title: string; elementsCount: number }
+    | {
+        runId: string
+        type: 'snapshot'
+        step: number
+        url: string
+        title: string
+        elementsCount: number
+      }
     | { runId: string; type: 'thinking'; step: number }
-    | { runId: string; type: 'action'; step: number; action: string; detail?: string; ok: boolean; error?: string }
+    | {
+        runId: string
+        type: 'action'
+        step: number
+        action: string
+        detail?: string
+        ok: boolean
+        error?: string
+      }
     | { runId: string; type: 'done'; reason: string }
     | { runId: string; type: 'fail'; reason: string }
     | { runId: string; type: 'frame'; data: string }
