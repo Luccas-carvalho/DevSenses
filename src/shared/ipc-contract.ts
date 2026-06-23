@@ -1,4 +1,4 @@
-import type { ProviderId, ProviderStatus } from './providers'
+import type { ProviderId, ProviderStatus, ModelOption } from './providers'
 import type { SettingsKey, SettingsValueMap } from './settings'
 import type { CodeReview } from './codeReview'
 import type {
@@ -29,6 +29,10 @@ export interface IpcContract {
   'providers:detect': {
     request: void
     response: Record<ProviderId, ProviderStatus>
+  }
+  'providers:listModels': {
+    request: void
+    response: Record<ProviderId, ModelOption[]>
   }
   'providers:test': {
     request: { id: ProviderId }

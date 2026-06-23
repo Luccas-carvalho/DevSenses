@@ -4,6 +4,7 @@ import { ThemeProvider } from './components/ThemeProvider'
 import CodeThemeApplicator from './components/CodeThemeApplicator'
 import { router } from './routes'
 import { useAnalysisStore } from './stores/analysis'
+import { useProviderModels } from './stores/providerModels'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 /**
@@ -16,6 +17,15 @@ function AnalysisStreamBridge(): null {
     return window.api.on('providers:stream', (event) => {
       useAnalysisStore.getState().onStreamEvent(event)
     })
+  }, [])
+  return null
+}
+
+/** Carrega a lista de modelos "ao vivo" (models.json local + `ollama list`)
+ *  uma vez no boot, substituindo os defaults semeados no store. */
+function ProviderModelsLoader(): null {
+  React.useEffect(() => {
+    void useProviderModels.getState().fetch()
   }, [])
   return null
 }
@@ -72,6 +82,7 @@ export default function App(): React.JSX.Element {
       <ThemeProvider>
         <CodeThemeApplicator />
         <AnalysisStreamBridge />
+        <ProviderModelsLoader />
         <RouterProvider router={router} />
       </ThemeProvider>
     </ErrorBoundary>

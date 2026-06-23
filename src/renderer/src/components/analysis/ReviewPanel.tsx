@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Loader2,
   AlertTriangle,
@@ -9,11 +10,14 @@ import {
   RefreshCw,
   Sparkles,
   ThumbsUp,
-  FileCode2
+  FileCode2,
+  Copy,
+  Check
 } from 'lucide-react'
 import {
   gradeToLetter,
   SEVERITY_LABEL,
+  formatReviewAsPrompt,
   type CodeReview,
   type ReviewSeverity
 } from '@shared/codeReview'
@@ -136,7 +140,11 @@ export default function ReviewPanel({ review, state, error, onRetry }: Props): R
 
       {/* ── Resumo ── */}
       {review.summary && (
-        <Section icon={Sparkles} title="Resumo">
+        <Section
+          icon={Sparkles}
+          title="Resumo"
+          action={<CopyPromptButton review={review} />}
+        >
           <p className="text-[13px] leading-relaxed break-words text-foreground/90">
             {renderInline(review.summary)}
           </p>
@@ -223,17 +231,47 @@ export default function ReviewPanel({ review, state, error, onRetry }: Props): R
   )
 }
 
+function CopyPromptButton({ review }: { review: CodeReview }): React.ReactElement {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(formatReviewAsPrompt(review))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard indisponível — silencioso
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copia tudo do review como prompt pra outra IA avaliar e ajustar"
+      className={cn(
+        'flex items-center gap-1.5 rounded-md px-2 h-6 text-[11px] border border-border/50 transition-colors',
+        copied ? 'text-emerald-400 border-emerald-400/40' : 'hover:bg-accent/60'
+      )}
+    >
+      {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+      {copied ? 'Copiado' : 'Copiar como prompt'}
+    </button>
+  )
+}
+
 function Section({
   icon: Icon,
   title,
   subtitle,
   tone = 'neutral',
+  action,
   children
 }: {
   icon: typeof Sparkles
   title: string
   subtitle?: string
   tone?: 'neutral' | 'green' | 'primary'
+  action?: React.ReactNode
   children: React.ReactNode
 }): React.ReactElement {
   const iconCls =
@@ -250,6 +288,7 @@ function Section({
           {title}
         </h3>
         {subtitle && <span className="text-[11px] text-muted-foreground/50">· {subtitle}</span>}
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       {children}
     </section>

@@ -69,7 +69,8 @@ import {
   PanelResizeHandle,
   type ImperativePanelHandle
 } from 'react-resizable-panels'
-import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
+import { PROVIDER_LABELS } from '@/lib/providerModels'
+import { useProviderModels } from '@/stores/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
@@ -406,6 +407,7 @@ export default function Project() {
   const { value: seniority, loading: seniorityLoading } = useSettings('seniority')
   const { value: providerDefault, loading: providerLoading } = useSettings('provider_default')
   const { value: providerModel } = useSettings('provider_model')
+  const providerModels = useProviderModels((s) => s.models)
   const { value: explanationDepthSaved } = useSettings('explanation_depth')
   const { value: explanationPersonaSaved } = useSettings('explanation_persona')
   const { value: socraticModeSaved } = useSettings('socratic_mode')
@@ -1813,7 +1815,7 @@ export default function Project() {
                     <span className="w-1 h-1 rounded-full bg-primary/70" />
                     {(() => {
                       const id = providerDefault as string
-                      const list = PROVIDER_MODELS[id]
+                      const list = providerModels[id]
                       const modelLabel =
                         list?.find((m) => m.id === providerModel)?.label ?? providerModel
                       const providerLabel = PROVIDER_LABELS[id] ?? id
