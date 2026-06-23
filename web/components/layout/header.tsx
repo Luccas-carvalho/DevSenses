@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { AnimatedThemeToggler } from '@/components/magicui/animated-theme-toggler'
 
 export async function Header() {
   const t = await getTranslations('common.nav')
@@ -24,7 +25,8 @@ export async function Header() {
             <a key={k} href={`#${k.replace('_','-')}`} className="hover:text-foreground transition-colors">{t(k as any)}</a>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <AnimatedThemeToggler className="text-muted-foreground hover:text-foreground" />
           <LanguageSwitcher />
         </div>
       </div>

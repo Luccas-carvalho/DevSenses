@@ -3,15 +3,25 @@
 
 # DevSenses
 
-**Tu deixou IA escrever. Deixa o DevSenses te ensinar o que ela fez.**
+**You let AI write it. Let DevSenses teach you what it did.**
 
-App desktop que lê o diff do teu repo e te explica cada mudança no teu nível, com tom configurável, quiz adaptativo, glossário pessoal, modo Socrático, what-if, caça ao bug e detecção de autoria IA.
+Desktop app that reads your repo's diff and explains every change at your level — with a configurable tone, adaptive quiz, personal glossary, Socratic mode, what-if, bug hunt and AI-authorship detection.
 
-100% local. API key tua. Open source. PT-BR first.
+100% local. Your API key. Open source. Portuguese-first UI.
 
-[Download (mac)](#-instalar) · [Como funciona](#-como-funciona) · [Features](FEATURES.md) · [Roadmap](MVP_PLAN.md)
+<p>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>
+  <img src="https://img.shields.io/badge/platform-mac%20%7C%20win%20%7C%20linux-lightgrey.svg" alt="Platforms">
+</p>
+
+[Download (mac)](#-install) · [How it works](#-how-it-works) · [Features](FEATURES.md) · [Contributing](CONTRIBUTING.md) · [Roadmap](MVP_PLAN.md)
+
+🇧🇷 **[Versão em Português](README.pt-BR.md)**
 
 </div>
+
+> The app's UI is in Brazilian Portuguese (PT-BR first). This README is in English; a full Portuguese version is linked above.
 
 ---
 
@@ -24,45 +34,45 @@ npm install
 npm run dev
 ```
 
-Faz onboarding (calibra seniority + IA + tom). Aponta um repositório git. Edita um arquivo (ou deixa Cursor/Copilot fazer). Clica **Explicar**. Pronto — IA lê o diff inteiro e te ensina linha por linha.
+Go through onboarding (it calibrates seniority + AI provider + tone). Point it at a git repo. Edit a file (or let Cursor/Copilot do it). Click **Explain**. Done — the AI reads the whole diff and teaches you line by line.
 
-Build de produção (.dmg em mac):
+Production build (.dmg on mac):
 ```bash
 npm run build:mac:arm64
-# Saída em release/devsenses-X.X.X.dmg
+# Output in release/devsenses-X.X.X.dmg
 ```
 
-## 🧠 Como funciona
+## 🧠 How it works
 
-1. **Tu edita código** (manual, Cursor, Copilot, Claude Code, qualquer ferramenta)
-2. **DevSenses lê o git diff** completo — uncommitted, committed, ou tudo
-3. **IA explica** no nível que tu setou (Pra criança → Profundo) com tom escolhido (Mentor / Pragmático / Sarcástico / Acadêmico)
-4. **Aprendizado adaptativo**: quiz pós-explicação, mastery por conceito (4 níveis), conceitos dominados saem dos próximos quizzes automaticamente
-5. **Power tools**: ⌘K cheat sheet de qualquer trecho, badges de complexidade Big-O automáticos, what-if pra comparar approaches, caça ao bug pra praticar revisão
+1. **You edit code** (by hand, Cursor, Copilot, Claude Code, any tool)
+2. **DevSenses reads the full git diff** — uncommitted, committed, or everything
+3. **The AI explains** at the level you set (For-a-kid → Deep) with the chosen tone (Mentor / Pragmatic / Sarcastic / Academic)
+4. **Adaptive learning**: post-explanation quiz, per-concept mastery (4 levels), mastered concepts automatically drop out of future quizzes
+5. **Power tools**: ⌘K cheat sheet for any snippet, automatic Big-O complexity badges, what-if to compare approaches, bug hunt to practice code review
 
-## ✨ Features principais
+## ✨ Key features
 
-- 🎯 **5 níveis de profundidade** — Pra criança / Resumido / Equilibrado / Detalhado / Profundo
-- 🎭 **5 personas de tutor** — Padrão / Mentor amigo / Pragmático / Sarcástico / Acadêmico
-- 🧠 **Quiz adaptativo** — IA só pergunta sobre o que tu ainda não dominou
-- 📚 **Glossário pessoal** — termos técnicos clicáveis no markdown, definição cacheada
-- 🤔 **Modo Socrático** — IA pergunta antes de responder, força tu a pensar
-- ⚡ **⌘K cheat sheet** — seleciona código, gera cheat sheet (sintaxe / gotchas / exemplos)
-- 📊 **Big-O automático** — flags loops aninhados, find-in-loop, recursão sem memo
-- 💡 **What-if** — "e se tivesse feito X?" — IA compara trade-offs com tabela
-- 🐛 **Caça ao bug** — IA injeta bug sutil pra tu treinar code review
-- 🤖 **Detecção autoria IA** — heurística com 8 sinais, score 0-100, flag visível
-- 🌌 **Cosmic vibe** — galaxy loading, cosmic transition pós-onboarding, auroras
+- 🎯 **5 depth levels** — For-a-kid / Brief / Balanced / Detailed / Deep
+- 🎭 **5 tutor personas** — Default / Friendly mentor / Pragmatic / Sarcastic / Academic
+- 🧠 **Adaptive quiz** — the AI only asks about what you haven't mastered yet
+- 📚 **Personal glossary** — clickable technical terms in the markdown, definitions cached
+- 🤔 **Socratic mode** — the AI asks before answering, forcing you to think
+- ⚡ **⌘K cheat sheet** — select code, generate a cheat sheet (syntax / gotchas / examples)
+- 📊 **Automatic Big-O** — flags nested loops, find-in-loop, recursion without memo
+- 💡 **What-if** — "what if I'd done X?" — the AI compares trade-offs in a table
+- 🐛 **Bug hunt** — the AI injects a subtle bug for you to practice code review
+- 🤖 **AI-authorship detection** — heuristic with 8 signals, score 0-100, visible flag
+- 🌌 **Cosmic vibe** — galaxy loading, post-onboarding cosmic transition, auroras
 
-Lista completa em [FEATURES.md](FEATURES.md).
+Full list in [FEATURES.md](FEATURES.md).
 
-## 🎯 Pra quem
+## 🎯 Who it's for
 
-- **Junior aprendendo** — quer entender o que tua IA escreveu antes de aprovar PR
-- **Mid querendo virar senior** — explicação calibrada pelo teu nível, sobe profundidade quando dominar conceito
-- **Senior sem tempo** — leitura rápida de diffs grandes feitos por agentes IA, com flags automáticos pra complexidade ruim
+- **Junior learning** — wants to understand what their AI wrote before approving a PR
+- **Mid leveling up to senior** — explanation calibrated to your level, depth rises as you master concepts
+- **Senior short on time** — fast reading of large agent-written diffs, with automatic flags for bad complexity
 
-## 🔌 Providers suportados
+## 🔌 Supported providers
 
 - **Claude Code** (CLI) — `claude`
 - **Codex** (CLI) — `codex`
@@ -70,61 +80,78 @@ Lista completa em [FEATURES.md](FEATURES.md).
 - **Aider** (CLI) — `aider`
 - **Ollama** (local) — `ollama`
 
-DevSenses detecta automaticamente o que tu tem instalado no PATH durante onboarding. Tudo BYOK (Bring Your Own Key) — DevSenses não cobra IA.
+DevSenses auto-detects what you have installed on your PATH during onboarding. Everything is BYOK (Bring Your Own Key) — DevSenses never charges you for AI.
 
 ## 🛠 Stack
 
 - Electron 39 + electron-vite
 - React 19 + TypeScript + Tailwind v4
-- better-sqlite3 (migrations embedded, schema versionado v1-v9)
+- better-sqlite3 (embedded migrations, schema versioned v1-v9)
 - Zustand (state) + SWR-like patterns
-- Lucide icons (zero emoji em UI)
+- Lucide icons (zero emoji in the UI)
 
-## 📥 Instalar
+## 📥 Install
 
 ### Mac (Apple Silicon)
 
-Baixe `.dmg` da [última release](https://github.com/Luccas-carvalho/DevSenses/releases). Arrasta pra Applications.
+Download the `.dmg` from the [latest release](https://github.com/Luccas-carvalho/DevSenses/releases) and drag it to Applications.
 
-> Primeira execução pode mostrar aviso "app não verificado" — clica direito → Open. (Code signing em andamento.)
+> Builds are **not signed yet** (code signing in progress). On first launch macOS
+> shows an "unverified app" warning. To open it:
+> **right-click the app → Open → Open** (only the first time).
+> If macOS still blocks it: System Settings → Privacy & Security → "Open Anyway".
 
-### Outros
-
-Build da source até termos releases públicas:
+### Build from source (any platform)
 
 ```bash
 git clone https://github.com/Luccas-carvalho/DevSenses.git
 cd DevSenses
 npm install
-npm run build:mac      # mac
+npm run build:mac      # mac (.dmg)
 npm run build:win      # windows (.exe NSIS)
 npm run build:linux    # linux (.AppImage)
 ```
 
-## 📚 Documentação
+> Official releases currently cover macOS. Windows/Linux builds come from source
+> (still in validation). Contributions to test them are welcome.
 
-- [`FEATURES.md`](FEATURES.md) — checklist completa de tudo que tem (✅ entregue / ⏳ backlog).
-- [`MVP_PLAN.md`](MVP_PLAN.md) — sprints 1-4 com estimativas.
-- [`SPRINT_1_PLAN.md`](SPRINT_1_PLAN.md) — detalhe técnico do sprint 1.
-- [`COMMANDS.md`](COMMANDS.md) — comandos úteis (build dmg, dev, regenerate icon).
-- [`CLAUDE.md`](CLAUDE.md) — instruções pro Claude Code (autoria contínua).
+## 🔒 Privacy
+
+- **Your code never goes to a server of ours** — there is no DevSenses backend.
+- The **diff** is only sent to the AI provider **you** chose (with your own key). With Ollama, it never leaves the machine.
+- **Telemetry is off by default** (opt-in). When on, events stay in a **local** SQLite database and can be cleared in Settings → Privacy.
+
+Details in [`SECURITY.md`](SECURITY.md).
+
+## 📚 Documentation
+
+- [`FEATURES.md`](FEATURES.md) — full checklist of everything (✅ shipped / ⏳ backlog).
+- [`MVP_PLAN.md`](MVP_PLAN.md) — sprints 1-4 with estimates.
+- [`SPRINT_1_PLAN.md`](SPRINT_1_PLAN.md) — sprint 1 technical detail.
+- [`COMMANDS.md`](COMMANDS.md) — useful commands (build dmg, dev, regenerate icon).
+- [`CLAUDE.md`](CLAUDE.md) — instructions for Claude Code (continuous authoring).
 
 ## 🎤 Pitch
 
-> Cursor / Copilot / Claude Code já escrevem código por você.
-> O problema agora é: **você está aprendendo, ou só aprovando o que IA cuspiu?**
+> Cursor / Copilot / Claude Code already write code for you.
+> The real question now is: **are you learning, or just approving what the AI spat out?**
 >
-> DevSenses é o tutor que vê o diff que tua IA fez, te explica no teu nível, te testa com quiz que aprende com tuas respostas, e marca conceitos como dominados depois de N acertos seguidos.
+> DevSenses is the tutor that sees the diff your AI made, explains it at your level,
+> tests you with a quiz that learns from your answers, and marks concepts as mastered
+> after N correct in a row.
 >
-> Não é mais um chat com IA. É um sistema de aprendizado contínuo em cima do código real do teu projeto.
+> It's not another AI chat. It's continuous learning on top of your project's real code.
 
-## 🤝 Contribuir
+## 🤝 Contributing
 
-PRs welcome. Issues também — especialmente bug reports com diff que reproduz o problema. Stack/setup explicado em `CLAUDE.md`.
+PRs and issues are welcome — especially bug reports with a diff that reproduces the
+problem. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) (setup, conventions, PR flow).
+Participants follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security
+vulnerability: see [`SECURITY.md`](SECURITY.md) (don't open a public issue).
 
-## 📜 Licença
+## 📜 License
 
-MIT.
+[MIT](LICENSE) © Luccas Carvalho.
 
 ---
 

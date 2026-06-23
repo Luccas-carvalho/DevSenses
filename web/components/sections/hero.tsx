@@ -87,10 +87,11 @@ export async function Hero() {
             <HeroDownloadButton />
           </div>
         </FadeIn>
+      </div>
 
-        <div className="relative w-full mt-16 lg:mt-24">
-          <AppShowcase />
-        </div>
+      {/* Showcase sai da coluna de texto (max-w-3xl) pra ficar bem maior. */}
+      <div className="relative z-[4] w-full max-w-5xl mx-auto mt-16 lg:mt-24">
+        <AppShowcase />
       </div>
     </section>
   )

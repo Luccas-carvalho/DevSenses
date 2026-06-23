@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server'
+import { X } from 'lucide-react'
 import { FadeIn } from '@/components/animations/fade-in'
 import { SectionLabel } from '@/components/section-label'
 import { AnimatedDiffDemo } from '@/components/animated-diff-demo'
@@ -13,14 +14,20 @@ export async function Solution() {
       <div className="absolute inset-0 bg-grid opacity-[0.15] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] pointer-events-none" />
       <div className="relative max-w-5xl mx-auto">
         <FadeIn>
-          <div className="max-w-2xl mx-auto mb-12 text-center">
-            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground/70 mb-4">
+          <div className="max-w-3xl mx-auto mb-16">
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground/70 mb-6 text-center">
               {t('pain_eyebrow')}
             </p>
-            <ul className="grid sm:grid-cols-2 gap-2 text-sm text-muted-foreground/80">
+            <ul className="grid sm:grid-cols-2 gap-3">
               {painBullets.map((b) => (
-                <li key={b} className="px-3 py-2 rounded-md border border-border/60 bg-card/40">
-                  {b}
+                <li
+                  key={b}
+                  className="group flex items-start gap-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-4 py-3.5 text-sm text-muted-foreground/90 transition-colors hover:border-red-500/30 hover:bg-red-500/[0.07]"
+                >
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-red-500/10 text-red-400/80">
+                    <X className="size-3.5" strokeWidth={2.5} />
+                  </span>
+                  <span className="leading-snug">{b}</span>
                 </li>
               ))}
             </ul>

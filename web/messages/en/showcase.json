@@ -1,15 +1,15 @@
 {
   "subtitle": "in the app",
   "title": "Not vaporware. An app you install.",
-  "description": "See DevSenses in action — galaxy loading, streaming diff explanation, adaptive quiz that learns from you.",
+  "description": "See DevSenses in action — 8 syntax themes, streaming diff explanation, adaptive quiz that learns from you.",
   "items": [
     {
-      "id": "loading",
-      "kicker": "Analysis in progress",
-      "title": "Galaxy loading while AI thinks",
-      "description": "120 stars, 4 orbits, 3 nebulae drifting. AI processing your diff becomes cosmic spectacle.",
-      "image": "/screenshots/galaxy-loading.png",
-      "alt": "DevSenses screen with galaxy animation while AI tokenizes the diff"
+      "id": "themes",
+      "kicker": "Personalization",
+      "title": "8 syntax themes, your way",
+      "description": "Default, Dracula, Monokai, One Dark, Tokyo Night, Nord, GitHub and Solarized. Switch instantly — the whole app follows.",
+      "image": "",
+      "alt": "Live preview of DevSenses' 8 syntax highlighting themes"
     },
     {
       "id": "diff",

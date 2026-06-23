@@ -1,11 +1,16 @@
 'use client'
 import { motion } from 'framer-motion'
+import { ThemeShowcase } from '@/components/theme-showcase'
 
 type Item = { id: string; kicker: string; title: string; description: string; image: string; alt: string }
 
 export function ShowcaseItem({ item, flipped }: { item: Item; flipped: boolean }) {
   return (
-    <div className="grid lg:grid-cols-[1fr_1.4fr] gap-10 lg:gap-16 items-center">
+    <div
+      className={`grid gap-10 lg:gap-16 items-center ${
+        flipped ? 'lg:grid-cols-[1.6fr_1fr]' : 'lg:grid-cols-[1fr_1.6fr]'
+      }`}
+    >
       <motion.div
         initial={{ opacity: 0, x: flipped ? 30 : -30 }}
         whileInView={{ opacity: 1, x: 0 }}
@@ -29,12 +34,15 @@ export function ShowcaseItem({ item, flipped }: { item: Item; flipped: boolean }
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className={`relative ${flipped ? 'lg:order-1' : ''}`}
       >
-        <img
-          src={item.image}
-          alt={item.alt}
-          loading="lazy"
-          className="block w-full h-auto"
-        />
+        {item.id === 'themes' ? (
+          // Preview ao vivo dos temas (no lugar de um screenshot estático).
+          <ThemeShowcase />
+        ) : (
+          // Fontes idênticas (2624×1824) + imagem sempre na coluna larga = mesmo tamanho.
+          <div className="overflow-hidden rounded-xl">
+            <img src={item.image} alt={item.alt} loading="lazy" className="block w-full h-auto" />
+          </div>
+        )}
       </motion.div>
     </div>
   )
