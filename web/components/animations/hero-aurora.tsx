@@ -30,10 +30,13 @@ export function HeroAurora() {
       tmy = 0.5
     let raf = 0
     let running = true
+    let last = -1
 
     function resize() {
       if (!canvas) return
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+      // Render em ~0.7x da resolução CSS (canvas upscaled). Aurora é ruído suave,
+      // então a perda de nitidez é invisível e a GPU pinta ~4x menos pixels.
+      const dpr = 0.7
       const parent = canvas.parentElement
       const W = parent?.clientWidth ?? window.innerWidth
       const H = parent?.clientHeight ?? window.innerHeight
@@ -98,7 +101,7 @@ float snoise(vec3 v){
 
 float fbm(vec3 p){
   float v=0.,a=.5;
-  for(int i=0;i<5;i++){
+  for(int i=0;i<3;i++){
     v+=a*snoise(p);
     p*=2.1;
     a*=.48;
@@ -122,10 +125,8 @@ void main(){
   float n1=fbm(vec3(p*1.2+vec2(t*0.4,t*0.3),t*0.2));
   float n2=fbm(vec3(p*2.5+vec2(-t*0.6,t*0.5),t*0.35+5.));
   float n3=fbm(vec3(p*1.8+mp*0.5,t*0.5+10.));
-  float wave=sin(length(p)*4.0-t*2.0)*0.5+0.5;
-  float n4=fbm(vec3(p*0.8+vec2(t*0.2,-t*0.15),t*0.1+20.))*wave;
 
-  float n=n1*0.55+n2*0.3+n3*mInfluence*1.5+n4*0.35;
+  float n=n1*0.62+n2*0.34+n3*mInfluence*1.5;
 
   // Violet palette (replaces Cadence teal)
   vec3 c1=vec3(0.357,0.129,0.714); // violet-700
@@ -194,6 +195,9 @@ void main(){
         return
       }
       raf = requestAnimationFrame(frame)
+      // Throttle ~30fps: o desenho (GPU) é o custo; pular metade dos frames corta pela metade.
+      if (last >= 0 && t - last < 32) return
+      last = t
       mx += (tmx - mx) * 0.22
       my += (tmy - my) * 0.22
 

@@ -1,18 +1,51 @@
 export type Os = 'macos' | 'linux' | 'windows'
 
-export const OS_ASSETS: Record<Os, { ext: string; url: string }> = {
-  macos: {
-    ext: '.dmg',
-    url: 'https://github.com/Luccas-carvalho/DevSenses/releases/latest/download/DevSenses.dmg',
-  },
-  linux: {
-    ext: '.AppImage',
-    url: 'https://github.com/Luccas-carvalho/DevSenses/releases/latest/download/DevSenses.AppImage',
-  },
-  windows: {
-    ext: '.exe',
-    url: 'https://github.com/Luccas-carvalho/DevSenses/releases/latest/download/DevSenses-Setup.exe',
-  },
+const REPO = 'Luccas-carvalho/DevSenses'
+/** Página da última release (fallback que sempre funciona, sem JS). */
+export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
+
+export const OS_ASSETS: Record<Os, { ext: string; match: (name: string) => boolean }> = {
+  macos: { ext: '.dmg', match: (n) => n.endsWith('.dmg') },
+  linux: { ext: '.AppImage', match: (n) => n.endsWith('.appimage') },
+  windows: { ext: '.exe', match: (n) => n.endsWith('.exe') }
+}
+
+interface GithubAsset {
+  name: string
+  browser_download_url: string
+}
+
+/**
+ * Resolve a URL de download direto do instalador da ÚLTIMA release pro SO dado,
+ * lendo a API do GitHub (independe da versão no nome do arquivo). Cai pra página
+ * de releases se a API falhar ou não houver asset do SO.
+ */
+export async function resolveDownload(os: Os): Promise<string> {
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+      headers: { Accept: 'application/vnd.github+json' }
+    })
+    if (!r.ok) return RELEASES_PAGE
+    const data: { assets?: GithubAsset[] } = await r.json()
+    const match = OS_ASSETS[os].match
+    const candidates = (data.assets ?? []).filter((a) => match(a.name.toLowerCase()))
+    if (candidates.length === 0) return RELEASES_PAGE
+    // macOS: prefere o build arm64 (Apple Silicon) quando houver mais de um .dmg.
+    if (os === 'macos') {
+      const arm = candidates.find((a) => /arm64|aarch64/i.test(a.name))
+      return (arm ?? candidates[0]).browser_download_url
+    }
+    return candidates[0].browser_download_url
+  } catch {
+    return RELEASES_PAGE
+  }
+}
+
+/** Handler de clique: tenta o asset direto; se não, segue o href (página de releases). */
+export async function onDownloadClick(os: Os, e: { preventDefault: () => void }): Promise<void> {
+  e.preventDefault()
+  const url = await resolveDownload(os)
+  window.location.href = url
 }
 
 export function detectOs(): Os | null {

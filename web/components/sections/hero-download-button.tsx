@@ -2,12 +2,18 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Download } from 'lucide-react'
-import { detectOs, OsIcon, OS_ASSETS, type Os } from '@/components/icons/os-icon'
+import {
+  detectOs,
+  OsIcon,
+  RELEASES_PAGE,
+  onDownloadClick,
+  type Os
+} from '@/components/icons/os-icon'
 
 const OS_LABEL: Record<Os, string> = {
   macos: 'macOS',
   linux: 'Linux',
-  windows: 'Windows',
+  windows: 'Windows'
 }
 
 export function HeroDownloadButton() {
@@ -20,7 +26,7 @@ export function HeroDownloadButton() {
   }, [])
 
   return (
-    <a href={OS_ASSETS[os].url} className="btn-hero-ghost">
+    <a href={RELEASES_PAGE} onClick={(e) => onDownloadClick(os, e)} className="btn-hero-ghost">
       <OsIcon os={os} size={14} />
       <span>
         {t('cta_download')} {OS_LABEL[os]}

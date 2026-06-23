@@ -30,22 +30,132 @@ interface Theme {
 const THEMES: Theme[] = [
   // Default: o CÓDIGO mostra o syntax real do app (vsDark). reset:true só reseta o
   // SITE pro padrão roxo (as cores abaixo pintam só o preview, não o site).
-  { id: 'default', label: 'Default', reset: true, bg: '#1e1e1e', fg: '#d4d4d4', comment: '#6a9955', keyword: '#569cd6', string: '#ce9178', fn: '#dcdcaa', number: '#b5cea8', var: '#9cdcfe', punct: '#d4d4d4' },
-  { id: 'dracula', label: 'Dracula', bg: '#282a36', fg: '#f8f8f2', comment: '#6272a4', keyword: '#ff79c6', string: '#f1fa8c', fn: '#50fa7b', number: '#bd93f9', var: '#f8f8f2', punct: '#f8f8f2' },
-  { id: 'monokai', label: 'Monokai', bg: '#272822', fg: '#f8f8f2', comment: '#75715e', keyword: '#f92672', string: '#e6db74', fn: '#a6e22e', number: '#ae81ff', var: '#fd971f', punct: '#f8f8f2' },
-  { id: 'oneDark', label: 'One Dark', bg: '#282c34', fg: '#abb2bf', comment: '#5c6370', keyword: '#c678dd', string: '#98c379', fn: '#61afef', number: '#d19a66', var: '#e06c75', punct: '#abb2bf' },
-  { id: 'tokyoNight', label: 'Tokyo Night', bg: '#1a1b26', fg: '#a9b1d6', comment: '#565f89', keyword: '#bb9af7', string: '#9ece6a', fn: '#7aa2f7', number: '#ff9e64', var: '#c0caf5', punct: '#a9b1d6' },
-  { id: 'nord', label: 'Nord', bg: '#2e3440', fg: '#d8dee9', comment: '#616e88', keyword: '#81a1c1', string: '#a3be8c', fn: '#88c0d0', number: '#b48ead', var: '#d8dee9', punct: '#eceff4' },
-  { id: 'github', label: 'GitHub', bg: '#0d1117', fg: '#c9d1d9', comment: '#8b949e', keyword: '#ff7b72', string: '#a5d6ff', fn: '#d2a8ff', number: '#79c0ff', var: '#ffa657', punct: '#c9d1d9' },
-  { id: 'solarized', label: 'Solarized', bg: '#002b36', fg: '#839496', comment: '#586e75', keyword: '#859900', string: '#2aa198', fn: '#268bd2', number: '#d33682', var: '#cb4b16', punct: '#93a1a1' },
+  {
+    id: 'default',
+    label: 'Default',
+    reset: true,
+    bg: '#1e1e1e',
+    fg: '#d4d4d4',
+    comment: '#6a9955',
+    keyword: '#569cd6',
+    string: '#ce9178',
+    fn: '#dcdcaa',
+    number: '#b5cea8',
+    var: '#9cdcfe',
+    punct: '#d4d4d4'
+  },
+  {
+    id: 'dracula',
+    label: 'Dracula',
+    bg: '#282a36',
+    fg: '#f8f8f2',
+    comment: '#6272a4',
+    keyword: '#ff79c6',
+    string: '#f1fa8c',
+    fn: '#50fa7b',
+    number: '#bd93f9',
+    var: '#f8f8f2',
+    punct: '#f8f8f2'
+  },
+  {
+    id: 'monokai',
+    label: 'Monokai',
+    bg: '#272822',
+    fg: '#f8f8f2',
+    comment: '#75715e',
+    keyword: '#f92672',
+    string: '#e6db74',
+    fn: '#a6e22e',
+    number: '#ae81ff',
+    var: '#fd971f',
+    punct: '#f8f8f2'
+  },
+  {
+    id: 'oneDark',
+    label: 'One Dark',
+    bg: '#282c34',
+    fg: '#abb2bf',
+    comment: '#5c6370',
+    keyword: '#c678dd',
+    string: '#98c379',
+    fn: '#61afef',
+    number: '#d19a66',
+    var: '#e06c75',
+    punct: '#abb2bf'
+  },
+  {
+    id: 'tokyoNight',
+    label: 'Tokyo Night',
+    bg: '#1a1b26',
+    fg: '#a9b1d6',
+    comment: '#565f89',
+    keyword: '#bb9af7',
+    string: '#9ece6a',
+    fn: '#7aa2f7',
+    number: '#ff9e64',
+    var: '#c0caf5',
+    punct: '#a9b1d6'
+  },
+  {
+    id: 'nord',
+    label: 'Nord',
+    bg: '#2e3440',
+    fg: '#d8dee9',
+    comment: '#616e88',
+    keyword: '#81a1c1',
+    string: '#a3be8c',
+    fn: '#88c0d0',
+    number: '#b48ead',
+    var: '#d8dee9',
+    punct: '#eceff4'
+  },
+  {
+    id: 'github',
+    label: 'GitHub',
+    bg: '#0d1117',
+    fg: '#c9d1d9',
+    comment: '#8b949e',
+    keyword: '#ff7b72',
+    string: '#a5d6ff',
+    fn: '#d2a8ff',
+    number: '#79c0ff',
+    var: '#ffa657',
+    punct: '#c9d1d9'
+  },
+  {
+    id: 'solarized',
+    label: 'Solarized',
+    bg: '#002b36',
+    fg: '#839496',
+    comment: '#586e75',
+    keyword: '#859900',
+    string: '#2aa198',
+    fn: '#268bd2',
+    number: '#d33682',
+    var: '#cb4b16',
+    punct: '#93a1a1'
+  }
 ]
 
 // CSS vars de design que o tema sobrescreve no site inteiro.
 const SITE_VARS = [
-  '--background', '--foreground', '--card', '--card-foreground', '--popover',
-  '--popover-foreground', '--primary', '--primary-foreground', '--secondary',
-  '--secondary-foreground', '--muted', '--muted-foreground', '--accent',
-  '--accent-foreground', '--border', '--input', '--ring',
+  '--background',
+  '--foreground',
+  '--card',
+  '--card-foreground',
+  '--popover',
+  '--popover-foreground',
+  '--primary',
+  '--primary-foreground',
+  '--secondary',
+  '--secondary-foreground',
+  '--muted',
+  '--muted-foreground',
+  '--accent',
+  '--accent-foreground',
+  '--border',
+  '--input',
+  '--ring'
 ] as const
 
 function hexToHslParts(hex: string): [number, number, number] {
@@ -94,7 +204,7 @@ function applySiteTheme(th: Theme): void {
     '--accent-foreground': hsl(th.fg),
     '--border': hsl(th.bg, 12),
     '--input': hsl(th.bg, 12),
-    '--ring': hsl(th.keyword),
+    '--ring': hsl(th.keyword)
   }
   for (const [k, val] of Object.entries(v)) root.setProperty(k, val)
 }
@@ -111,7 +221,7 @@ const CODE: { t: string; k: Tok }[][] = [
     { t: ' ', k: 'plain' },
     { t: 'nivel', k: 'var' },
     { t: ' = ', k: 'punct' },
-    { t: '"Dominado"', k: 'string' },
+    { t: '"Dominado"', k: 'string' }
   ],
   [],
   [
@@ -120,7 +230,7 @@ const CODE: { t: string; k: Tok }[][] = [
     { t: 'proximoQuiz', k: 'fn' },
     { t: '(', k: 'punct' },
     { t: 'conceitos', k: 'var' },
-    { t: ') {', k: 'punct' },
+    { t: ') {', k: 'punct' }
   ],
   [
     { t: '  const', k: 'keyword' },
@@ -138,7 +248,7 @@ const CODE: { t: string; k: Tok }[][] = [
     { t: 'mastery', k: 'var' },
     { t: ' < ', k: 'punct' },
     { t: '4', k: 'number' },
-    { t: ')', k: 'punct' },
+    { t: ')', k: 'punct' }
   ],
   [
     { t: '  return', k: 'keyword' },
@@ -148,9 +258,9 @@ const CODE: { t: string; k: Tok }[][] = [
     { t: 'fracos', k: 'var' },
     { t: ', ', k: 'punct' },
     { t: '3', k: 'number' },
-    { t: ')', k: 'punct' },
+    { t: ')', k: 'punct' }
   ],
-  [{ t: '}', k: 'punct' }],
+  [{ t: '}', k: 'punct' }]
 ]
 
 export function ThemeShowcase() {

@@ -3,7 +3,13 @@ import { useTranslations } from 'next-intl'
 import { Download, ArrowUpRight } from 'lucide-react'
 import { FadeIn } from '@/components/animations/fade-in'
 import { SectionLabel } from '@/components/section-label'
-import { OsIcon, OS_ASSETS, type Os } from '@/components/icons/os-icon'
+import {
+  OsIcon,
+  OS_ASSETS,
+  RELEASES_PAGE,
+  onDownloadClick,
+  type Os
+} from '@/components/icons/os-icon'
 
 const REPO = 'https://github.com/Luccas-carvalho/DevSenses'
 const ORDER: Os[] = ['macos', 'linux', 'windows']
@@ -35,7 +41,8 @@ export function Install() {
             {ORDER.map((os) => (
               <a
                 key={os}
-                href={OS_ASSETS[os].url}
+                href={RELEASES_PAGE}
+                onClick={(e) => onDownloadClick(os, e)}
                 className="group relative flex flex-col items-center gap-3 px-5 py-7 rounded-2xl border border-border bg-card/70 hover:border-primary/40 hover:bg-card/90 transition-colors overflow-hidden"
               >
                 <div className="size-12 rounded-2xl border border-border bg-card flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:border-primary/40 transition-colors">
