@@ -14,10 +14,12 @@ import { registerRepositoryHandlers } from './repository'
 import { registerTelemetryHandlers } from './telemetry'
 import { registerAppHandlers } from './app'
 import { registerUpdateHandlers } from './updates'
+import { registerNotifyHandlers } from './notify'
 
 export function registerIpcHandlers(): void {
   registerAppHandlers()
   registerUpdateHandlers()
+  registerNotifyHandlers()
   registerSettingsHandlers()
   registerProviderHandlers()
   registerWorkspaceHandlers()

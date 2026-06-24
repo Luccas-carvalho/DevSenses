@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { CodeReview } from '@shared/codeReview'
+import { notifyEvent } from '@/lib/notify'
 
 export type AnalysisState = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
@@ -82,10 +83,17 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
 
     if (event.error) {
       get().patch(path, { state: 'error', error: event.error })
+      void notifyEvent({ title: 'Falha na análise', body: event.error, tone: 'error', target: path })
       return
     }
     if (event.done) {
       get().patch(path, { state: 'done' })
+      void notifyEvent({
+        title: 'Explicação pronta',
+        body: 'Seu diff foi explicado.',
+        tone: 'success',
+        target: path
+      })
       return
     }
     const current = get().byPath[path] ?? EMPTY_ANALYSIS

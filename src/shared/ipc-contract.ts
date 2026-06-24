@@ -366,6 +366,12 @@ export interface IpcContract {
     request: void
     response: { ok: true }
   }
+  /** Notificação nativa do SO (só dispara quando a janela está FORA de foco).
+   *  `shown:false` = janela em foco → o renderer mostra um toast in-app. */
+  'notify:show': {
+    request: { title: string; body: string; target?: string }
+    response: { shown: boolean }
+  }
   'app:openExternal': {
     request: { url: string }
     response: { ok: boolean; error?: string }
@@ -732,6 +738,8 @@ export interface IpcEvents {
     | { type: 'error'; message: string }
   /** Progresso do download in-app do instalador (modal de update). */
   'update:downloadProgress': { percent: number; done: boolean; failed: boolean }
+  /** Usuário clicou numa notificação nativa → renderer foca/navega pro `target`. */
+  'notify:click': { target: string }
   'tests:agentEvent':
     | {
         runId: string

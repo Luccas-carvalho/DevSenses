@@ -23,6 +23,7 @@ function relativeTime(ts: number): string {
 
 export default function Privacy(): React.ReactElement {
   const { value: enabled, setValue: setEnabled } = useSettings('telemetry_enabled')
+  const { value: notif, setValue: setNotif } = useSettings('notifications_enabled')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(false)
   const [version, setVersion] = useState(0)
@@ -98,6 +99,37 @@ export default function Privacy(): React.ReactElement {
               className={cn(
                 'absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform',
                 enabled && 'translate-x-[18px]'
+              )}
+            />
+          </button>
+        </div>
+      </section>
+
+      {/* Notificações */}
+      <section className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 mb-4">
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <div className="text-sm font-medium mb-1">Notificações</div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Avisa quando uma análise ou code review termina. Fora do app vira notificação do
+              sistema; com o app aberto, um aviso discreto no canto.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={notif !== false}
+            onClick={() => setNotif(notif === false)}
+            className={cn(
+              'relative flex-shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 mt-0.5',
+              notif !== false ? 'bg-primary' : 'bg-muted-foreground/30'
+            )}
+            style={{ height: '22px', width: '40px' }}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform',
+                notif !== false && 'translate-x-[18px]'
               )}
             />
           </button>

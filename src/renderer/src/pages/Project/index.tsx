@@ -44,6 +44,7 @@ import { buildDiffPrompt } from '@/lib/diffPrompt'
 import { parseDiffFiles, extractFileDiff } from '@/lib/parseDiff'
 import { humanizeCheckoutError } from '@/lib/gitErrors'
 import { useAnalysisStore, EMPTY_ANALYSIS } from '@/stores/analysis'
+import { notifyEvent } from '@/lib/notify'
 import type { CodeReview } from '@shared/codeReview'
 import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
@@ -659,11 +660,16 @@ export default function Project() {
       try {
         const result = await window.api.invoke('ai:codeReview', { diff: diffText })
         patchAnalysis(path, { review: result, reviewState: 'done' })
-      } catch (e) {
-        patchAnalysis(path, {
-          reviewState: 'error',
-          reviewError: (e as Error).message ?? 'Falha ao gerar review'
+        void notifyEvent({
+          title: 'Code review pronto',
+          body: 'A revisão do diff terminou.',
+          tone: 'success',
+          target: path
         })
+      } catch (e) {
+        const msg = (e as Error).message ?? 'Falha ao gerar review'
+        patchAnalysis(path, { reviewState: 'error', reviewError: msg })
+        void notifyEvent({ title: 'Falha no review', body: msg, tone: 'error', target: path })
       }
     },
     [patchAnalysis, path]
