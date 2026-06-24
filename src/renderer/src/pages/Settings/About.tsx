@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Info, Download, CheckCircle2, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react'
+import { Info, Download, CheckCircle2, RefreshCw, AlertTriangle, ExternalLink, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type UpdateState =
@@ -61,40 +61,63 @@ export default function About(): React.ReactElement {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Info className="size-5" /> Sobre
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Informações da instalação e atualizações.
-        </p>
-      </div>
+    <div className="w-full ds-fade-up flex flex-col gap-5">
 
-      <div className="rounded-lg border border-border/40 bg-card/30 p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Aplicativo</span>
-          <span className="text-sm font-medium">{info?.name ?? 'DevSenses'}</span>
+      {/* ── Header ── */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
+          <Info className="size-4 text-primary" />
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Versão</span>
-          <span className="text-sm font-mono">{info?.version ?? '—'}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Plataforma</span>
-          <span className="text-sm font-mono">{navigator.platform}</span>
+        <div>
+          <h1 className="text-lg font-semibold">Sobre</h1>
+          <p className="text-[11px] text-muted-foreground">
+            Informações da instalação e atualizações
+          </p>
         </div>
       </div>
 
-      <div className="rounded-lg border border-border/40 bg-card/30 p-5 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-sm font-medium">Atualizações</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              DevSenses verifica novas versões automaticamente a cada hora.
-            </p>
+      {/* ── Instalação ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center">
+            <Package className="size-4 text-primary" />
           </div>
-          <Button size="sm" variant="outline" onClick={checkUpdates} disabled={busy || update.kind === 'checking'}>
+          <div>
+            <p className="text-sm font-medium">Instalação</p>
+            <p className="text-[11px] text-muted-foreground">Detalhes da build atual</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Aplicativo</span>
+            <span className="text-sm font-medium">{info?.name ?? 'DevSenses'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Versão</span>
+            <span className="text-sm font-mono">{info?.version ?? '—'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Plataforma</span>
+            <span className="text-sm font-mono">{navigator.platform}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Atualizações ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="size-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Atualizações</p>
+              <p className="text-[11px] text-muted-foreground">
+                DevSenses verifica novas versões automaticamente a cada hora
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={checkUpdates} disabled={busy || update.kind === 'checking'} className="flex-shrink-0">
             <RefreshCw className={`size-3.5 mr-1.5 ${update.kind === 'checking' ? 'animate-spin' : ''}`} />
             Verificar agora
           </Button>
@@ -103,7 +126,8 @@ export default function About(): React.ReactElement {
         <UpdateStatus state={update} />
       </div>
 
-      <div className="rounded-lg border border-border/40 bg-card/30 p-5">
+      {/* ── GitHub ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5">
         <button
           onClick={openRepo}
           className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"

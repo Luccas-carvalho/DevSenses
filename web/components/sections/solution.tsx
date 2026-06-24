@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server'
+import { X } from 'lucide-react'
 import { FadeIn } from '@/components/animations/fade-in'
 import { SectionLabel } from '@/components/section-label'
 import { AnimatedDiffDemo } from '@/components/animated-diff-demo'
@@ -7,14 +8,35 @@ export async function Solution() {
   const t = await getTranslations('solution')
   const explanation = t.raw('demo_explanation') as string[]
   const diff = t.raw('demo_diff') as string
+  const painBullets = t.raw('pain_bullets') as string[]
   return (
     <section className="relative px-6 py-28 border-t border-border overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-[0.15] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)] pointer-events-none" />
       <div className="relative max-w-5xl mx-auto">
+        <FadeIn>
+          <div className="max-w-3xl mx-auto mb-16">
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground/70 mb-6 text-center">
+              {t('pain_eyebrow')}
+            </p>
+            <ul className="grid sm:grid-cols-2 gap-3">
+              {painBullets.map((b) => (
+                <li
+                  key={b}
+                  className="group flex items-start gap-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-4 py-3.5 text-sm text-muted-foreground/90 transition-colors hover:border-red-500/30 hover:bg-red-500/[0.07]"
+                >
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-red-500/10 text-red-400/80">
+                    <X className="size-3.5" strokeWidth={2.5} />
+                  </span>
+                  <span className="leading-snug">{b}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </FadeIn>
         <div className="text-center mb-14 flex flex-col items-center">
           <FadeIn><SectionLabel number="02" className="mb-5">solução</SectionLabel></FadeIn>
           <FadeIn delay={0.1}>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.03em] text-balance bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-1">{t('title')}</h2>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.05em] text-balance bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-1">{t('title')}</h2>
           </FadeIn>
           <FadeIn delay={0.2}>
             <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">{t('sub')}</p>

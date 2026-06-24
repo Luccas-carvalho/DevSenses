@@ -11,7 +11,8 @@ import {
   Loader2, RefreshCw, ChevronDown, Bot, Zap, Check, X,
   ExternalLink, CheckCircle2, AlertCircle, FlaskConical
 } from 'lucide-react'
-import { PROVIDER_MODELS, DEFAULT_MODEL } from '@/lib/providerModels'
+import { DEFAULT_MODEL } from '@/lib/providerModels'
+import { useProviderModels } from '@/stores/providerModels'
 import { cn } from '@/lib/utils'
 
 const CACHE_KEY = 'providers_cache_v1'
@@ -34,6 +35,7 @@ export default function AI() {
   const [testing, setTesting] = useState<ProviderId | null>(null)
   const [testResult, setTestResult] = useState<{ id: ProviderId; ok: boolean; msg: string } | null>(null)
   const [modelOpen, setModelOpen] = useState(false)
+  const providerModels = useProviderModels((s) => s.models)
 
   async function detect(): Promise<void> {
     setLoading(true)
@@ -64,14 +66,14 @@ export default function AI() {
     }
   }
 
-  const selectedModels = defaultId ? PROVIDER_MODELS[defaultId] ?? [] : []
+  const selectedModels = defaultId ? providerModels[defaultId] ?? [] : []
   const currentModelLabel =
     selectedModels.find((m) => m.id === model)?.label ?? model ?? 'selecionar modelo'
 
   function handleSelectProvider(id: ProviderId): void {
     setDefault(id)
     setTestResult(null)
-    const list = PROVIDER_MODELS[id] ?? []
+    const list = providerModels[id] ?? []
     if (!list.some((m) => m.id === model)) {
       setModel(DEFAULT_MODEL[id] ?? list[0]?.id ?? '')
     }

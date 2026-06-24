@@ -3,8 +3,33 @@ import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/ThemeProvider'
 import CodeThemeApplicator from './components/CodeThemeApplicator'
 import { router } from './routes'
+import { useAnalysisStore } from './stores/analysis'
+import { useProviderModels } from './stores/providerModels'
 import './lib/prismLanguages'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+
+/**
+ * Escuta o stream de Explicação IA no nível do app (uma vez só), não no
+ * componente Project. Garante que os chunks continuem sendo acumulados na
+ * store mesmo quando o usuário sai da tela do projeto durante a análise.
+ */
+function AnalysisStreamBridge(): null {
+  React.useEffect(() => {
+    return window.api.on('providers:stream', (event) => {
+      useAnalysisStore.getState().onStreamEvent(event)
+    })
+  }, [])
+  return null
+}
+
+/** Carrega a lista de modelos "ao vivo" (models.json local + `ollama list`)
+ *  uma vez no boot, substituindo os defaults semeados no store. */
+function ProviderModelsLoader(): null {
+  React.useEffect(() => {
+    void useProviderModels.getState().fetch()
+  }, [])
+  return null
+}
 
 interface EBState {
   error: Error | null
@@ -57,6 +82,8 @@ export default function App(): React.JSX.Element {
     <ErrorBoundary>
       <ThemeProvider>
         <CodeThemeApplicator />
+        <AnalysisStreamBridge />
+        <ProviderModelsLoader />
         <RouterProvider router={router} />
       </ThemeProvider>
     </ErrorBoundary>

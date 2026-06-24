@@ -1,0 +1,14 @@
+{
+  "subtitle": "Install",
+  "title": "Download in 30 seconds.",
+  "sub": "No signup. No terminal. We detect your system.",
+  "tabs": {
+    "macos": "macOS",
+    "linux": "Linux",
+    "windows": "Windows"
+  },
+  "detected": "Detected",
+  "download": "Download",
+  "not_ready_note": "Releases in preparation — available soon on GitHub.",
+  "build_from_source": "Build from source"
+}

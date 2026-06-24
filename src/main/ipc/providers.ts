@@ -3,6 +3,7 @@ import type { IpcContract } from '@shared/ipc-contract'
 import { PROVIDER_IDS, PROVIDER_META, type ProviderId, type ProviderStatus } from '@shared/providers'
 import { findBinary } from '../providers/detect'
 import { PROVIDERS } from '../providers/registry'
+import { listModels } from '../providers/models'
 
 async function detectAll(): Promise<Record<ProviderId, ProviderStatus>> {
   const out: Record<string, ProviderStatus> = {}
@@ -67,6 +68,10 @@ const activeStreams = new Map<string, AbortController>()
 export function registerProviderHandlers(): void {
   ipcMain.handle('providers:detect', async () => {
     return detectAll()
+  })
+
+  ipcMain.handle('providers:listModels', async () => {
+    return listModels()
   })
 
   ipcMain.handle('providers:test', async (_, payload: IpcContract['providers:test']['request']) => {

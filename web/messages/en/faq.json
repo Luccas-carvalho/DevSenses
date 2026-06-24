@@ -1,1 +1,34 @@
-{"title":"Honest questions.","subtitle":"Honest answers.","items":[{"q":"Does DevSenses replace Cursor/Copilot?","a":"No. Runs alongside, teaches you what they do. Keep using what you like."},{"q":"Works offline?","a":"With Ollama, yes. 100% local, diff never leaves your device."},{"q":"Really open source?","a":"Yes. MIT. Fork, contribute, audit. No catch."},{"q":"Do I pay for AI?","a":"Yes, BYOK. Use your Anthropic/OpenAI/Google key or run Ollama free locally."},{"q":"Is there a paid tier?","a":"No. Everything's free. If it helps you, consider GitHub Sponsors."},{"q":"When does it launch?","a":"Soon. Join the waitlist to be notified on day one."}]}
+{
+  "title": "Honest questions.",
+  "subtitle": "Honest answers.",
+  "items": [
+    {
+      "q": "Does DevSenses replace Cursor/Copilot?",
+      "a": "No. Runs alongside, teaches you what they do. Keep using what you already like."
+    },
+    {
+      "q": "Does it work offline?",
+      "a": "With Ollama, yes. 100% local, diff never leaves your device."
+    },
+    {
+      "q": "Is it really open source?",
+      "a": "Yes. MIT. Fork, contribute, audit. Available now on GitHub."
+    },
+    {
+      "q": "Do I need to pay for AI?",
+      "a": "BYOK. Use your Anthropic/OpenAI/Google key or run Ollama locally for free."
+    },
+    {
+      "q": "Is there a paid version?",
+      "a": "No. Everything is free. If it helps, consider GitHub Sponsors."
+    },
+    {
+      "q": "How do I contribute?",
+      "a": "Repo has good-first-issue labels. Read CONTRIBUTING.md and open a PR."
+    },
+    {
+      "q": "Roadmap?",
+      "a": "Public on GitHub Projects. Vote on issues you want shipped first."
+    }
+  ]
+}

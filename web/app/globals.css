@@ -307,3 +307,185 @@
   }
   .ds-galaxy-star { opacity: 0.6; }
 }
+
+@keyframes ds-smoke-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.92; }
+}
+
+.ds-smoke-breathe {
+  animation: ds-smoke-breathe 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-smoke-breathe {
+    animation: none;
+  }
+}
+
+/* ============================================
+   CADENCE-STYLE HERO DECORATIONS
+   Adapted from cadence-landing template, violet palette
+   ============================================ */
+
+/* Ambient glow orbs */
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 1;
+  animation: hero-orb-drift 12s ease-in-out infinite alternate;
+}
+.hero-orb-1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, hsl(258 90% 66% / 0.16), transparent 70%);
+  top: 15%; left: 20%;
+}
+.hero-orb-2 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, hsl(258 95% 75% / 0.13), transparent 70%);
+  bottom: 10%; right: 15%;
+  animation-delay: -4s;
+  animation-duration: 15s;
+}
+.hero-orb-3 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, hsl(258 85% 60% / 0.15), transparent 70%);
+  top: 50%; left: 55%;
+  animation-delay: -8s;
+  animation-duration: 18s;
+}
+@keyframes hero-orb-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.05); }
+  66%  { transform: translate(-20px, 15px) scale(0.97); }
+  100% { transform: translate(15px, -10px) scale(1.02); }
+}
+
+/* Shooting stars */
+.hero-stars { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+.hero-star {
+  position: absolute;
+  width: 80px; height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(258 95% 75% / 0.7));
+  border-radius: 1px;
+  opacity: 0;
+  transform: rotate(45deg);
+  animation: hero-star-shoot linear infinite;
+}
+@keyframes hero-star-shoot {
+  0%   { translate: 0 0; opacity: 0; }
+  5%   { opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { translate: 420px 420px; opacity: 0; }
+}
+.hero-star-1 { top:  8%; left:  5%; animation-duration: 3.5s; animation-delay: 0s;   width: 90px; }
+.hero-star-2 { top: 20%; right:25%; animation-duration: 4.2s; animation-delay: 1.2s; width: 60px; }
+.hero-star-3 { top: 45%; left: 10%; animation-duration: 3.8s; animation-delay: 2.8s; width: 70px; }
+.hero-star-4 { top:  5%; left: 40%; animation-duration: 4.5s; animation-delay: 0.7s; width: 50px; }
+.hero-star-5 { top: 30%; right:15%; animation-duration: 3.2s; animation-delay: 2s;   width: 85px; }
+.hero-star-6 { top: 60%; left: 25%; animation-duration: 5s;   animation-delay: 3.5s; width: 55px; }
+
+/* Orbit rings centered on hero */
+.hero-orbits {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.hero-orbit {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid hsl(258 90% 66% / 0.08);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.hero-orbit-1 { width: 400px; height: 400px; }
+.hero-orbit-2 {
+  width: 650px; height: 650px;
+  border-style: dashed;
+  border-color: hsl(258 90% 66% / 0.05);
+}
+.hero-orbit-3 { width: 900px; height: 900px; }
+.hero-orbit-dot {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: hsl(258 90% 66%);
+  box-shadow: 0 0 10px hsl(258 90% 66% / 0.7);
+}
+.hero-orbit-1 .hero-orbit-dot {
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+  animation: hero-orbit-spin-1 12s linear infinite;
+  transform-origin: 50% calc(200px + 3px);
+}
+.hero-orbit-2 .hero-orbit-dot {
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+  animation: hero-orbit-spin-2 20s linear infinite;
+  transform-origin: 50% calc(325px + 3px);
+  width: 4px; height: 4px;
+  opacity: 0.6;
+}
+.hero-orbit-3 .hero-orbit-dot {
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+  animation: hero-orbit-spin-3 30s linear infinite;
+  transform-origin: 50% calc(450px + 3px);
+  width: 3px; height: 3px;
+  opacity: 0.4;
+}
+@keyframes hero-orbit-spin-1 { to { transform: translateX(-50%) rotate(360deg); } }
+@keyframes hero-orbit-spin-2 { to { transform: translateX(-50%) rotate(-360deg); } }
+@keyframes hero-orbit-spin-3 { to { transform: translateX(-50%) rotate(360deg); } }
+
+/* Hero CTAs — same height, primary violet solid, ghost transparent */
+.btn-hero-primary,
+.btn-hero-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1;
+  height: 44px;
+  box-sizing: border-box;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s, border-color 0.25s, box-shadow 0.25s, color 0.25s;
+}
+.btn-hero-primary {
+  background: hsl(258 90% 66%);
+  color: #fff;
+  border: 1px solid hsl(258 90% 72%);
+  box-shadow: 0 8px 28px hsl(258 90% 66% / 0.32);
+}
+.btn-hero-primary:hover {
+  background: hsl(258 90% 72%);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 36px hsl(258 90% 66% / 0.45);
+}
+.btn-hero-ghost {
+  background: hsl(0 0% 100% / 0.02);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(0 0% 100% / 0.12);
+}
+.btn-hero-ghost:hover {
+  background: hsl(258 90% 66% / 0.08);
+  border-color: hsl(258 90% 66% / 0.45);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orb,
+  .hero-star,
+  .hero-orbit-1 .hero-orbit-dot,
+  .hero-orbit-2 .hero-orbit-dot,
+  .hero-orbit-3 .hero-orbit-dot {
+    animation: none !important;
+  }
+}

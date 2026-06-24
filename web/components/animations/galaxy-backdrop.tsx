@@ -23,7 +23,7 @@ function makeStars(count: number, seed: number): Star[] {
   return out
 }
 
-export function GalaxyBackdrop({ density = 'normal' }: { density?: 'sparse' | 'normal' | 'dense' }) {
+export function GalaxyBackdrop({ density = 'normal', orbitsOnly = false }: { density?: 'sparse' | 'normal' | 'dense'; orbitsOnly?: boolean }) {
   const count = density === 'dense' ? 140 : density === 'sparse' ? 40 : 80
   const stars = useMemo(() => makeStars(count, 1337), [count])
 
@@ -40,22 +40,24 @@ export function GalaxyBackdrop({ density = 'normal' }: { density?: 'sparse' | 'n
       <div className="ds-galaxy-orbit ds-galaxy-orbit-3" />
 
       {/* Stars */}
-      <div className="absolute inset-0">
-        {stars.map((star, i) => (
-          <span
-            key={i}
-            className={`ds-galaxy-star ${star.bright ? 'is-bright' : ''}`}
-            style={{
-              left: star.left,
-              top: star.top,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              animationDelay: `${star.delay.toFixed(2)}s`,
-              animationDuration: `${star.duration.toFixed(2)}s`,
-            }}
-          />
-        ))}
-      </div>
+      {!orbitsOnly && (
+        <div className="absolute inset-0">
+          {stars.map((star, i) => (
+            <span
+              key={i}
+              className={`ds-galaxy-star ${star.bright ? 'is-bright' : ''}`}
+              style={{
+                left: star.left,
+                top: star.top,
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                animationDelay: `${star.delay.toFixed(2)}s`,
+                animationDuration: `${star.duration.toFixed(2)}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Sun rays behind center */}
       <div className="ds-galaxy-rays" />

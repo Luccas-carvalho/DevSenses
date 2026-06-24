@@ -1,4 +1,5 @@
 import './styles/globals.css'
+import './lib/prismLanguages'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

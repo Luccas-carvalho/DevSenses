@@ -1,1 +1,8 @@
-{"tagline":"Become a dev. Not an operator.","copyright":"© 2026. All rights reserved. Built by","links":{"github":"GitHub","twitter":"Twitter","discord":"Discord","email":"Contact"}}
+{
+  "tagline": "Open source. MIT. Fork it.",
+  "copyright": "© 2026 DevSenses. MIT License. Built by",
+  "links": {
+    "github": "GitHub",
+    "email": "Contact"
+  }
+}

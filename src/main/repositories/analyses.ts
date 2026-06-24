@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3'
+import type { CodeReview } from '@shared/codeReview'
 
 export interface AnalysisRecord {
   id: number
@@ -16,6 +17,7 @@ export interface AnalysisRecord {
   professorTurbo: boolean
   title: string | null
   createdAt: number
+  review: CodeReview | null
 }
 
 export interface AnalysisListItem {
@@ -55,6 +57,7 @@ export class AnalysesRepository {
   private getStmt: Database.Statement
   private deleteStmt: Database.Statement
   private clearProjectStmt: Database.Statement
+  private updateReviewStmt: Database.Statement
 
   constructor(db: Database.Database) {
     this.insertStmt = db.prepare(`
@@ -99,12 +102,13 @@ export class AnalysesRepository {
         files_count AS filesCount, additions, deletions,
         diff, analysis, provider_id AS providerId, seniority,
         professor_turbo AS professorTurbo,
-        title, created_at AS createdAt
+        title, created_at AS createdAt, review
       FROM analyses
       WHERE id = ?
     `)
     this.deleteStmt = db.prepare('DELETE FROM analyses WHERE id = ?')
     this.clearProjectStmt = db.prepare('DELETE FROM analyses WHERE project_path = ?')
+    this.updateReviewStmt = db.prepare('UPDATE analyses SET review = ? WHERE id = ?')
   }
 
   insert(input: AnalysisInsert): number {
@@ -129,9 +133,7 @@ export class AnalysesRepository {
 
   list(projectPath: string, branch?: string): AnalysisListItem[] {
     return (
-      branch
-        ? this.listBranchStmt.all(projectPath, branch)
-        : this.listProjectStmt.all(projectPath)
+      branch ? this.listBranchStmt.all(projectPath, branch) : this.listProjectStmt.all(projectPath)
     ) as AnalysisListItem[]
   }
 
@@ -153,8 +155,13 @@ export class AnalysesRepository {
       seniority: row.seniority as string,
       professorTurbo: Boolean(row.professorTurbo),
       title: (row.title as string | null) ?? null,
-      createdAt: row.createdAt as number
+      createdAt: row.createdAt as number,
+      review: parseReview(row.review)
     }
+  }
+
+  updateReview(id: number, review: CodeReview): void {
+    this.updateReviewStmt.run(JSON.stringify(review), id)
   }
 
   delete(id: number): void {
@@ -163,5 +170,14 @@ export class AnalysesRepository {
 
   clearProject(projectPath: string): void {
     this.clearProjectStmt.run(projectPath)
+  }
+}
+
+function parseReview(raw: unknown): CodeReview | null {
+  if (typeof raw !== 'string' || !raw) return null
+  try {
+    return JSON.parse(raw) as CodeReview
+  } catch {
+    return null
   }
 }

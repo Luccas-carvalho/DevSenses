@@ -1,10 +1,20 @@
 import { getTranslations } from 'next-intl/server'
+import type { ReactNode } from 'react'
 import { FadeIn } from '@/components/animations/fade-in'
 import { SectionLabel } from '@/components/section-label'
 import { FeaturePillar } from './feature-pillar'
+import { AdaptiveDemo } from '@/components/demos/adaptive-demo'
+import { PowerDemo } from '@/components/demos/power-demo'
+import { FoundationDemo } from '@/components/demos/foundation-demo'
 
 type Item = { icon: string; title: string; description: string }
 type Pillar = { id: string; label: string; title: string; description: string; items: Item[] }
+
+const DEMOS: Record<string, { node: ReactNode; aria: string }> = {
+  adaptive: { node: <AdaptiveDemo />, aria: 'Demo: slider de profundidade rotacionando 5 níveis' },
+  power: { node: <PowerDemo />, aria: 'Demo: atalho cmd-K com seleção e tooltip' },
+  foundation: { node: <FoundationDemo />, aria: 'Demo: providers rotacionando com badge 100% local' },
+}
 
 export async function Features() {
   const t = await getTranslations('features')
@@ -16,18 +26,32 @@ export async function Features() {
 
       <div className="relative max-w-6xl mx-auto">
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-20">
-          <FadeIn><SectionLabel number="04" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
+          <FadeIn>
+            <SectionLabel number="04" className="mb-5">
+              {t('subtitle')}
+            </SectionLabel>
+          </FadeIn>
           <FadeIn delay={0.1}>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.035em] text-balance bg-gradient-to-br from-foreground to-foreground/55 bg-clip-text text-transparent pb-1">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-[-0.05em] text-balance bg-gradient-to-br from-foreground to-foreground/55 bg-clip-text text-transparent pb-1">
               {t('title')}
             </h2>
           </FadeIn>
         </div>
 
         <div className="flex flex-col gap-24">
-          {pillars.map((pillar, i) => (
-            <FeaturePillar key={pillar.id} pillar={pillar} flipped={i % 2 === 1} index={i} />
-          ))}
+          {pillars.map((pillar, i) => {
+            const demo = DEMOS[pillar.id] ?? DEMOS.adaptive
+            return (
+              <FeaturePillar
+                key={pillar.id}
+                pillar={pillar}
+                flipped={i % 2 === 1}
+                index={i}
+                demo={demo.node}
+                demoAriaLabel={demo.aria}
+              />
+            )
+          })}
         </div>
       </div>
     </section>

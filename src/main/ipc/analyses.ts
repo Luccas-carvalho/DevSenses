@@ -22,6 +22,13 @@ export function registerAnalysesHandlers(): void {
     return getRepo().get(payload.id)
   })
 
+  ipcMain.handle(
+    'analyses:updateReview',
+    (_, payload: IpcContract['analyses:updateReview']['request']) => {
+      getRepo().updateReview(payload.id, payload.review)
+    }
+  )
+
   ipcMain.handle('analyses:delete', (_, payload: IpcContract['analyses:delete']['request']) => {
     getRepo().delete(payload.id)
   })

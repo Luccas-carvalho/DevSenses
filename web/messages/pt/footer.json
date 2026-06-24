@@ -1,1 +1,8 @@
-{"tagline":"Vire dev. Não operador.","copyright":"© 2026. Todos os direitos reservados. Desenvolvido por","links":{"github":"GitHub","twitter":"Twitter","discord":"Discord","email":"Contato"}}
+{
+  "tagline": "Open source. MIT. Forka se quiser.",
+  "copyright": "© 2026 DevSenses. MIT License. Desenvolvido por",
+  "links": {
+    "github": "GitHub",
+    "email": "Contato"
+  }
+}

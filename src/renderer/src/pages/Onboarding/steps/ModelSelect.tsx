@@ -2,21 +2,25 @@ import { useEffect } from 'react'
 import { Shell } from '../Shell'
 import { useOnboarding } from '@/stores/onboarding'
 import { PROVIDER_META } from '@shared/providers'
-import { PROVIDER_MODELS, DEFAULT_MODEL } from '@/lib/providerModels'
+import { DEFAULT_MODEL } from '@/lib/providerModels'
+import { useProviderModels } from '@/stores/providerModels'
 
 export default function ModelSelect() {
   const draft = useOnboarding((s) => s.draft)
   const setDraft = useOnboarding((s) => s.setDraft)
   const providerId = draft.provider_default ?? 'claude'
-  const models = PROVIDER_MODELS[providerId] ?? []
+  const allModels = useProviderModels((s) => s.models)
+  const models = allModels[providerId] ?? []
   const selected = draft.provider_model ?? ''
 
-  // Auto-select default when provider changes or no model set
+  // Auto-select default quando troca provider, não há modelo, ou a lista "ao
+  // vivo" chega e o modelo atual não existe mais nela.
   useEffect(() => {
     if (!selected || !models.find((m) => m.id === selected)) {
       setDraft('provider_model', DEFAULT_MODEL[providerId] ?? models[0]?.id ?? '')
     }
-  }, [providerId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId, allModels])
 
   const providerLabel = PROVIDER_META[providerId]?.label ?? providerId
 

@@ -7,6 +7,7 @@ import { registerQuizzesHandlers } from './quizzes'
 import { registerCheatSheetHandlers } from './cheat-sheet'
 import { registerWhatIfHandlers } from './whatif'
 import { registerBugHuntHandlers } from './bug-hunt'
+import { registerCodeReviewHandlers } from './code-review'
 import { registerTestsHandlers } from './tests'
 import { registerGitHandlers } from './git-ops'
 import { registerRepositoryHandlers } from './repository'
@@ -24,6 +25,7 @@ export function registerIpcHandlers(): void {
   registerCheatSheetHandlers()
   registerWhatIfHandlers()
   registerBugHuntHandlers()
+  registerCodeReviewHandlers()
   registerTestsHandlers()
   registerGitHandlers()
   registerRepositoryHandlers()

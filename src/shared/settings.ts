@@ -29,6 +29,7 @@ export interface SettingsValueMap {
   explanation_depth: ExplanationDepth
   explanation_persona: ExplanationPersona
   socratic_mode: boolean
+  code_review_enabled: boolean
   diff_mode: DiffMode
   editor_default: string
   terminal_default: string
@@ -55,6 +56,7 @@ export const SETTINGS_DEFAULTS: SettingsValueMap = {
   explanation_depth: 3,
   explanation_persona: 'default',
   socratic_mode: false,
+  code_review_enabled: false,
   diff_mode: 'all',
   editor_default: '',
   terminal_default: '',

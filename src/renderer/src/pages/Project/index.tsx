@@ -7,6 +7,7 @@ import {
   Home,
   Lightbulb,
   MessageCircleQuestion,
+  ClipboardCheck,
   RefreshCw,
   Loader2,
   AlertTriangle,
@@ -41,12 +42,13 @@ import { useSettings } from '@/hooks/useSettings'
 import { useTheme } from '@/components/ThemeProvider'
 import { buildDiffPrompt } from '@/lib/diffPrompt'
 import { parseDiffFiles, extractFileDiff } from '@/lib/parseDiff'
+import { humanizeCheckoutError } from '@/lib/gitErrors'
+import { useAnalysisStore, EMPTY_ANALYSIS } from '@/stores/analysis'
+import type { CodeReview } from '@shared/codeReview'
 import type { DiffFile } from '@shared/git'
 import type { SeniorityLevel } from '@shared/seniority'
 import type { ThemeMode, DiffMode, ExplanationDepth } from '@shared/settings'
 import type { PersonaId } from '@shared/personas'
-import { useProjectSession } from '@/stores/projectSession'
-import type { AnalysisTab } from './types'
 import DepthSlider from '@/components/analysis/DepthSlider'
 import PersonaPicker from '@/components/analysis/PersonaPicker'
 import Quiz from '@/components/analysis/Quiz'
@@ -54,8 +56,8 @@ import TermLink from '@/components/analysis/TermLink'
 import MasteryDots from '@/components/analysis/MasteryDots'
 import ComplexityBadge from '@/components/analysis/ComplexityBadge'
 import AuthorshipBadge from '@/components/analysis/AuthorshipBadge'
+import ReviewPanel from '@/components/analysis/ReviewPanel'
 import CheatSheetDialog from '@/components/CheatSheetDialog'
-import HighlightedBlock from '@/components/HighlightedBlock'
 import WhatIfDialog from '@/components/WhatIfDialog'
 import BugHuntDialog from '@/components/BugHuntDialog'
 import { detectTerms } from '@/lib/termDetector'
@@ -67,9 +69,9 @@ import {
   PanelResizeHandle,
   type ImperativePanelHandle
 } from 'react-resizable-panels'
-import { PROVIDER_MODELS, PROVIDER_LABELS } from '@/lib/providerModels'
+import { PROVIDER_LABELS } from '@/lib/providerModels'
+import { useProviderModels } from '@/stores/providerModels'
 import { Highlight, type PrismTheme } from 'prism-react-renderer'
-import { VirtualList } from 'react-anchorlist'
 import AskAIInline from '@/components/AskAIInline'
 import { useCodeTheme } from '@/hooks/useCodeTheme'
 import DiffSearchBar from '@/components/git/DiffSearchBar'
@@ -88,13 +90,46 @@ import AccountMenu from '@/components/AccountMenu'
 import type { RepoStatus } from '@shared/git'
 
 const EXT_TO_LANG: Record<string, string> = {
-  ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
-  json: 'json', md: 'markdown', mdx: 'markdown', css: 'css', scss: 'scss', less: 'css',
-  html: 'markup', htm: 'markup', xml: 'markup', svg: 'markup', vue: 'markup',
-  py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java', kt: 'kotlin',
-  php: 'php', cs: 'csharp', cpp: 'cpp', c: 'c', h: 'c', hpp: 'cpp', swift: 'swift',
-  yml: 'yaml', yaml: 'yaml', toml: 'toml', sh: 'bash', bash: 'bash', zsh: 'bash',
-  sql: 'sql', graphql: 'graphql', gql: 'graphql', dockerfile: 'docker'
+  ts: 'typescript',
+  tsx: 'tsx',
+  js: 'javascript',
+  jsx: 'jsx',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  json: 'json',
+  md: 'markdown',
+  mdx: 'markdown',
+  css: 'css',
+  scss: 'scss',
+  less: 'css',
+  html: 'markup',
+  htm: 'markup',
+  xml: 'markup',
+  svg: 'markup',
+  vue: 'markup',
+  py: 'python',
+  rb: 'ruby',
+  go: 'go',
+  rs: 'rust',
+  java: 'java',
+  kt: 'kotlin',
+  php: 'php',
+  cs: 'csharp',
+  cpp: 'cpp',
+  c: 'c',
+  h: 'c',
+  hpp: 'cpp',
+  swift: 'swift',
+  yml: 'yaml',
+  yaml: 'yaml',
+  toml: 'toml',
+  sh: 'bash',
+  bash: 'bash',
+  zsh: 'bash',
+  sql: 'sql',
+  graphql: 'graphql',
+  gql: 'graphql',
+  dockerfile: 'docker'
 }
 
 function detectLanguage(file: string): string {
@@ -103,87 +138,29 @@ function detectLanguage(file: string): string {
   return EXT_TO_LANG[ext] ?? 'tsx'
 }
 
-const PILL_TYPES = new Set([
-  'function',
-  'method',
-  'class-name',
-  'tag',
-  'tag-name',
-  'attr-name',
-  'property',
-  'property-access',
-  'keyword',
-  'control',
-  'operator',
-  'string',
-  'attr-value',
-  'number',
-  'boolean',
-  'variable',
-  'parameter',
-  'comment'
-])
-
-function pillClassFor(types: string[]): string {
-  const matched = types.filter((t) => PILL_TYPES.has(t)).map((t) => `pl-${t}`)
-  return matched.length > 0 ? `pl-token ${matched.join(' ')}` : ''
-}
-
 function HighlightedCode({
   code,
   language,
-  prismTheme,
-  highlightTerm
+  prismTheme
 }: {
   code: string
   language: string
   prismTheme: PrismTheme
-  highlightTerm?: string
 }): React.ReactElement {
-  const term = highlightTerm && highlightTerm.length >= 2 ? highlightTerm.toLowerCase() : null
   return (
     <Highlight code={code} language={language} theme={prismTheme}>
       {({ tokens, getTokenProps }) => (
         <>
-          {tokens[0]?.map((token, i) => {
-            const props = getTokenProps({ token })
-            const pill = pillClassFor(token.types ?? [])
-            const baseClass = pill ? `${props.className ?? ''} ${pill}`.trim() : props.className
-            const text = token.content
-            if (!term || !text.toLowerCase().includes(term)) {
-              return <span key={i} {...props} className={baseClass} />
-            }
-            const lc = text.toLowerCase()
-            const parts: React.ReactNode[] = []
-            let last = 0
-            let idx = lc.indexOf(term)
-            let mk = 0
-            while (idx !== -1) {
-              if (idx > last) parts.push(text.slice(last, idx))
-              parts.push(
-                <mark
-                  key={`m${mk++}`}
-                  className="bg-yellow-400/40 text-inherit rounded-sm px-[1px]"
-                  style={{ color: 'inherit' }}
-                >
-                  {text.slice(idx, idx + term.length)}
-                </mark>
-              )
-              last = idx + term.length
-              idx = lc.indexOf(term, last)
-            }
-            if (last < text.length) parts.push(text.slice(last))
-            return (
-              <span key={i} {...props} className={baseClass}>
-                {parts}
-              </span>
-            )
-          })}
+          {tokens[0]?.map((token, i) => (
+            <span key={i} {...getTokenProps({ token })} />
+          ))}
         </>
       )}
     </Highlight>
   )
 }
+
+type AnalysisState = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
 type ParsedSection =
   | { kind: 'fileHeader'; path: string; status?: 'new' | 'deleted' | 'renamed' }
@@ -244,7 +221,12 @@ function extractFields(body: string): {
   after?: string
   concepts?: { code?: string; text: string }[]
 } {
-  const result: { why?: string; before?: string; after?: string; concepts?: { code?: string; text: string }[] } = {}
+  const result: {
+    why?: string
+    before?: string
+    after?: string
+    concepts?: { code?: string; text: string }[]
+  } = {}
 
   const beforeMatch = body.match(/\*\*Antes:\*\*\s*\n```[\w-]*\n([\s\S]*?)\n```/)
   if (beforeMatch) result.before = beforeMatch[1]
@@ -394,7 +376,10 @@ function renderInline(text: string): React.ReactNode {
   parts.forEach((part, i) => {
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
       out.push(
-        <code key={`c-${i}`} className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80">
+        <code
+          key={`c-${i}`}
+          className="bg-muted px-1 rounded text-[11px] font-mono text-primary/80"
+        >
           {part.slice(1, -1)}
         </code>
       )
@@ -422,28 +407,23 @@ export default function Project() {
   const { value: seniority, loading: seniorityLoading } = useSettings('seniority')
   const { value: providerDefault, loading: providerLoading } = useSettings('provider_default')
   const { value: providerModel } = useSettings('provider_model')
+  const providerModels = useProviderModels((s) => s.models)
   const { value: explanationDepthSaved } = useSettings('explanation_depth')
   const { value: explanationPersonaSaved } = useSettings('explanation_persona')
   const { value: socraticModeSaved } = useSettings('socratic_mode')
+  const { value: codeReviewSaved, setValue: setCodeReviewSaved } =
+    useSettings('code_review_enabled')
   const { value: diffModeSaved } = useSettings('diff_mode')
 
   const settingsReady = !seniorityLoading && !providerLoading && !!seniority && !!providerDefault
-
-  // Reset session-scoped state if the workspace changed since last mount.
-  // Done synchronously so the first render sees the right values.
-  if (useProjectSession.getState().path !== path) {
-    useProjectSession.getState().ensureWorkspace(path)
-  }
 
   const [branch, setBranch] = useState('')
   const [branches, setBranches] = useState<string[]>([])
   const [checkingOut, setCheckingOut] = useState(false)
   const [files, setFiles] = useState<DiffFile[]>([])
-  const selectedFile = useProjectSession((s) => s.selectedFile)
-  const setSelectedFile = useProjectSession((s) => s.setSelectedFile)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [diff, setDiff] = useState('')
-  const fullDiff = useProjectSession((s) => s.fullDiff)
-  const setFullDiff = useProjectSession((s) => s.setFullDiff)
+  const [fullDiff, setFullDiff] = useState('')
   const [diffLoading, setDiffLoading] = useState(true)
   const [diffSwitching, setDiffSwitching] = useState(false)
   const [diffMode, setDiffMode] = useState<DiffMode>('all')
@@ -453,90 +433,70 @@ export default function Project() {
     if (diffModeSaved) setDiffMode(diffModeSaved as DiffMode)
   }, [diffModeSaved])
 
-  // Coerce transient analysis states on mount — streaming/loading/error can't resume after route change.
-  useEffect(() => {
-    const live = useProjectSession.getState().analysisState
-    if (live === 'streaming' || live === 'loading' || live === 'error') {
-      useProjectSession.getState().setAnalysisState(
-        useProjectSession.getState().analysisText ? 'done' : 'idle'
-      )
-    }
-    // Restore scroll position after paint (analysisText hydrated from store at this point).
-    const saved = useProjectSession.getState().analysisScrollTop
-    if (saved > 0) {
-      requestAnimationFrame(() => {
-        if (analysisRef.current) analysisRef.current.scrollTop = saved
-      })
-    }
-    // Abort any in-flight stream when leaving the project page (route change / workspace switch).
-    return () => {
-      const sid = streamIdRef.current
-      if (sid) {
-        void window.api.invoke('providers:abort', { streamId: sid })
-        streamIdRef.current = null
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const analysisState = useProjectSession((s) => s.analysisState)
-  const setAnalysisState = useProjectSession((s) => s.setAnalysisState)
-  const analysisText = useProjectSession((s) => s.analysisText)
-  const setAnalysisText = useProjectSession((s) => s.setAnalysisText)
+  // Estado da Explicação IA vive na store global (sobrevive à navegação).
+  // Aliases abaixo mantêm a mesma API dos antigos useState/setters.
+  const analysisEntry = useAnalysisStore((s) => s.byPath[path] ?? EMPTY_ANALYSIS)
+  const patchAnalysis = useAnalysisStore((s) => s.patch)
+  const analysisState = analysisEntry.state
+  const analysisText = analysisEntry.text
+  const setAnalysisState = useCallback(
+    (state: AnalysisState) => patchAnalysis(path, { state }),
+    [patchAnalysis, path]
+  )
+  const setAnalysisText = useCallback(
+    (text: string) => patchAnalysis(path, { text }),
+    [patchAnalysis, path]
+  )
   const [explanationDepth, setExplanationDepth] = useState<ExplanationDepth>(3)
   const [explanationPersona, setExplanationPersona] = useState<PersonaId>('default')
   const [socraticMode, setSocraticMode] = useState(false)
   const professorTurbo = explanationDepth >= 5
-  const historyOpen = useProjectSession((s) => s.historyOpen)
-  const setHistoryOpen = useProjectSession((s) => s.setHistoryOpen)
-  const viewingAnalysisId = useProjectSession((s) => s.viewingAnalysisId)
-  const setViewingAnalysisId = useProjectSession((s) => s.setViewingAnalysisId)
-  const savedAnalysisId = useProjectSession((s) => s.savedAnalysisId)
-  const setSavedAnalysisId = useProjectSession((s) => s.setSavedAnalysisId)
-  const cheatSheetOpen = useProjectSession((s) => s.cheatSheetOpen)
-  const cheatSheetSelection = useProjectSession((s) => s.cheatSheetSelection)
-  const setCheatSheetStore = useProjectSession((s) => s.setCheatSheet)
-  const cheatSheet = useMemo(
-    () => ({ open: cheatSheetOpen, selection: cheatSheetSelection }),
-    [cheatSheetOpen, cheatSheetSelection]
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [viewingAnalysisId, setViewingAnalysisId] = useState<number | null>(null)
+  const savedAnalysisId = analysisEntry.savedAnalysisId
+  const setSavedAnalysisId = useCallback(
+    (id: number | null) => patchAnalysis(path, { savedAnalysisId: id }),
+    [patchAnalysis, path]
   )
-  const setCheatSheet = setCheatSheetStore
-  const whatIfOpen = useProjectSession((s) => s.whatIfOpen)
-  const setWhatIfOpen = useProjectSession((s) => s.setWhatIfOpen)
-  const bugHuntOpen = useProjectSession((s) => s.bugHuntOpen)
-  const bugHuntSnippet = useProjectSession((s) => s.bugHuntSnippet)
-  const setBugHuntStore = useProjectSession((s) => s.setBugHunt)
-  const bugHunt = useMemo(
-    () => ({ open: bugHuntOpen, snippet: bugHuntSnippet }),
-    [bugHuntOpen, bugHuntSnippet]
-  )
-  const setBugHunt = setBugHuntStore
+
+  // Code review (toggle "Review" no header)
+  const reviewEnabled = Boolean(codeReviewSaved)
+  const review = analysisEntry.review
+  const reviewState = analysisEntry.reviewState
+  const [cheatSheet, setCheatSheet] = useState<{ open: boolean; selection: string }>({
+    open: false,
+    selection: ''
+  })
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
+  const [bugHunt, setBugHunt] = useState<{ open: boolean; snippet: string }>({
+    open: false,
+    snippet: ''
+  })
   const [error, setError] = useState('')
   const [repoStatus, setRepoStatus] = useState<RepoStatus | null>(null)
-  const searchOpen = useProjectSession((s) => s.searchOpen)
-  const setSearchOpen = useProjectSession((s) => s.setSearchOpen)
-  const searchQuery = useProjectSession((s) => s.searchQuery)
-  const setSearchQuery = useProjectSession((s) => s.setSearchQuery)
-  const searchIndex = useProjectSession((s) => s.searchIndex)
-  const setSearchIndex = useProjectSession((s) => s.setSearchIndex)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchIndex, setSearchIndex] = useState(0)
   const [diffMatches, setDiffMatches] = useState<Array<{ lineIdx: number }>>([])
-  const sidebarTab = useProjectSession((s) => s.sidebarTab)
-  const setSidebarTab = useProjectSession((s) => s.setSidebarTab)
-  const viewingCommitHash = useProjectSession((s) => s.viewingCommitHash)
-  const setViewingCommitHash = useProjectSession((s) => s.setViewingCommitHash)
-  const sidebarCollapsed = useProjectSession((s) => s.sidebarCollapsed)
-  const setSidebarCollapsed = useProjectSession((s) => s.setSidebarCollapsed)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
+  const [sidebarTab, setSidebarTab] = useState<'changes' | 'history'>('changes')
+  const [viewingCommitHash, setViewingCommitHash] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(
+    null
+  )
   const [repoMenuOpen, setRepoMenuOpen] = useState(false)
-  const [repoMenuPos, setRepoMenuPos] = useState<{ left: number; top: number; width: number } | null>(null)
+  const [repoMenuPos, setRepoMenuPos] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const repoMenuButtonRef = useRef<HTMLButtonElement>(null)
   const repoMenuPopupRef = useRef<HTMLDivElement>(null)
   const [remoteWebUrl, setRemoteWebUrl] = useState<string | null>(null)
 
   const lineComments = useMemo(() => parseLineComments(analysisText), [analysisText])
 
-  const analysisTab = useProjectSession((s) => s.analysisTab)
-  const setAnalysisTab = useProjectSession((s) => s.setAnalysisTab)
+  const [analysisTab, setAnalysisTab] = useState<AnalysisTab>('summary')
   const conceptsCount = useMemo(() => {
     const seen = new Set<string>()
     for (const c of lineComments) {
@@ -556,13 +516,14 @@ export default function Project() {
   }, [analysisText, lineComments, analysisTab])
 
   // Persist concepts + save analysis to history when analysis finishes
-  const persistedAnalysisRef = useRef<string>('')
   const [historyVersion, setHistoryVersion] = useState(0)
   useEffect(() => {
     if (analysisState !== 'done') return
     if (viewingAnalysisId !== null) return // viewing past analysis — never re-save
-    if (persistedAnalysisRef.current === analysisText) return
-    persistedAnalysisRef.current = analysisText
+    // Guard de duplicidade na store (sobrevive à navegação): se este texto
+    // já foi salvo, não salva de novo ao remontar a tela.
+    if (analysisEntry.persistedText === analysisText) return
+    patchAnalysis(path, { persistedText: analysisText })
 
     const seen = new Set<string>()
     for (const c of lineComments) {
@@ -570,9 +531,7 @@ export default function Project() {
         const name = concept.code ?? concept.text.slice(0, 60)
         if (!name || seen.has(name)) continue
         seen.add(name)
-        window.api
-          .invoke('concepts:upsert', { name, note: concept.text })
-          .catch(() => undefined)
+        window.api.invoke('concepts:upsert', { name, note: concept.text }).catch(() => undefined)
       }
     }
 
@@ -635,10 +594,31 @@ export default function Project() {
     seniority,
     professorTurbo,
     explanationDepth,
-    viewingAnalysisId
+    viewingAnalysisId,
+    analysisEntry.persistedText,
+    patchAnalysis
   ])
 
-  const streamIdRef = useRef<string | null>(null)
+  // Grava o review no histórico assim que a análise tem id salvo.
+  useEffect(() => {
+    if (viewingAnalysisId !== null) return
+    if (reviewState !== 'done' || !review) return
+    if (savedAnalysisId == null) return
+    if (analysisEntry.reviewPersistedFor === savedAnalysisId) return
+    patchAnalysis(path, { reviewPersistedFor: savedAnalysisId })
+    window.api
+      .invoke('analyses:updateReview', { id: savedAnalysisId, review })
+      .catch((err) => console.error('[analyses:updateReview] failed', err))
+  }, [
+    reviewState,
+    review,
+    savedAnalysisId,
+    viewingAnalysisId,
+    analysisEntry.reviewPersistedFor,
+    patchAnalysis,
+    path
+  ])
+
   const analysisRef = useRef<HTMLDivElement>(null)
   const analysisPanelRef = useRef<ImperativePanelHandle>(null)
   const [analysisAnimating, setAnalysisAnimating] = useState(false)
@@ -672,19 +652,48 @@ export default function Project() {
     return () => window.clearTimeout(handle)
   }, [files, path])
 
+  const runReview = useCallback(
+    async (diffText: string) => {
+      if (!diffText) return
+      patchAnalysis(path, { reviewState: 'loading', reviewError: '', review: null })
+      try {
+        const result = await window.api.invoke('ai:codeReview', { diff: diffText })
+        patchAnalysis(path, { review: result, reviewState: 'done' })
+      } catch (e) {
+        patchAnalysis(path, {
+          reviewState: 'error',
+          reviewError: (e as Error).message ?? 'Falha ao gerar review'
+        })
+      }
+    },
+    [patchAnalysis, path]
+  )
+
   const runAnalysis = useCallback(
     async (diffText: string) => {
       if (!providerDefault || !seniority || !diffText) return
       track('ai_analyze_clicked', { provider: providerDefault, seniority, depth: explanationDepth })
-      if (streamIdRef.current) {
-        await window.api.invoke('providers:abort', { streamId: streamIdRef.current })
+      const prevStreamId = useAnalysisStore.getState().byPath[path]?.streamId
+      if (prevStreamId) {
+        await window.api.invoke('providers:abort', { streamId: prevStreamId })
       }
       const streamId = `diff-${Date.now()}`
-      streamIdRef.current = streamId
-      setAnalysisText('')
-      setAnalysisState('loading')
-      setSavedAnalysisId(null)
+      // reseta a entrada da store de uma vez e registra o streamId desta análise
+      patchAnalysis(path, {
+        streamId,
+        text: '',
+        state: 'loading',
+        error: '',
+        savedAnalysisId: null,
+        persistedText: '',
+        review: null,
+        reviewState: 'idle',
+        reviewError: '',
+        reviewPersistedFor: null
+      })
       setError('')
+      // Roda o code review em paralelo (toggle no header)
+      if (reviewEnabled) void runReview(diffText)
       const prompt = buildDiffPrompt(
         diffText,
         seniority as SeniorityLevel,
@@ -698,7 +707,17 @@ export default function Project() {
         streamId
       })
     },
-    [providerDefault, seniority, explanationDepth, explanationPersona, socraticMode]
+    [
+      providerDefault,
+      seniority,
+      explanationDepth,
+      explanationPersona,
+      socraticMode,
+      path,
+      patchAnalysis,
+      reviewEnabled,
+      runReview
+    ]
   )
 
   const diffModeRef = useRef(diffMode)
@@ -820,10 +839,7 @@ export default function Project() {
     }
     const handler = (e: MouseEvent): void => {
       const t = e.target as Node
-      if (
-        repoMenuButtonRef.current?.contains(t) ||
-        repoMenuPopupRef.current?.contains(t)
-      ) return
+      if (repoMenuButtonRef.current?.contains(t) || repoMenuPopupRef.current?.contains(t)) return
       setRepoMenuOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -832,16 +848,13 @@ export default function Project() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && e.shiftKey && !e.altKey) {
-        e.preventDefault()
-        setHistoryOpen(true)
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && !e.shiftKey && !e.altKey) {
         e.preventDefault()
         setSearchOpen(true)
         setSearchIndex(0)
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'b' && !e.shiftKey && !e.altKey) {
         e.preventDefault()
-        setSidebarCollapsed(!useProjectSession.getState().sidebarCollapsed)
+        setSidebarCollapsed((c) => !c)
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.shiftKey && !e.altKey) {
         const sel = window.getSelection()?.toString().trim() ?? ''
         if (sel.length >= 2) {
@@ -897,8 +910,7 @@ export default function Project() {
       (f) => f.staged === 'conflicted' || f.unstaged === 'conflicted'
     )
     const isGithubHost =
-      !!remoteWebUrl &&
-      (remoteWebUrl.includes('github.com') || remoteWebUrl.includes('github.'))
+      !!remoteWebUrl && (remoteWebUrl.includes('github.com') || remoteWebUrl.includes('github.'))
     window.api.invoke('menu:setState', {
       hasProject: true,
       branchName: branch || null,
@@ -933,18 +945,26 @@ export default function Project() {
         window.api.invoke('workspace:pickFolder', undefined).then((r) => {
           if (r) navigate(`/project?path=${encodeURIComponent(r.path)}`)
         })
-      }
-      else if (a === 'find-in-diff') {
+      } else if (a === 'find-in-diff') {
         setSearchOpen(true)
         setSearchIndex(0)
-      }
-      else if (a === 'git-push') window.api.invoke('git:push', { path }).then(() => { fetchProject(); fetchStatus() })
-      else if (a === 'git-pull') window.api.invoke('git:pull', { path }).then(() => { fetchProject(); fetchStatus() })
-      else if (a === 'git-fetch') window.api.invoke('git:fetch', { path, prune: true }).then(() => fetchStatus())
+      } else if (a === 'git-push')
+        window.api.invoke('git:push', { path }).then(() => {
+          fetchProject()
+          fetchStatus()
+        })
+      else if (a === 'git-pull')
+        window.api.invoke('git:pull', { path }).then(() => {
+          fetchProject()
+          fetchStatus()
+        })
+      else if (a === 'git-fetch')
+        window.api.invoke('git:fetch', { path, prune: true }).then(() => fetchStatus())
       else if (a === 'open-in-editor') window.api.invoke('repository:openInEditor', { path })
       else if (a === 'open-in-terminal') window.api.invoke('repository:openInTerminal', { path })
       else if (a === 'open-in-finder') window.api.invoke('repository:openInFinder', { path })
-      else if (a === 'view-on-github' && remoteWebUrl) window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+      else if (a === 'view-on-github' && remoteWebUrl)
+        window.api.invoke('repository:openUrl', { url: remoteWebUrl })
       else if (a === 'create-issue' && remoteWebUrl)
         window.api.invoke('repository:openUrl', { url: `${remoteWebUrl}/issues/new` })
       else if (a === 'view-branch-on-github' && remoteWebUrl && repoStatus?.branch)
@@ -1020,25 +1040,14 @@ export default function Project() {
     if (socraticModeSaved !== undefined) setSocraticMode(Boolean(socraticModeSaved))
   }, [socraticModeSaved])
 
+  // O stream é escutado no App (nível global) e acumulado na store. Aqui só
+  // acompanhamos o texto pra rolar o painel até o fim enquanto streama.
   useEffect(() => {
-    return window.api.on('providers:stream', (event) => {
-      if (event.streamId !== streamIdRef.current) return
-      if (event.error) {
-        setError(event.error)
-        setAnalysisState('error')
-        return
-      }
-      if (event.done) {
-        setAnalysisState('done')
-        return
-      }
-      setAnalysisText((t) => t + event.chunk)
-      setAnalysisState('streaming')
-      if (analysisRef.current) {
-        analysisRef.current.scrollTop = analysisRef.current.scrollHeight
-      }
-    })
-  }, [])
+    if (analysisState !== 'streaming') return
+    if (analysisRef.current) {
+      analysisRef.current.scrollTop = analysisRef.current.scrollHeight
+    }
+  }, [analysisText, analysisState])
 
   async function selectFile(filePath: string): Promise<void> {
     setSelectedFile(filePath)
@@ -1082,7 +1091,7 @@ export default function Project() {
     try {
       const r = await window.api.invoke('workspace:checkoutBranch', { path, branch: target })
       if (!r.ok) {
-        window.alert(`Falha ao trocar de branch:\n\n${r.error ?? 'erro desconhecido'}`)
+        window.alert(humanizeCheckoutError(r.error, target))
         return
       }
       await fetchProject()
@@ -1151,7 +1160,11 @@ export default function Project() {
   }
 
   const canAnalyze =
-    settingsReady && fullDiff && files.length > 0 && analysisState !== 'loading' && analysisState !== 'streaming'
+    settingsReady &&
+    fullDiff &&
+    files.length > 0 &&
+    analysisState !== 'loading' &&
+    analysisState !== 'streaming'
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -1190,52 +1203,54 @@ export default function Project() {
                 <MoreHorizontal className="size-3.5" />
               </button>
             </Tooltip>
-            {repoMenuOpen && repoMenuPos && createPortal(
-              <div
-                ref={repoMenuPopupRef}
-                className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden"
-                style={{ left: repoMenuPos.left, top: repoMenuPos.top, width: repoMenuPos.width }}
-              >
-                <RepoMenuItem
-                  icon={ExternalLink}
-                  label="Abrir no editor"
-                  onClick={() => {
-                    setRepoMenuOpen(false)
-                    window.api.invoke('repository:openInEditor', { path })
-                  }}
-                />
-                <RepoMenuItem
-                  icon={Terminal}
-                  label="Abrir no terminal"
-                  onClick={() => {
-                    setRepoMenuOpen(false)
-                    window.api.invoke('repository:openInTerminal', { path })
-                  }}
-                />
-                <RepoMenuItem
-                  icon={Folder}
-                  label="Mostrar no Finder"
-                  onClick={() => {
-                    setRepoMenuOpen(false)
-                    window.api.invoke('repository:openInFinder', { path })
-                  }}
-                />
-                {remoteWebUrl && (
-                  <>
-                    <div className="border-t border-border/30 my-0.5" />
-                    <RepoMenuItem
-                      icon={ExternalLink}
-                      label="Ver no GitHub"
-                      onClick={() => {
-                        setRepoMenuOpen(false)
-                        window.api.invoke('repository:openUrl', { url: remoteWebUrl })
-                      }}
-                    />
-                  </>
-                )}
-              </div>,
-              document.body
-            )}
+            {repoMenuOpen &&
+              repoMenuPos &&
+              createPortal(
+                <div
+                  ref={repoMenuPopupRef}
+                  className="fixed rounded-md border border-border bg-popover shadow-2xl z-[2147483000] overflow-hidden"
+                  style={{ left: repoMenuPos.left, top: repoMenuPos.top, width: repoMenuPos.width }}
+                >
+                  <RepoMenuItem
+                    icon={ExternalLink}
+                    label="Abrir no editor"
+                    onClick={() => {
+                      setRepoMenuOpen(false)
+                      window.api.invoke('repository:openInEditor', { path })
+                    }}
+                  />
+                  <RepoMenuItem
+                    icon={Terminal}
+                    label="Abrir no terminal"
+                    onClick={() => {
+                      setRepoMenuOpen(false)
+                      window.api.invoke('repository:openInTerminal', { path })
+                    }}
+                  />
+                  <RepoMenuItem
+                    icon={Folder}
+                    label="Mostrar no Finder"
+                    onClick={() => {
+                      setRepoMenuOpen(false)
+                      window.api.invoke('repository:openInFinder', { path })
+                    }}
+                  />
+                  {remoteWebUrl && (
+                    <>
+                      <div className="border-t border-border/30 my-0.5" />
+                      <RepoMenuItem
+                        icon={ExternalLink}
+                        label="Ver no GitHub"
+                        onClick={() => {
+                          setRepoMenuOpen(false)
+                          window.api.invoke('repository:openUrl', { url: remoteWebUrl })
+                        }}
+                      />
+                    </>
+                  )}
+                </div>,
+                document.body
+              )}
           </div>
 
           <Tooltip
@@ -1298,6 +1313,30 @@ export default function Project() {
             </button>
           </Tooltip>
 
+          <Tooltip
+            label={
+              reviewEnabled
+                ? 'Code review ativo · gera nota e issues junto da explicação'
+                : 'Ativar code review · IA dá uma nota e aponta problemas no diff'
+            }
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const next = !reviewEnabled
+                void setCodeReviewSaved(next)
+              }}
+              className={cn(
+                'flex items-center justify-center w-7 h-7 rounded-md border transition-colors',
+                reviewEnabled
+                  ? 'bg-primary/15 border-primary/40 text-primary'
+                  : 'border-border/40 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <ClipboardCheck className="size-3.5" />
+            </button>
+          </Tooltip>
+
           <Tooltip label="What if? · comparar com abordagem alternativa">
             <button
               type="button"
@@ -1347,7 +1386,6 @@ export default function Project() {
           </Tooltip>
         </div>
       </header>
-
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* SIDEBAR — floating, padding around, rounded corners */}
@@ -1435,418 +1473,417 @@ export default function Project() {
             </aside>
           </div>
         ) : (
-        <div className="pl-2 pr-1 py-2 flex-shrink-0">
-        <aside className="w-[252px] h-full flex flex-col overflow-hidden bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm">
-          {/* Sidebar header */}
-          <div className="px-3 pt-2 pb-3 border-b border-border/30">
-            <div className="flex items-center gap-1">
-              <div className="flex-1 min-w-0">
-                <ProjectSwitcher
-                  currentName={repoName}
-                  currentPath={path}
-                  onSwitch={(p) =>
-                    navigate(`/project?path=${encodeURIComponent(p)}`)
-                  }
-                />
-              </div>
-              <Tooltip label="Colapsar sidebar" shortcut="⌘B">
-                <button
-                  type="button"
-                  onClick={() => setSidebarCollapsed(true)}
-                  className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
-                >
-                  <PanelLeftClose className="size-4" />
-                </button>
-              </Tooltip>
-            </div>
-            {branch && (
-              <div className="mt-1.5">
-                <BranchSwitcher
-                  path={path}
-                  current={branch}
-                  onSwitch={async (b) => {
-                    await switchBranch(b)
-                  }}
-                  onCreateRequest={() => {
-                    /* desabilitado — modo somente-leitura */
-                  }}
-                />
-              </div>
-            )}
-            <div className="mt-1.5 flex w-full rounded-md border border-border/60 bg-background/60 p-0.5 gap-0.5 h-7">
-              <button
-                type="button"
-                onClick={() => {
-                  setSidebarTab('changes')
-                  setViewingCommitHash(null)
-                }}
-                className={cn(
-                  'flex-1 text-[11px] rounded-sm transition-colors',
-                  sidebarTab === 'changes'
-                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+          <div className="pl-2 pr-1 py-2 flex-shrink-0">
+            <aside className="w-[252px] h-full flex flex-col overflow-hidden bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-border/30 shadow-sm">
+              {/* Sidebar header */}
+              <div className="px-3 pt-2 pb-3 border-b border-border/30">
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 min-w-0">
+                    <ProjectSwitcher
+                      currentName={repoName}
+                      currentPath={path}
+                      onSwitch={(p) => navigate(`/project?path=${encodeURIComponent(p)}`)}
+                    />
+                  </div>
+                  <Tooltip label="Colapsar sidebar" shortcut="⌘B">
+                    <button
+                      type="button"
+                      onClick={() => setSidebarCollapsed(true)}
+                      className="flex-shrink-0 size-7 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 flex items-center justify-center"
+                    >
+                      <PanelLeftClose className="size-4" />
+                    </button>
+                  </Tooltip>
+                </div>
+                {branch && (
+                  <div className="mt-1.5">
+                    <BranchSwitcher
+                      path={path}
+                      current={branch}
+                      onSwitch={async (b) => {
+                        await switchBranch(b)
+                      }}
+                      onCreateRequest={() => {
+                        /* desabilitado — modo somente-leitura */
+                      }}
+                    />
+                  </div>
                 )}
-              >
-                Changes{files.length > 0 ? ` (${files.length})` : ''}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidebarTab('history')}
-                className={cn(
-                  'flex-1 text-[11px] rounded-sm transition-colors',
-                  sidebarTab === 'history'
-                    ? 'bg-primary/15 text-primary font-semibold shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
-                )}
-              >
-                History
-              </button>
-            </div>
-            {!diffLoading && (
-              <div className="mt-2.5 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-muted-foreground/60">
-                  {files.length === 0
-                    ? 'sem alterações'
-                    : `${files.length} arquivo${files.length !== 1 ? 's' : ''}`}
-                </span>
-                {files.length > 0 && (
-                  <div className="flex items-center gap-2 text-[10px] font-mono">
-                    <span className="text-green-500/80 flex items-center gap-0.5">
-                      <Plus className="size-2" />
-                      {files.reduce((s, f) => s + f.additions, 0)}
+                <div className="mt-1.5 flex w-full rounded-md border border-border/60 bg-background/60 p-0.5 gap-0.5 h-7">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSidebarTab('changes')
+                      setViewingCommitHash(null)
+                    }}
+                    className={cn(
+                      'flex-1 text-[11px] rounded-sm transition-colors',
+                      sidebarTab === 'changes'
+                        ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                    )}
+                  >
+                    Changes{files.length > 0 ? ` (${files.length})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSidebarTab('history')}
+                    className={cn(
+                      'flex-1 text-[11px] rounded-sm transition-colors',
+                      sidebarTab === 'history'
+                        ? 'bg-primary/15 text-primary font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                    )}
+                  >
+                    History
+                  </button>
+                </div>
+                {!diffLoading && (
+                  <div className="mt-2.5 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-muted-foreground/60">
+                      {files.length === 0
+                        ? 'sem alterações'
+                        : `${files.length} arquivo${files.length !== 1 ? 's' : ''}`}
                     </span>
-                    <span className="text-red-400/80 flex items-center gap-0.5">
-                      <Minus className="size-2" />
-                      {files.reduce((s, f) => s + f.deletions, 0)}
-                    </span>
+                    {files.length > 0 && (
+                      <div className="flex items-center gap-2 text-[10px] font-mono">
+                        <span className="text-green-500/80 flex items-center gap-0.5">
+                          <Plus className="size-2" />
+                          {files.reduce((s, f) => s + f.additions, 0)}
+                        </span>
+                        <span className="text-red-400/80 flex items-center gap-0.5">
+                          <Minus className="size-2" />
+                          {files.reduce((s, f) => s + f.deletions, 0)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {sidebarTab === 'history' ? (
-            <HistoryTab
-              path={path}
-              refreshKey={historyVersion}
-              selectedHash={viewingCommitHash}
-              onSelect={(h) => {
-                setViewingCommitHash(h)
-                if (!h) fetchProject()
-              }}
-            />
-          ) : (
-          <div className="flex-1 overflow-y-auto">
-            {diffLoading ? (
-              <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> carregando...
-              </div>
-            ) : files.length === 0 ? (
-              <div className="p-4">
-                <p className="text-xs text-muted-foreground">Salva um arquivo pra começar.</p>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={showAllFiles}
-                  className={cn(
-                    'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
-                    selectedFile === null
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-accent/60 text-muted-foreground'
-                  )}
-                >
-                  <FileCode className="size-3 flex-shrink-0" />
-                  <span className="font-medium">Todos os arquivos</span>
-                </button>
-                {files.map((f) => {
-                  const { name, dir } = splitPath(f.path)
-                  const isSelected = selectedFile === f.path
-                  return (
-                    <button
-                      key={f.path}
-                      onClick={() => selectFile(f.path)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setCtxMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          items: buildFileMenu({ path: f.path, status: f.status })
-                        })
-                      }}
-                      onMouseEnter={() => {
-                        if (getMediaKind(f.path)) {
-                          if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
-                          if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
-                        }
-                      }}
-                      onDoubleClick={() =>
-                        window.api.invoke('repository:openInEditor', { path, file: f.path })
-                      }
-                      title={`${f.path} · duplo-clique edita · botão direito pra opções`}
-                      className={cn(
-                        'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/15 last:border-0',
-                        isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
-                      )}
-                    >
-                      <span
+              {sidebarTab === 'history' ? (
+                <HistoryTab
+                  path={path}
+                  refreshKey={historyVersion}
+                  selectedHash={viewingCommitHash}
+                  onSelect={(h) => {
+                    setViewingCommitHash(h)
+                    if (!h) fetchProject()
+                  }}
+                />
+              ) : (
+                <div className="flex-1 overflow-y-auto">
+                  {diffLoading ? (
+                    <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+                      <Loader2 className="size-3 animate-spin" /> carregando...
+                    </div>
+                  ) : files.length === 0 ? (
+                    <div className="p-4">
+                      <p className="text-xs text-muted-foreground">Salva um arquivo pra começar.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={showAllFiles}
                         className={cn(
-                          'w-3 text-[10px] font-bold flex-shrink-0 text-center',
-                          f.status === 'added'
-                            ? 'text-green-500'
-                            : f.status === 'deleted'
-                              ? 'text-red-500'
-                              : f.status === 'renamed'
-                                ? 'text-blue-500'
-                                : 'text-yellow-500'
+                          'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/40',
+                          selectedFile === null
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-accent/60 text-muted-foreground'
                         )}
                       >
-                        {f.status === 'added'
-                          ? 'A'
-                          : f.status === 'deleted'
-                            ? 'D'
-                            : f.status === 'renamed'
-                              ? 'R'
-                              : 'M'}
-                      </span>
-                      <span className="flex-1 min-w-0 truncate">
-                        {dir && (
-                          <span className="text-muted-foreground/50">{dir}</span>
-                        )}
-                        <span
-                          className={cn(
-                            'font-medium',
-                            isSelected ? 'text-primary' : 'text-foreground/90'
-                          )}
-                        >
-                          {name}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] font-mono flex-shrink-0">
-                        {f.additions > 0 && (
-                          <span className="text-green-500">+{f.additions}</span>
-                        )}
-                        {f.deletions > 0 && (
-                          <span className="text-red-400">−{f.deletions}</span>
-                        )}
-                      </span>
-                    </button>
-                  )
-                })}
-              </>
-            )}
-          </div>
-          )}
+                        <FileCode className="size-3 flex-shrink-0" />
+                        <span className="font-medium">Todos os arquivos</span>
+                      </button>
+                      {files.map((f) => {
+                        const { name, dir } = splitPath(f.path)
+                        const isSelected = selectedFile === f.path
+                        return (
+                          <button
+                            key={f.path}
+                            onClick={() => selectFile(f.path)}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              setCtxMenu({
+                                x: e.clientX,
+                                y: e.clientY,
+                                items: buildFileMenu({ path: f.path, status: f.status })
+                              })
+                            }}
+                            onMouseEnter={() => {
+                              if (getMediaKind(f.path)) {
+                                if (f.status !== 'added') prefetchBlob(path, f.path, 'HEAD')
+                                if (f.status !== 'deleted') prefetchBlob(path, f.path, null)
+                              }
+                            }}
+                            onDoubleClick={() =>
+                              window.api.invoke('repository:openInEditor', { path, file: f.path })
+                            }
+                            title={`${f.path} · duplo-clique edita · botão direito pra opções`}
+                            className={cn(
+                              'w-full text-left px-2.5 h-7 flex items-center gap-2 text-[12px] transition-colors border-b border-border/15 last:border-0',
+                              isSelected ? 'bg-primary/10' : 'hover:bg-accent/50'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'w-3 text-[10px] font-bold flex-shrink-0 text-center',
+                                f.status === 'added'
+                                  ? 'text-green-500'
+                                  : f.status === 'deleted'
+                                    ? 'text-red-500'
+                                    : f.status === 'renamed'
+                                      ? 'text-blue-500'
+                                      : 'text-yellow-500'
+                              )}
+                            >
+                              {f.status === 'added'
+                                ? 'A'
+                                : f.status === 'deleted'
+                                  ? 'D'
+                                  : f.status === 'renamed'
+                                    ? 'R'
+                                    : 'M'}
+                            </span>
+                            <span className="flex-1 min-w-0 truncate">
+                              {dir && <span className="text-muted-foreground/50">{dir}</span>}
+                              <span
+                                className={cn(
+                                  'font-medium',
+                                  isSelected ? 'text-primary' : 'text-foreground/90'
+                                )}
+                              >
+                                {name}
+                              </span>
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-mono flex-shrink-0">
+                              {f.additions > 0 && (
+                                <span className="text-green-500">+{f.additions}</span>
+                              )}
+                              {f.deletions > 0 && (
+                                <span className="text-red-400">−{f.deletions}</span>
+                              )}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
 
-          <ProfileMenu />
-        </aside>
-        </div>
+              <ProfileMenu />
+            </aside>
+          </div>
         )}
 
-        <PanelGroup
-          direction="horizontal"
-          className="flex-1 min-w-0"
-        >
-        <Panel defaultSize={60} minSize={30}>
-        {/* DIFF */}
-        <section className="h-full flex flex-col overflow-hidden border-r border-border/40 min-w-0">
-          <div className="h-9 flex items-center px-4 border-b border-border/30 gap-2 flex-shrink-0">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              <FileCode className="size-3 text-muted-foreground/60" />
-              Diff
-            </span>
-            {selectedFile ? (
-              <span className="text-xs font-mono text-muted-foreground/50 truncate" title={selectedFile}>
-                {selectedFile}
-              </span>
-            ) : (
-              files.length > 0 && (
-                <>
-                <span className="text-[11px] text-muted-foreground/60">
-                  {files.length} arquivo{files.length !== 1 ? 's' : ''} alterado{files.length !== 1 ? 's' : ''}
+        <PanelGroup direction="horizontal" className="flex-1 min-w-0">
+          <Panel defaultSize={60} minSize={30}>
+            {/* DIFF */}
+            <section className="h-full flex flex-col overflow-hidden border-r border-border/40 min-w-0">
+              <div className="h-9 flex items-center px-4 border-b border-border/30 gap-2 flex-shrink-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  <FileCode className="size-3 text-muted-foreground/60" />
+                  Diff
                 </span>
-                {fullDiff && <AuthorshipBadge diff={fullDiff} className="ml-1" />}
-                </>
-              )
-            )}
-          </div>
-          <div className="flex-1 overflow-auto min-h-0 relative">
-            {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) ? (
-              <ConflictResolver
-                path={path}
-                status={repoStatus}
-                onChanged={() => {
-                  fetchProject()
-                  fetchStatus()
-                }}
-              />
-            ) : (
-            <>
-            {searchOpen && (
-              <div className="sticky top-2 z-30 flex justify-end pr-3 pointer-events-none">
-                <div className="pointer-events-auto">
-                  <DiffSearchBar
-                    query={searchQuery}
-                    onQueryChange={(q) => {
-                      setSearchQuery(q)
-                      setSearchIndex(0)
-                    }}
-                    matchCount={diffMatches.length}
-                    currentIndex={searchIndex}
-                    onPrev={() => {
-                      if (diffMatches.length === 0) return setSearchIndex(0)
-                      setSearchIndex(
-                        (searchIndex - 1 + diffMatches.length) % diffMatches.length
-                      )
-                    }}
-                    onNext={() => {
-                      if (diffMatches.length === 0) return setSearchIndex(0)
-                      setSearchIndex((searchIndex + 1) % diffMatches.length)
-                    }}
-                    onClose={() => {
-                      setSearchOpen(false)
-                      setSearchQuery('')
+                {selectedFile ? (
+                  <span
+                    className="text-xs font-mono text-muted-foreground/50 truncate"
+                    title={selectedFile}
+                  >
+                    {selectedFile}
+                  </span>
+                ) : (
+                  files.length > 0 && (
+                    <>
+                      <span className="text-[11px] text-muted-foreground/60">
+                        {files.length} arquivo{files.length !== 1 ? 's' : ''} alterado
+                        {files.length !== 1 ? 's' : ''}
+                      </span>
+                      {fullDiff && <AuthorshipBadge diff={fullDiff} className="ml-1" />}
+                    </>
+                  )
+                )}
+              </div>
+              <div className="flex-1 overflow-auto min-h-0 relative">
+                {repoStatus && (repoStatus.isMerging || repoStatus.isRebasing) ? (
+                  <ConflictResolver
+                    path={path}
+                    status={repoStatus}
+                    onChanged={() => {
+                      fetchProject()
+                      fetchStatus()
                     }}
                   />
-                </div>
-              </div>
-            )}
-            {diffLoading ? (
-              <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> carregando diff...
-              </div>
-            ) : selectedFile && getMediaKind(selectedFile) ? (
-              <>
-                <MediaPreview
-                  path={path}
-                  file={selectedFile}
-                  status={files.find((f) => f.path === selectedFile)?.status ?? 'modified'}
-                  kind={getMediaKind(selectedFile)!}
-                />
-                {diffSwitching && (
-                  <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
-                    <Loader2 className="size-3 animate-spin" />
-                    carregando
-                  </div>
+                ) : (
+                  <>
+                    {searchOpen && (
+                      <DiffSearchBar
+                        query={searchQuery}
+                        onQueryChange={(q) => {
+                          setSearchQuery(q)
+                          setSearchIndex(0)
+                        }}
+                        matchCount={diffMatches.length}
+                        currentIndex={searchIndex}
+                        onPrev={() =>
+                          setSearchIndex((i) =>
+                            diffMatches.length === 0
+                              ? 0
+                              : (i - 1 + diffMatches.length) % diffMatches.length
+                          )
+                        }
+                        onNext={() =>
+                          setSearchIndex((i) =>
+                            diffMatches.length === 0 ? 0 : (i + 1) % diffMatches.length
+                          )
+                        }
+                        onClose={() => {
+                          setSearchOpen(false)
+                          setSearchQuery('')
+                        }}
+                      />
+                    )}
+                    {diffLoading ? (
+                      <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
+                        <Loader2 className="size-3 animate-spin" /> carregando diff...
+                      </div>
+                    ) : selectedFile && getMediaKind(selectedFile) ? (
+                      <>
+                        <MediaPreview
+                          path={path}
+                          file={selectedFile}
+                          status={files.find((f) => f.path === selectedFile)?.status ?? 'modified'}
+                          kind={getMediaKind(selectedFile)!}
+                        />
+                        {diffSwitching && (
+                          <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
+                            <Loader2 className="size-3 animate-spin" />
+                            carregando
+                          </div>
+                        )}
+                      </>
+                    ) : diff ? (
+                      <>
+                        <DiffViewer
+                          diff={diff}
+                          hideFileHeaders={selectedFile !== null}
+                          comments={lineComments}
+                          searchQuery={searchOpen ? searchQuery : ''}
+                          searchCurrentIndex={searchIndex}
+                          onSearchMatchesChange={setDiffMatches}
+                        />
+                        {diffSwitching && (
+                          <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
+                            <Loader2 className="size-3 animate-spin" />
+                            carregando
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <NoChangesEmptyState path={path} />
+                    )}
+                  </>
                 )}
-              </>
-            ) : diff ? (
-              <>
-                <DiffViewer
-                  diff={diff}
-                  hideFileHeaders={selectedFile !== null}
-                  comments={lineComments}
-                  searchQuery={searchOpen ? searchQuery : ''}
-                  searchCurrentIndex={searchIndex}
-                  onSearchMatchesChange={setDiffMatches}
-                />
-                {diffSwitching && (
-                  <div className="absolute top-2 right-3 flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/90 backdrop-blur px-2 py-1 rounded-md border border-border/40">
-                    <Loader2 className="size-3 animate-spin" />
-                    carregando
-                  </div>
-                )}
-              </>
-            ) : (
-              <NoChangesEmptyState path={path} />
-            )}
-            </>
-            )}
-          </div>
-        </section>
-        </Panel>
-
-        <PanelResizeHandle className="w-1 bg-border/30 hover:bg-primary/60 active:bg-primary transition-colors" />
-
-        <Panel
-          ref={analysisPanelRef}
-          defaultSize={40}
-          minSize={20}
-          collapsible
-          collapsedSize={0}
-          id="analysis-panel"
-          className={analysisAnimating ? 'ds-panel-animating' : undefined}
-        >
-        {/* ANALYSIS */}
-        <section className="h-full flex flex-col overflow-hidden min-w-0">
-          <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              <Sparkles className="size-3 text-primary/70" />
-              Explicação IA
-            </span>
-            {providerDefault && (
-              <span
-                className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/70 bg-muted/50 border border-border/40 rounded-md px-1.5 py-0.5"
-                title={`${providerDefault} · ${providerModel || ''}`}
-              >
-                <span className="w-1 h-1 rounded-full bg-primary/70" />
-                {(() => {
-                  const id = providerDefault as string
-                  const list = PROVIDER_MODELS[id]
-                  const modelLabel = list?.find((m) => m.id === providerModel)?.label ?? providerModel
-                  const providerLabel = PROVIDER_LABELS[id] ?? id
-                  return modelLabel ? `${providerLabel} · ${modelLabel}` : providerLabel
-                })()}
-              </span>
-            )}
-            {analysisState === 'streaming' && (
-              <div className="flex items-center gap-1.5 text-xs text-primary">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                escrevendo...
               </div>
-            )}
-            {analysisState === 'done' && (
-              <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">
-                <CheckCircle2 className="size-3" />
-                pronto
-              </span>
-            )}
-          </div>
+            </section>
+          </Panel>
 
-          {analysisText && analysisState !== 'loading' && (
-            <AnalysisTabsBar
-              tab={analysisTab}
-              setTab={setAnalysisTab}
-              detailsCount={lineComments.length}
-              conceptsCount={conceptsCount}
-              showQuiz={analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null}
-            />
-          )}
+          <PanelResizeHandle className="w-1 bg-border/30 hover:bg-primary/60 active:bg-primary transition-colors" />
 
-          <div
-            ref={analysisRef}
-            onScroll={(e) => {
-              const top = (e.target as HTMLDivElement).scrollTop
-              useProjectSession.getState().setAnalysisScrollTop(top)
-            }}
-            className="flex-1 overflow-auto px-4 py-4 min-h-0"
+          <Panel
+            ref={analysisPanelRef}
+            defaultSize={40}
+            minSize={20}
+            collapsible
+            collapsedSize={0}
+            id="analysis-panel"
+            className={analysisAnimating ? 'ds-panel-animating' : undefined}
           >
-            {error ? (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
-                <AlertTriangle className="size-3.5 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+            {/* ANALYSIS */}
+            <section className="h-full flex flex-col overflow-hidden min-w-0">
+              <div className="h-9 flex items-center px-4 border-b border-border/30 gap-3 flex-shrink-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  <Sparkles className="size-3 text-primary/70" />
+                  Explicação IA
+                </span>
+                {providerDefault && (
+                  <span
+                    className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/70 bg-muted/50 border border-border/40 rounded-md px-1.5 py-0.5"
+                    title={`${providerDefault} · ${providerModel || ''}`}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-primary/70" />
+                    {(() => {
+                      const id = providerDefault as string
+                      const list = providerModels[id]
+                      const modelLabel =
+                        list?.find((m) => m.id === providerModel)?.label ?? providerModel
+                      const providerLabel = PROVIDER_LABELS[id] ?? id
+                      return modelLabel ? `${providerLabel} · ${modelLabel}` : providerLabel
+                    })()}
+                  </span>
+                )}
+                {analysisState === 'streaming' && (
+                  <div className="flex items-center gap-1.5 text-xs text-primary">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    escrevendo...
+                  </div>
+                )}
+                {analysisState === 'done' && (
+                  <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">
+                    <CheckCircle2 className="size-3" />
+                    pronto
+                  </span>
+                )}
               </div>
-            ) : analysisState === 'loading' ? (
-              <AnalysisSkeleton />
-            ) : analysisText ? (
-              <AnalysisTabs
-                tab={analysisTab}
-                text={analysisText}
-                lineComments={lineComments}
-                quizAnalysisId={
-                  analysisState === 'done' ? (viewingAnalysisId ?? savedAnalysisId) : null
-                }
-              />
-            ) : (
-              <EmptyAnalysis
-                ready={!!settingsReady}
-                hasDiff={files.length > 0}
-                onAnalyze={startAnalysis}
-              />
-            )}
-          </div>
-        </section>
-        </Panel>
+
+              {analysisText && analysisState !== 'loading' && (
+                <AnalysisTabsBar
+                  tab={analysisTab}
+                  setTab={setAnalysisTab}
+                  detailsCount={lineComments.length}
+                  conceptsCount={conceptsCount}
+                  showQuiz={
+                    analysisState === 'done' && (viewingAnalysisId ?? savedAnalysisId) != null
+                  }
+                  showReview={
+                    review != null ||
+                    (reviewEnabled && (reviewState === 'loading' || reviewState === 'error'))
+                  }
+                />
+              )}
+
+              <div ref={analysisRef} className="flex-1 overflow-auto px-4 py-4 min-h-0">
+                {error || analysisEntry.error ? (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+                    <AlertTriangle className="size-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{error || analysisEntry.error}</span>
+                  </div>
+                ) : analysisState === 'loading' ? (
+                  <AnalysisSkeleton />
+                ) : analysisText ? (
+                  <AnalysisTabs
+                    tab={analysisTab}
+                    text={analysisText}
+                    lineComments={lineComments}
+                    quizAnalysisId={
+                      analysisState === 'done' ? (viewingAnalysisId ?? savedAnalysisId) : null
+                    }
+                    review={review}
+                    reviewState={reviewState}
+                    reviewError={analysisEntry.reviewError}
+                    onRetryReview={() => runReview(fullDiff)}
+                  />
+                ) : (
+                  <EmptyAnalysis
+                    ready={!!settingsReady}
+                    hasDiff={files.length > 0}
+                    onAnalyze={startAnalysis}
+                  />
+                )}
+              </div>
+            </section>
+          </Panel>
         </PanelGroup>
       </div>
 
@@ -1856,11 +1893,7 @@ export default function Project() {
         selection={cheatSheet.selection}
       />
 
-      <WhatIfDialog
-        open={whatIfOpen}
-        onClose={() => setWhatIfOpen(false)}
-        diff={fullDiff}
-      />
+      <WhatIfDialog open={whatIfOpen} onClose={() => setWhatIfOpen(false)} diff={fullDiff} />
 
       <BugHuntDialog
         open={bugHunt.open}
@@ -1876,8 +1909,15 @@ export default function Project() {
         version={historyVersion}
         viewingId={viewingAnalysisId}
         onView={(record) => {
-          // Mark as already-persisted so save effect skips even if it fires
-          persistedAnalysisRef.current = record.analysis
+          // Mark as already-persisted so save effect skips even if it fires.
+          // Carrega também o review salvo (se houver) pra aba Review reaparecer.
+          patchAnalysis(path, {
+            persistedText: record.analysis,
+            review: record.review ?? null,
+            reviewState: record.review ? 'done' : 'idle',
+            reviewError: '',
+            reviewPersistedFor: record.review ? record.id : null
+          })
           setViewingAnalysisId(record.id)
           setHistoryOpen(false)
           setAnalysisText(record.analysis)
@@ -1890,7 +1930,13 @@ export default function Project() {
           expandAnalysisPanel()
         }}
         onExitView={() => {
-          persistedAnalysisRef.current = ''
+          patchAnalysis(path, {
+            persistedText: '',
+            review: null,
+            reviewState: 'idle',
+            reviewError: '',
+            reviewPersistedFor: null
+          })
           setViewingAnalysisId(null)
           fetchProject()
           setAnalysisText('')
@@ -2053,9 +2099,7 @@ function ProjectSwitcher({
   const others = recents.filter((r) => r.path !== currentPath)
   const q = filter.toLowerCase()
   const filtered = q
-    ? others.filter(
-        (r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q)
-      )
+    ? others.filter((r) => r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q))
     : others
   const favorites = filtered.filter((r) => r.favorite)
   const nonFavorites = filtered.filter((r) => !r.favorite)
@@ -2215,7 +2259,10 @@ function ProfileMenu() {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <div ref={ref} className="m-2 mt-1 rounded-xl border border-border/60 bg-background/70 shadow-sm p-1.5 relative">
+    <div
+      ref={ref}
+      className="m-2 mt-1 rounded-xl border border-border/60 bg-background/70 shadow-sm p-1.5 relative"
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
@@ -2224,16 +2271,12 @@ function ProfileMenu() {
         )}
       >
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center text-sm font-bold text-primary-foreground flex-shrink-0 overflow-hidden">
-          {avatar ? (
-            <img src={avatar} alt="" className="w-full h-full object-cover" />
-          ) : (
-            initial
-          )}
+          {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : initial}
         </div>
         <div className="flex-1 min-w-0 text-left">
           <div className="text-xs font-medium truncate">{userName || 'Dev'}</div>
           <div className="text-[10px] text-muted-foreground truncate">
-            {seniority ? SENIORITY_LABELS[seniority as string] ?? seniority : 'developer'}
+            {seniority ? (SENIORITY_LABELS[seniority as string] ?? seniority) : 'developer'}
           </div>
         </div>
         <ChevronUp
@@ -2301,9 +2344,9 @@ function EmptyAnalysis({
         </div>
         <h3 className="text-sm font-semibold text-foreground mb-2">Sem alterações pra explicar</h3>
         <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
-          Quando tu (ou tua IA) editar arquivos no projeto, eles vão aparecer aqui na sidebar.
-          Aí é só clicar em <span className="font-semibold text-foreground">Explicar</span> que
-          a IA quebra cada mudança pra ti.
+          Quando tu (ou tua IA) editar arquivos no projeto, eles vão aparecer aqui na sidebar. Aí é
+          só clicar em <span className="font-semibold text-foreground">Explicar</span> que a IA
+          quebra cada mudança pra ti.
         </p>
         <div className="flex flex-col gap-2 w-full text-[11px] text-muted-foreground/80">
           <Step n={1} label="Edita arquivos no editor (ou deixa Cursor/Copilot fazer)" />
@@ -2338,28 +2381,55 @@ function EmptyAnalysis({
         </div>
 
         {/* Orbiting dots */}
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          aria-hidden
+        >
           <span className="block size-1.5 rounded-full bg-primary/80 shadow-[0_0_6px_var(--color-primary)] ds-orbit-small" />
         </span>
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          aria-hidden
+        >
           <span className="block size-1 rounded-full bg-primary/60 shadow-[0_0_4px_var(--color-primary)] ds-orbit-small-rev" />
         </span>
 
         {/* Twinkle stars */}
-        <Sparkles className="absolute -top-1 -right-2 size-3 text-primary/80 ds-twinkle" aria-hidden />
-        <Sparkles className="absolute -bottom-2 -left-1 size-2.5 text-primary/70 ds-twinkle-d-1" aria-hidden />
-        <Sparkles className="absolute top-0 -left-3 size-2 text-primary/60 ds-twinkle-d-2" aria-hidden />
+        <Sparkles
+          className="absolute -top-1 -right-2 size-3 text-primary/80 ds-twinkle"
+          aria-hidden
+        />
+        <Sparkles
+          className="absolute -bottom-2 -left-1 size-2.5 text-primary/70 ds-twinkle-d-1"
+          aria-hidden
+        />
+        <Sparkles
+          className="absolute top-0 -left-3 size-2 text-primary/60 ds-twinkle-d-2"
+          aria-hidden
+        />
 
         {/* Sparkle dust */}
-        <span className="ds-dust-1 absolute top-1 right-0 size-1 rounded-full bg-primary/80" aria-hidden />
-        <span className="ds-dust-2 absolute -top-1 left-3 size-1 rounded-full bg-primary/70" aria-hidden />
-        <span className="ds-dust-3 absolute bottom-0 -left-1 size-1 rounded-full bg-primary/80" aria-hidden />
-        <span className="ds-dust-4 absolute -bottom-1 right-2 size-1 rounded-full bg-primary/60" aria-hidden />
+        <span
+          className="ds-dust-1 absolute top-1 right-0 size-1 rounded-full bg-primary/80"
+          aria-hidden
+        />
+        <span
+          className="ds-dust-2 absolute -top-1 left-3 size-1 rounded-full bg-primary/70"
+          aria-hidden
+        />
+        <span
+          className="ds-dust-3 absolute bottom-0 -left-1 size-1 rounded-full bg-primary/80"
+          aria-hidden
+        />
+        <span
+          className="ds-dust-4 absolute -bottom-1 right-2 size-1 rounded-full bg-primary/60"
+          aria-hidden
+        />
       </div>
       <h3 className="text-sm font-semibold text-foreground mb-2">Pronto pra te ensinar</h3>
       <p className="text-[12px] text-muted-foreground leading-relaxed mb-5">
-        Vou ler o diff inteiro, identificar conceitos novos, marcar trechos com comentários
-        inline e ajustar a profundidade pro teu nível.
+        Vou ler o diff inteiro, identificar conceitos novos, marcar trechos com comentários inline e
+        ajustar a profundidade pro teu nível.
       </p>
       <button
         onClick={onAnalyze}
@@ -2399,10 +2469,7 @@ const ANALYSIS_MESSAGES = [
 function AnalysisSkeleton() {
   const [idx, setIdx] = useState(0)
   useEffect(() => {
-    const t = setInterval(
-      () => setIdx((i) => (i + 1) % ANALYSIS_MESSAGES.length),
-      1700
-    )
+    const t = setInterval(() => setIdx((i) => (i + 1) % ANALYSIS_MESSAGES.length), 1700)
     return () => clearInterval(t)
   }, [])
 
@@ -2480,8 +2547,8 @@ function AnalysisSkeleton() {
 
         <div className="mx-auto max-w-[340px] overflow-hidden rounded-md border border-border/30 bg-background/40 backdrop-blur-sm px-2 py-1.5 font-mono text-[10px] text-primary/70 ds-token-stream">
           <span className="ds-token-row">
-            0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
-            0x7f3 → embed → softmax → attn → mlp → norm → logit → emit
+            0x7f3 → embed → softmax → attn → mlp → norm → logit → emit 0x7f3 → embed → softmax →
+            attn → mlp → norm → logit → emit
           </span>
         </div>
 
@@ -2553,30 +2620,29 @@ const DiffViewer = React.memo(function DiffViewer({
   }, [matches, onSearchMatchesChange])
 
   const currentMatchLineIdx =
-    matches.length > 0 ? matches[searchCurrentIndex % matches.length]?.lineIdx ?? -1 : -1
+    matches.length > 0 ? (matches[searchCurrentIndex % matches.length]?.lineIdx ?? -1) : -1
 
   const matchRefs = useRef<Map<number, HTMLDivElement>>(new Map())
-  const virtualize = sections.length > 600
   useEffect(() => {
-    if (currentMatchLineIdx < 0 || virtualize) return
-    const el = matchRefs.current.get(currentMatchLineIdx)
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [currentMatchLineIdx, virtualize])
+    if (currentMatchLineIdx >= 0) {
+      const el = matchRefs.current.get(currentMatchLineIdx)
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [currentMatchLineIdx])
 
-  const renderSection = (s: ParsedSection, i: number): React.ReactNode => {
-    if (s.kind === 'fileHeader') {
-      if (hideFileHeaders) return null
-      const parts = s.path.split('/')
-      const name = parts.pop() ?? s.path
-      const dir = parts.length > 0 ? parts.join('/') + '/' : ''
-      return (
-        <div
-          key={i}
-          className={cn(
-            'px-4 py-2 mt-3 first:mt-0 flex items-center gap-2 bg-muted/30 border-y border-border/30 backdrop-blur-sm',
-            !virtualize && 'sticky top-0 z-10'
-          )}
-        >
+  return (
+    <div className="text-xs font-mono leading-5 select-text">
+      {sections.map((s, i) => {
+        if (s.kind === 'fileHeader') {
+          if (hideFileHeaders) return null
+          const parts = s.path.split('/')
+          const name = parts.pop() ?? s.path
+          const dir = parts.length > 0 ? parts.join('/') + '/' : ''
+          return (
+            <div
+              key={i}
+              className="px-4 py-2 mt-3 first:mt-0 flex items-center gap-2 bg-muted/30 border-y border-border/30 sticky top-0 z-10 backdrop-blur-sm"
+            >
               {s.status && (
                 <span
                   className={cn(
@@ -2613,7 +2679,10 @@ const DiffViewer = React.memo(function DiffViewer({
         const comment =
           isAdd && s.newNum != null ? commentMap.get(`${fileBase}:${s.newNum}`) : undefined
 
-        const isMatch = searchQuery && searchQuery.length >= 2 && s.content.toLowerCase().includes(searchQuery.toLowerCase())
+        const isMatch =
+          searchQuery &&
+          searchQuery.length >= 2 &&
+          s.content.toLowerCase().includes(searchQuery.toLowerCase())
         const isCurrentMatch = i === currentMatchLineIdx
 
         return (
@@ -2663,7 +2732,6 @@ const DiffViewer = React.memo(function DiffViewer({
                     code={s.content}
                     language={detectLanguage(s.file)}
                     prismTheme={prismTheme}
-                    highlightTerm={searchQuery}
                   />
                 ) : (
                   '\u00A0'
@@ -2676,26 +2744,7 @@ const DiffViewer = React.memo(function DiffViewer({
             {comment && <InlineBalloon comment={comment} />}
           </React.Fragment>
         )
-  }
-
-  if (virtualize) {
-    return (
-      <div className="text-xs font-mono leading-5 select-text h-full">
-        <VirtualList
-          data={sections}
-          computeItemKey={(idx) => idx}
-          itemContent={(idx, s) => renderSection(s, idx)}
-          estimatedItemSize={20}
-          overscan={40}
-          style={{ height: '100%' }}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className="text-xs font-mono leading-5 select-text">
-      {sections.map((s, i) => renderSection(s, i))}
+      })}
     </div>
   )
 })
@@ -2768,11 +2817,11 @@ function splitAnalysis(text: string): { summary: string; details: string } {
   const summaryMatch = text.match(/##\s+Resumo\s*\n([\s\S]*?)(?=\n##\s+Detalhes|\n##\s+\w|$)/i)
   const detailsMatch = text.match(/##\s+Detalhes\s*\n([\s\S]*)$/i)
   const summary = summaryMatch ? summaryMatch[1].trim() : ''
-  const details = detailsMatch ? detailsMatch[1].trim() : (summary ? '' : text)
+  const details = detailsMatch ? detailsMatch[1].trim() : summary ? '' : text
   return { summary, details }
 }
 
-// AnalysisTab moved to ./types
+type AnalysisTab = 'summary' | 'details' | 'concepts' | 'quiz' | 'review'
 
 function useAnalysisData(text: string, lineComments: LineComment[]) {
   const { summary, details } = useMemo(() => splitAnalysis(text), [text])
@@ -2796,29 +2845,32 @@ function AnalysisTabsBar({
   setTab,
   detailsCount,
   conceptsCount,
-  showQuiz
+  showQuiz,
+  showReview
 }: {
   tab: AnalysisTab
   setTab: (t: AnalysisTab) => void
   detailsCount: number
   conceptsCount: number
   showQuiz: boolean
+  showReview: boolean
 }) {
   const TABS: { id: AnalysisTab; label: string; count?: number }[] = [
     { id: 'summary', label: 'Resumo' },
     { id: 'details', label: 'Detalhes', count: detailsCount || undefined },
     { id: 'concepts', label: 'Conceitos', count: conceptsCount || undefined },
+    ...(showReview ? [{ id: 'review' as AnalysisTab, label: 'Review' }] : []),
     ...(showQuiz ? [{ id: 'quiz' as AnalysisTab, label: 'Quiz' }] : [])
   ]
   return (
-    <div className="flex gap-0.5 px-3 py-1.5 border-b border-border/30 bg-background/95 backdrop-blur-sm flex-shrink-0">
+    <div className="flex gap-0.5 px-3 py-1.5 border-b border-border/30 bg-background/95 backdrop-blur-sm flex-shrink-0 overflow-x-auto ds-scrollbar-x-thin">
       {TABS.map((t) => (
         <button
           key={t.id}
           type="button"
           onClick={() => setTab(t.id)}
           className={cn(
-            'px-3 h-7 text-xs rounded-md transition-colors flex items-center gap-1.5',
+            'px-3 h-7 text-xs rounded-md transition-colors flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap',
             tab === t.id
               ? 'bg-primary/10 text-primary font-medium'
               : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
@@ -2845,49 +2897,58 @@ function AnalysisTabs({
   tab,
   text,
   lineComments,
-  quizAnalysisId
+  quizAnalysisId,
+  review,
+  reviewState,
+  reviewError,
+  onRetryReview
 }: {
   tab: AnalysisTab
   text: string
   lineComments: LineComment[]
   quizAnalysisId: number | null
+  review: CodeReview | null
+  reviewState: 'idle' | 'loading' | 'done' | 'error'
+  reviewError: string
+  onRetryReview: () => void
 }) {
   const { summary, concepts } = useAnalysisData(text, lineComments)
 
   return (
     <div>
-      {tab === 'summary' && (
-        summary ? (
+      {tab === 'summary' &&
+        (summary ? (
           <AnalysisText text={summary} />
         ) : (
-          <p className="text-xs text-muted-foreground italic">
-            Resumo ainda não disponível.
-          </p>
-        )
-      )}
-      {tab === 'details' && (
-        lineComments.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">
-            Sem detalhes por linha.
-          </p>
+          <p className="text-xs text-muted-foreground italic">Resumo ainda não disponível.</p>
+        ))}
+      {tab === 'details' &&
+        (lineComments.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">Sem detalhes por linha.</p>
         ) : (
           <ul className="space-y-2">
             {lineComments.map((c, i) => (
               <CollapsibleComment key={i} comment={c} />
             ))}
           </ul>
-        )
-      )}
+        ))}
       {tab === 'concepts' && <ConceptsTabBody concepts={concepts} />}
-      {tab === 'quiz' && (
-        quizAnalysisId != null ? (
+      {tab === 'review' && (
+        <ReviewPanel
+          review={review}
+          state={reviewState}
+          error={reviewError}
+          onRetry={onRetryReview}
+        />
+      )}
+      {tab === 'quiz' &&
+        (quizAnalysisId != null ? (
           <Quiz analysisId={quizAnalysisId} />
         ) : (
           <p className="text-xs text-muted-foreground italic">
             Quiz indisponível para esta análise.
           </p>
-        )
-      )}
+        ))}
     </div>
   )
 }
@@ -2935,9 +2996,7 @@ function ConceptsTabBody({
                 </span>
               )}
               <span className="text-[10px] text-muted-foreground/60">
-                {c.refs.length === 1
-                  ? `linha ${c.refs[0]}`
-                  : `${c.refs.length} ocorrências`}
+                {c.refs.length === 1 ? `linha ${c.refs[0]}` : `${c.refs.length} ocorrências`}
               </span>
               <AskAIInline
                 context={(c.code ? `\`${c.code}\`: ` : '') + c.text}
@@ -2976,6 +3035,7 @@ interface AnalysisRecord {
   analysis: string
   title: string | null
   createdAt: number
+  review?: CodeReview | null
 }
 
 const TIME_FORMATTER = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
@@ -3093,8 +3153,8 @@ function HistoryDrawer({
             <div className="text-center py-12 px-4">
               <Sparkles className="size-6 mx-auto mb-2 text-muted-foreground/30" />
               <p className="text-xs text-muted-foreground">
-                Nenhuma explicação salva{' '}
-                {filter === 'branch' ? 'nessa branch' : 'nesse projeto'} ainda.
+                Nenhuma explicação salva {filter === 'branch' ? 'nessa branch' : 'nesse projeto'}{' '}
+                ainda.
               </p>
             </div>
           ) : (
@@ -3126,9 +3186,7 @@ function HistoryDrawer({
                       <span>{it.providerId}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-[10px]">
-                      <span className="text-muted-foreground/60">
-                        {it.filesCount} arq
-                      </span>
+                      <span className="text-muted-foreground/60">{it.filesCount} arq</span>
                       {it.additions > 0 && (
                         <span className="text-green-500/80 flex items-center gap-0.5">
                           <Plus className="size-2" />
@@ -3179,9 +3237,6 @@ function buildCommentContext(c: LineComment): string {
 }
 
 function CollapsibleComment({ comment }: { comment: LineComment }) {
-  const { variant: codeVariant } = useCodeTheme()
-  const prismTheme = codeVariant.prism
-  const lang = detectLanguage(comment.file)
   const [open, setOpen] = useState(false)
   return (
     <li className="rounded-lg border border-border/40 bg-card/40 overflow-hidden">
@@ -3224,7 +3279,9 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
                 Antes
               </div>
-              <HighlightedBlock code={comment.before} language={lang} prismTheme={prismTheme} />
+              <pre className="bg-muted/40 border border-border/40 rounded-md px-2.5 py-1.5 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85">
+                {comment.before}
+              </pre>
             </div>
           )}
           {comment.after && (
@@ -3232,7 +3289,9 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
                 Depois
               </div>
-              <HighlightedBlock code={comment.after} language={lang} prismTheme={prismTheme} />
+              <pre className="bg-muted/40 border border-border/40 rounded-md px-2.5 py-1.5 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85">
+                {comment.after}
+              </pre>
             </div>
           )}
           {comment.why && (
@@ -3246,7 +3305,10 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
               <div className="font-semibold text-foreground/70 mb-1">Conceitos:</div>
               <ul className="space-y-0.5 ml-1">
                 {comment.concepts.map((c, idx) => (
-                  <li key={idx} className="flex gap-1.5 text-foreground/80 leading-relaxed items-start">
+                  <li
+                    key={idx}
+                    className="flex gap-1.5 text-foreground/80 leading-relaxed items-start"
+                  >
                     <span className="text-primary/60 mt-0.5">•</span>
                     <span className="flex-1">
                       {c.code && (
@@ -3272,12 +3334,9 @@ function CollapsibleComment({ comment }: { comment: LineComment }) {
 }
 
 function AnalysisText({ text }: { text: string }) {
-  const { variant: codeVariant } = useCodeTheme()
-  const prismTheme = codeVariant.prism
   const lines = text.split('\n')
   const blocks: React.ReactNode[] = []
   let codeBuffer: string[] | null = null
-  let codeLang = 'tsx'
   let codeKey = 0
 
   lines.forEach((line, i) => {
@@ -3285,19 +3344,16 @@ function AnalysisText({ text }: { text: string }) {
     if (line.startsWith('```')) {
       if (codeBuffer === null) {
         codeBuffer = []
-        const fenceLang = line.slice(3).trim().toLowerCase()
-        codeLang = fenceLang.length > 0 ? fenceLang : 'tsx'
       } else {
         blocks.push(
-          <HighlightedBlock
+          <pre
             key={`code-${codeKey++}`}
-            code={codeBuffer.join('\n')}
-            language={codeLang}
-            prismTheme={prismTheme}
-          />
+            className="bg-muted/40 border border-border/40 rounded-md px-3 py-2 my-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85"
+          >
+            {codeBuffer.join('\n')}
+          </pre>
         )
         codeBuffer = null
-        codeLang = 'tsx'
       }
       return
     }
@@ -3334,8 +3390,7 @@ function AnalysisText({ text }: { text: string }) {
           <span className="text-sm text-foreground/80">{renderInline(line.slice(2))}</span>
         </div>
       )
-    else if (line.startsWith('---'))
-      blocks.push(<hr key={i} className="border-border/30 my-4" />)
+    else if (line.startsWith('---')) blocks.push(<hr key={i} className="border-border/30 my-4" />)
     else if (!line.trim()) blocks.push(<div key={i} className="h-2" />)
     else
       blocks.push(
@@ -3349,12 +3404,12 @@ function AnalysisText({ text }: { text: string }) {
   const trailingBuffer = codeBuffer as string[] | null
   if (trailingBuffer !== null) {
     blocks.push(
-      <HighlightedBlock
+      <pre
         key={`code-${codeKey++}`}
-        code={trailingBuffer.join('\n')}
-        language={codeLang}
-        prismTheme={prismTheme}
-      />
+        className="bg-muted/40 border border-border/40 rounded-md px-3 py-2 my-2 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground/85"
+      >
+        {trailingBuffer.join('\n')}
+      </pre>
     )
   }
 

@@ -1,1 +1,34 @@
-{"title":"Perguntas honestas.","subtitle":"Respostas honestas.","items":[{"q":"DevSenses substitui Cursor/Copilot?","a":"Não. Roda do lado, te ensina o que eles fazem. Você continua usando o que já gosta."},{"q":"Funciona offline?","a":"Com Ollama, sim. 100% local, diff nunca sai do device."},{"q":"É open source mesmo?","a":"Sim. MIT. Forka, contribui, audita. Sem pegadinha."},{"q":"Preciso pagar IA?","a":"Sim, BYOK. Você usa sua key da Anthropic/OpenAI/Google ou roda Ollama de graça localmente."},{"q":"Tem versão paga?","a":"Não. Tudo é grátis. Se ajudar, considera GitHub Sponsors."},{"q":"Quando lança?","a":"Em breve. Entra na waitlist pra ser avisado no dia."}]}
+{
+  "title": "Perguntas honestas.",
+  "subtitle": "Respostas honestas.",
+  "items": [
+    {
+      "q": "DevSenses substitui Cursor/Copilot?",
+      "a": "Não. Roda do lado, te ensina o que eles fazem. Você continua usando o que já gosta."
+    },
+    {
+      "q": "Funciona offline?",
+      "a": "Com Ollama, sim. 100% local, diff nunca sai do device."
+    },
+    {
+      "q": "É open source mesmo?",
+      "a": "Sim. MIT. Forka, contribui, audita. Disponível agora no GitHub."
+    },
+    {
+      "q": "Preciso pagar IA?",
+      "a": "BYOK. Você usa sua key da Anthropic/OpenAI/Google ou roda Ollama de graça localmente."
+    },
+    {
+      "q": "Tem versão paga?",
+      "a": "Não. Tudo é grátis. Se ajudar, considera GitHub Sponsors."
+    },
+    {
+      "q": "Como contribuir?",
+      "a": "Repo no GitHub tem good-first-issue marcadas. Lê o CONTRIBUTING.md e abre PR."
+    },
+    {
+      "q": "Roadmap?",
+      "a": "Público no GitHub Projects. Vota nas issues que tu queres ver primeiro."
+    }
+  ]
+}

@@ -12,7 +12,7 @@ export async function Showcase() {
     <section id="showcase" className="relative px-6 py-32 border-t border-border overflow-hidden">
       <div className="absolute inset-0 bg-grid opacity-[0.12] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)] pointer-events-none" />
 
-      <div className="relative max-w-6xl mx-auto">
+      <div className="relative max-w-7xl mx-auto">
         <div className="flex flex-col items-center text-center max-w-2xl mx-auto mb-20">
           <FadeIn><SectionLabel number="03" className="mb-5">{t('subtitle')}</SectionLabel></FadeIn>
           <FadeIn delay={0.1}>
