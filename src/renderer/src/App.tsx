@@ -2,6 +2,7 @@ import React from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from './components/ThemeProvider'
 import CodeThemeApplicator from './components/CodeThemeApplicator'
+import { UpdateModal } from './components/UpdateModal'
 import { router } from './routes'
 import { useAnalysisStore } from './stores/analysis'
 import { useProviderModels } from './stores/providerModels'
@@ -85,6 +86,7 @@ export default function App(): React.JSX.Element {
         <AnalysisStreamBridge />
         <ProviderModelsLoader />
         <RouterProvider router={router} />
+        <UpdateModal />
       </ThemeProvider>
     </ErrorBoundary>
   )

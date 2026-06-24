@@ -12,6 +12,18 @@ import type {
   BranchDetailed
 } from './git'
 
+export interface UpdateInfo {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string | null
+  notes: string | null
+  /** URL de download do instalador do SO atual (ou a página da release como fallback). */
+  url: string | null
+  /** Página HTML da release (pra "ver notas"). */
+  htmlUrl: string | null
+  publishedAt: string | null
+}
+
 export interface IpcContract {
   'settings:get': {
     request: { key: SettingsKey }
@@ -338,6 +350,21 @@ export interface IpcContract {
   'app:checkForUpdates': {
     request: void
     response: { ok: boolean; error?: string }
+  }
+  /** Check de atualização via GitHub Releases (compara versão; devolve o instalador do SO). */
+  'update:check': {
+    request: void
+    response: UpdateInfo
+  }
+  /** Baixa o instalador DENTRO do app (progresso via evento `update:downloadProgress`) e abre no fim. */
+  'update:download': {
+    request: { url: string }
+    response: { ok: boolean }
+  }
+  /** Reinicia aplicando a atualização já baixada pelo electron-updater (Win/Linux). */
+  'update:quitAndInstall': {
+    request: void
+    response: { ok: true }
   }
   'app:openExternal': {
     request: { url: string }
@@ -703,6 +730,8 @@ export interface IpcEvents {
     | { type: 'progress'; percent: number }
     | { type: 'downloaded'; version: string }
     | { type: 'error'; message: string }
+  /** Progresso do download in-app do instalador (modal de update). */
+  'update:downloadProgress': { percent: number; done: boolean; failed: boolean }
   'tests:agentEvent':
     | {
         runId: string

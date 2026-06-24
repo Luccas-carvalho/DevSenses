@@ -703,16 +703,10 @@ function lightColorsFromPrism(prism: PrismTheme, overrides: Partial<CodeThemeCol
 
 export const CODE_THEMES: CodeThemePreset[] = [
   {
-    // 'default' now ships with Tokyo Night dark — much richer per-token colors out of the box.
-    // VS Code's vsDark/vsLight is still available as id 'classic' for the previous look.
+    // Default = VS Code (vsDark/vsLight) — o look clássico/padrão histórico do app.
+    // Tokyo Night continua disponível como preset próprio abaixo.
     id: 'default',
     label: 'Default',
-    light: { prism: enrichPrism(tokyoDayPrism), colors: lightColorsFromPrism(tokyoDayPrism), app: TOKYO_DAY_APP },
-    dark: { prism: enrichPrism(tokyoNightPrism), colors: colorsFromPrism(tokyoNightPrism), app: TOKYO_NIGHT_APP }
-  },
-  {
-    id: 'classic',
-    label: 'Classic (VS Code)',
     light: { prism: enrichPrism(prismThemes.vsLight), colors: lightColorsFromPrism(prismThemes.vsLight), app: null },
     dark: { prism: enrichPrism(prismThemes.vsDark), colors: colorsFromPrism(prismThemes.vsDark), app: null }
   },
