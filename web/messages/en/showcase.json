@@ -26,6 +26,14 @@
       "description": "Post-explanation. Per-concept mastery. 4 levels (Novice → Mastered). Right 5 times? Skipped.",
       "image": "/screenshots/quiz-mastery.png",
       "alt": "Post-explanation quiz with multiple-choice questions"
+    },
+    {
+      "id": "review",
+      "kicker": "Code review",
+      "title": "Grade and issues, instantly",
+      "description": "A toggle runs the review alongside the explanation. 0–10 grade, issues by severity, strengths and suggestions.",
+      "image": "/screenshots/code-review.png",
+      "alt": "Code review panel with grade, issues by severity and suggestions"
     }
   ]
 }
