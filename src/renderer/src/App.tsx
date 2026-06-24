@@ -5,6 +5,7 @@ import CodeThemeApplicator from './components/CodeThemeApplicator'
 import { router } from './routes'
 import { useAnalysisStore } from './stores/analysis'
 import { useProviderModels } from './stores/providerModels'
+import './lib/prismLanguages'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 /**

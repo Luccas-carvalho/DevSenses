@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import HighlightedBlock from '@/components/HighlightedBlock'
 import { createPortal } from 'react-dom'
 import { Sparkles, Loader2, AlertCircle, BookmarkPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -149,9 +150,9 @@ export default function TermLink({ term, contextSnippet }: Props): React.ReactEl
                     {data.definition}
                   </p>
                   {data.example && (
-                    <pre className="mt-2 rounded-md bg-muted/40 border border-border/30 px-2 py-1.5 text-[11px] text-foreground/80 font-mono whitespace-pre-wrap break-all">
-                      {data.example}
-                    </pre>
+                    <div className="mt-2">
+                      <HighlightedBlock code={data.example} />
+                    </div>
                   )}
                 </>
               )}

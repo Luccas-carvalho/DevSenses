@@ -29,7 +29,7 @@ export default function DiffSearchBar({
   }, [])
 
   return (
-    <div className="absolute top-2 right-3 z-30 flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-popover shadow-lg">
+    <div className="flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-popover shadow-lg">
       <Search className="size-3 text-muted-foreground" />
       <input
         ref={inputRef}

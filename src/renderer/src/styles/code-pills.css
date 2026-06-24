@@ -1,0 +1,60 @@
+/* Pill-style backgrounds for code tokens. Layered on top of Prism syntax colors
+   so themes still drive the text color, but identifiers/keywords/strings gain a
+   subtle chip background — improves scannability without overwhelming the diff. */
+
+.pl-token {
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 -1px;
+  font-weight: 500;
+}
+
+.pl-function,
+.pl-method,
+.pl-class-name {
+  background-color: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.pl-tag,
+.pl-tag-name {
+  background-color: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.pl-attr-name,
+.pl-property,
+.pl-property-access {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.pl-keyword,
+.pl-control,
+.pl-operator {
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
+  font-weight: 600;
+}
+
+.pl-string,
+.pl-attr-value {
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.pl-number,
+.pl-boolean {
+  background-color: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.pl-variable,
+.pl-parameter {
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.pl-comment {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+/* Avoid stacking pills when consecutive */
+.pl-token + .pl-token {
+  margin-left: 0;
+}

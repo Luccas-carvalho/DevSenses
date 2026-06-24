@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Bug, X, Lightbulb, Eye, Check, AlertCircle, RefreshCw } from 'lucide-react'
+import { Highlight } from 'prism-react-renderer'
+import { useCodeTheme } from '@/hooks/useCodeTheme'
 
 interface Challenge {
   buggyCode: string
@@ -159,6 +161,8 @@ export default function BugHuntDialog({
   const [error, setError] = useState('')
   const [hintShown, setHintShown] = useState(false)
   const inFlight = useRef(false)
+  const { variant: codeVariant } = useCodeTheme()
+  const prismTheme = codeVariant.prism
 
   useEffect(() => {
     if (!open) return
@@ -263,9 +267,12 @@ export default function BugHuntDialog({
                     <span className="font-mono">{challenge.language}</span>
                   )}
                 </div>
-                <pre className="px-3 py-3 text-[12px] font-mono text-foreground/90 overflow-auto whitespace-pre">
-                  {addLineNumbers(challenge.buggyCode, challenge.bugLine, phase === 'revealed')}
-                </pre>
+                <HighlightedSnippet
+                  code={challenge.buggyCode}
+                  language={normalizeLanguage(challenge.language)}
+                  prismTheme={prismTheme}
+                  highlightLine={phase === 'revealed' ? challenge.bugLine : undefined}
+                />
               </div>
 
               {!hintShown && phase === 'hunting' && (
@@ -317,9 +324,11 @@ export default function BugHuntDialog({
                     <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-emerald-400 border-b border-border/40 bg-emerald-500/8">
                       Código corrigido
                     </div>
-                    <pre className="px-3 py-3 text-[12px] font-mono text-foreground/90 overflow-auto whitespace-pre">
-                      {challenge.fixedCode}
-                    </pre>
+                    <HighlightedSnippet
+                      code={challenge.fixedCode}
+                      language={normalizeLanguage(challenge.language)}
+                      prismTheme={prismTheme}
+                    />
                   </div>
                 </>
               )}
@@ -332,16 +341,76 @@ export default function BugHuntDialog({
   )
 }
 
-function addLineNumbers(code: string, bugLine?: number, highlight?: boolean): string {
-  const lines = code.split('\n')
-  const max = lines.length
-  const pad = String(max).length
-  return lines
-    .map((ln, i) => {
-      const n = i + 1
-      const isBuggy = highlight && bugLine === n
-      const prefix = String(n).padStart(pad, ' ')
-      return `${isBuggy ? '➜ ' : '  '}${prefix}  ${ln}`
-    })
-    .join('\n')
+const LANG_ALIAS: Record<string, string> = {
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  rb: 'ruby',
+  sh: 'bash',
+  zsh: 'bash',
+  yml: 'yaml',
+  cs: 'csharp',
+  'c#': 'csharp',
+  cpp: 'cpp',
+  'c++': 'cpp',
+  golang: 'go',
+  rs: 'rust',
+  kt: 'kotlin',
+  dockerfile: 'docker'
+}
+
+function normalizeLanguage(lang?: string): string {
+  if (!lang) return 'tsx'
+  const lower = lang.toLowerCase().trim()
+  return LANG_ALIAS[lower] ?? lower
+}
+
+function HighlightedSnippet({
+  code,
+  language,
+  prismTheme,
+  highlightLine
+}: {
+  code: string
+  language: string
+  prismTheme: import('prism-react-renderer').PrismTheme
+  highlightLine?: number
+}): React.JSX.Element {
+  const total = code.split('\n').length
+  const pad = String(total).length
+
+  return (
+    <Highlight code={code} language={language} theme={prismTheme}>
+      {({ tokens, getLineProps, getTokenProps, style }) => (
+        <pre
+          className="px-3 py-3 text-[12px] font-mono overflow-auto whitespace-pre"
+          style={style}
+        >
+          {tokens.map((line, lineIdx) => {
+            const n = lineIdx + 1
+            const isBuggy = highlightLine === n
+            const lineProps = getLineProps({ line })
+            return (
+              <div
+                key={lineIdx}
+                {...lineProps}
+                className={
+                  isBuggy
+                    ? `${lineProps.className ?? ''} bg-rose-500/10 -mx-3 px-3`.trim()
+                    : lineProps.className
+                }
+              >
+                <span className="inline-block w-8 pr-3 text-right text-muted-foreground/50 select-none">
+                  {isBuggy ? '➜' : String(n).padStart(pad, ' ')}
+                </span>
+                {line.map((token, i) => (
+                  <span key={i} {...getTokenProps({ token })} />
+                ))}
+              </div>
+            )
+          })}
+        </pre>
+      )}
+    </Highlight>
+  )
 }

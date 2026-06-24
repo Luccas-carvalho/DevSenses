@@ -61,6 +61,7 @@ let pendingProjectOpen: string | null = null
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
+    title: 'DevSenses',
     width: 1200,
     height: 800,
     minWidth: 900,
