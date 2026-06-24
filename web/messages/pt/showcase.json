@@ -26,6 +26,14 @@
       "description": "Pós-explicação. Mastery por conceito. 4 níveis (Novato → Dominado). Acertou 5 vezes? Some do quiz.",
       "image": "/screenshots/quiz-mastery.png",
       "alt": "Quiz pós-explicação com perguntas múltipla-escolha"
+    },
+    {
+      "id": "review",
+      "kicker": "Code review",
+      "title": "Nota e problemas, na hora",
+      "description": "Um toggle liga o review junto da explicação. Nota de 0 a 10, problemas por severidade, pontos fortes e sugestões.",
+      "image": "/screenshots/code-review.png",
+      "alt": "Painel de code review com nota, problemas por severidade e sugestões"
     }
   ]
 }
